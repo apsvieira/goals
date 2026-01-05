@@ -18,11 +18,11 @@
 
 <div class="month-nav">
   <button class="nav-btn" on:click={onPrev} aria-label="Previous month">
-    &larr;
+    ‹
   </button>
-  <h2 class="month-display">{displayMonth}</h2>
+  <span class="month-display">{displayMonth}</span>
   <button class="nav-btn" on:click={onNext} aria-label="Next month">
-    &rarr;
+    ›
   </button>
 </div>
 
@@ -30,30 +30,28 @@
   .month-nav {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 8px;
   }
 
   .nav-btn {
-    padding: 8px 16px;
-    font-size: 18px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-size: 16px;
+    background: transparent;
+    border: none;
     border-radius: 4px;
     cursor: pointer;
-    color: var(--text-primary);
+    color: var(--text-secondary);
+    line-height: 1;
   }
 
   .nav-btn:hover {
     background: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 
   .month-display {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 600;
-    min-width: 200px;
-    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
     color: var(--text-primary);
   }
 </style>
