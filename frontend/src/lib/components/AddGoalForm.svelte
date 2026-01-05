@@ -55,8 +55,8 @@
     flex-direction: column;
     gap: 12px;
     padding: 16px;
-    background: #f9f9f9;
-    border: 1px solid #ddd;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 8px;
     max-width: 300px;
   }
@@ -64,8 +64,14 @@
   .name-input {
     padding: 8px 12px;
     font-size: 14px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 4px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .name-input::placeholder {
+    color: var(--text-muted);
   }
 
   .color-picker {
@@ -83,7 +89,7 @@
   }
 
   .color-swatch.selected {
-    border-color: #333;
+    border-color: var(--text-primary);
   }
 
   .form-actions {
@@ -100,14 +106,23 @@
   }
 
   .btn-cancel {
-    background: #fff;
-    border: 1px solid #ccc;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+
+  .btn-cancel:hover {
+    background: var(--bg-primary);
   }
 
   .btn-add {
-    background: #4CAF50;
+    background: var(--accent);
     color: white;
     border: none;
+  }
+
+  .btn-add:hover {
+    background: var(--accent-hover);
   }
 
   .btn-add:disabled {

@@ -37,14 +37,15 @@
   .nav-btn {
     padding: 8px 16px;
     font-size: 18px;
-    background: #f0f0f0;
-    border: 1px solid #ccc;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 4px;
     cursor: pointer;
+    color: var(--text-primary);
   }
 
   .nav-btn:hover {
-    background: #e0e0e0;
+    background: var(--bg-tertiary);
   }
 
   .month-display {
@@ -53,5 +54,6 @@
     font-weight: 600;
     min-width: 200px;
     text-align: center;
+    color: var(--text-primary);
   }
 </style>

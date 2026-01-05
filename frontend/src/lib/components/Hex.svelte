@@ -31,9 +31,10 @@
   <title>Day {day}</title>
   <polygon
     {points}
-    fill={filled ? color : 'transparent'}
+    fill={filled ? color : 'var(--bg-tertiary)'}
     stroke={color}
     stroke-width="1.5"
+    opacity={filled ? 1 : 0.6}
   />
 </svg>
 

@@ -242,12 +242,27 @@
 </main>
 
 <style>
+  :global(:root) {
+    --bg-primary: #0f0f1a;
+    --bg-secondary: #1a1a2e;
+    --bg-tertiary: #252542;
+    --text-primary: #e8e8f0;
+    --text-secondary: #a0a0b8;
+    --text-muted: #6b6b80;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --success: #22c55e;
+    --error: #ef4444;
+    --error-bg: #2d1f1f;
+    --border: #353550;
+  }
+
   :global(body) {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     margin: 0;
     padding: 20px;
-    background: #fafafa;
-    color: #333;
+    background: var(--bg-primary);
+    color: var(--text-primary);
   }
 
   main {
@@ -266,7 +281,7 @@
   .add-btn {
     padding: 8px 16px;
     font-size: 14px;
-    background: #4CAF50;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 4px;
@@ -274,19 +289,20 @@
   }
 
   .add-btn:hover {
-    background: #45a049;
+    background: var(--accent-hover);
   }
 
   .error {
     padding: 12px;
     margin: 16px 0;
-    background: #ffebee;
-    color: #c62828;
+    background: var(--error-bg);
+    color: var(--error);
     border-radius: 4px;
+    border: 1px solid var(--error);
   }
 
   .loading, .empty {
-    color: #666;
+    color: var(--text-secondary);
     font-style: italic;
   }
 

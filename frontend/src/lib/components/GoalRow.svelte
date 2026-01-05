@@ -42,20 +42,21 @@
     align-items: flex-start;
     gap: 8px;
     margin-bottom: 24px;
-    padding: 4px;
-    border-radius: 4px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--bg-secondary);
     transition: background-color 0.15s ease;
   }
 
   .goal-row.drag-over {
-    background-color: #e3f2fd;
-    border: 2px dashed #2196F3;
+    background-color: var(--bg-tertiary);
+    border: 2px dashed var(--accent);
   }
 
   .drag-handle {
     cursor: grab;
     padding: 4px;
-    color: #999;
+    color: var(--text-muted);
     font-size: 14px;
     user-select: none;
   }
@@ -76,11 +77,12 @@
     cursor: pointer;
     text-align: left;
     font-size: 14px;
+    color: var(--text-primary);
   }
 
   .goal-label:hover {
-    border-color: #ccc;
-    background: #f5f5f5;
+    border-color: var(--border);
+    background: var(--bg-tertiary);
   }
 
   .color-dot {

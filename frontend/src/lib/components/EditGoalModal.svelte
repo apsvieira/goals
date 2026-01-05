@@ -97,7 +97,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -105,24 +105,26 @@
   }
 
   .modal {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: 8px;
     padding: 24px;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
   }
 
   h2 {
     margin: 0 0 20px 0;
     font-size: 20px;
+    color: var(--text-primary);
   }
 
   label {
     display: block;
     margin-bottom: 16px;
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
   }
 
   label input {
@@ -131,9 +133,11 @@
     margin-top: 4px;
     padding: 8px 12px;
     font-size: 16px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 4px;
     box-sizing: border-box;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 
   .color-section {
@@ -143,7 +147,7 @@
   .label {
     display: block;
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     margin-bottom: 8px;
   }
 
@@ -167,7 +171,7 @@
   }
 
   .color-swatch.selected {
-    border-color: #333;
+    border-color: var(--text-primary);
   }
 
   .preview {
@@ -175,9 +179,10 @@
     align-items: center;
     gap: 8px;
     padding: 12px;
-    background: #f5f5f5;
+    background: var(--bg-tertiary);
     border-radius: 4px;
     margin-bottom: 20px;
+    color: var(--text-primary);
   }
 
   .preview-dot {
@@ -205,24 +210,33 @@
   }
 
   .btn-delete {
-    background: #fff;
-    color: #c62828;
-    border: 1px solid #c62828;
+    background: transparent;
+    color: var(--error);
+    border: 1px solid var(--error);
   }
 
   .btn-delete:hover {
-    background: #ffebee;
+    background: var(--error-bg);
   }
 
   .btn-cancel {
-    background: #fff;
-    border: 1px solid #ccc;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+
+  .btn-cancel:hover {
+    background: var(--bg-primary);
   }
 
   .btn-save {
-    background: #4CAF50;
+    background: var(--accent);
     color: white;
     border: none;
+  }
+
+  .btn-save:hover {
+    background: var(--accent-hover);
   }
 
   .btn-save:disabled {
