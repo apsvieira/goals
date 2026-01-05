@@ -1,0 +1,9 @@
+.git
+.beads
+*.db
+node_modules
+frontend/dist
+backend/cmd/server/dist
+bin/
+*.md
+.env*

@@ -1,25 +1,44 @@
 package api
 
 import (
+	"encoding/json"
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/apsv/goal-tracker/backend/internal/auth"
 	"github.com/apsv/goal-tracker/backend/internal/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
-	db       db.Database
-	router   chi.Router
-	staticFS fs.FS
+	db           db.Database
+	router       chi.Router
+	staticFS     fs.FS
+	authManager  *auth.Manager
+	oauthHandler *auth.OAuthHandler
 }
 
 func NewServer(database db.Database, staticFS fs.FS) *Server {
-	s := &Server{db: database, staticFS: staticFS}
+	// Get base URL from environment, default to localhost for dev
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	authManager := auth.NewManager(database)
+	oauthHandler := auth.NewOAuthHandler(database, authManager, baseURL)
+
+	s := &Server{
+		db:           database,
+		staticFS:     staticFS,
+		authManager:  authManager,
+		oauthHandler: oauthHandler,
+	}
 	s.setupRoutes()
 	return s
 }
@@ -33,9 +52,21 @@ func (s *Server) setupRoutes() {
 	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
+	r.Use(auth.Middleware(s.authManager))
+
+	// Health endpoint
+	r.Get("/health", s.healthCheck)
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Auth routes
+		r.Route("/auth", func(r chi.Router) {
+			r.Get("/me", s.getCurrentUser)
+			r.Get("/oauth/{provider}", s.startOAuth)
+			r.Get("/oauth/{provider}/callback", s.oauthCallback)
+			r.Post("/logout", s.logout)
+		})
+
 		// Goals
 		r.Get("/goals", s.listGoals)
 		r.Post("/goals", s.createGoal)
@@ -118,10 +149,33 @@ func requestLogger(next http.Handler) http.Handler {
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
+	// Get allowed origins from environment, default to "*" for dev
+	allowedOrigins := os.Getenv("CORS_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "*"
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		origin := r.Header.Get("Origin")
+
+		// Check if origin is allowed
+		if allowedOrigins == "*" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		} else {
+			// Parse comma-separated origins
+			origins := strings.Split(allowedOrigins, ",")
+			for _, allowed := range origins {
+				if strings.TrimSpace(allowed) == origin {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Vary", "Origin")
+					break
+				}
+			}
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -129,5 +183,24 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
+	// Ping the database to check connectivity
+	if err := s.db.Ping(); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "unhealthy",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "healthy",
 	})
 }

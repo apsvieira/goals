@@ -19,7 +19,21 @@ type Database interface {
 	CreateCompletion(c *models.Completion) error
 	DeleteCompletion(id string) error
 
+	// Users
+	GetUserByID(id string) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
+	CreateUser(user *models.User) error
+	UpdateUserLastLogin(id string) error
+	GetOrCreateUserByProvider(provider, providerUserID, email, name, avatarURL string) (*models.User, error)
+
+	// Sessions
+	CreateSession(session *models.Session) error
+	GetSessionByTokenHash(tokenHash string) (*models.Session, error)
+	DeleteSession(id string) error
+	DeleteExpiredSessions() error
+
 	// Lifecycle
 	Migrate() error
 	Close() error
+	Ping() error
 }

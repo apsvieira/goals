@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { authStore } from './stores';
+import { authStore, type User } from './stores';
 import {
   initStorage,
   getLocalGoals,
@@ -12,7 +12,10 @@ import {
   getMaxPosition,
 } from './storage';
 
-const API_BASE = 'http://localhost:8080/api/v1';
+// Use relative URL in production, absolute in dev
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? '/api/v1'
+  : 'http://localhost:8080/api/v1';
 
 export interface Goal {
   id: string;
@@ -58,6 +61,7 @@ function generateId(): string {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -208,4 +212,29 @@ export async function findCompletionByGoalAndDate(goalId: string, date: string):
   // For server mode, this would need to be handled differently
   // The App.svelte currently tracks completions in memory
   return undefined;
+}
+
+// Auth API
+
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function logout(): Promise<void> {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  });
 }

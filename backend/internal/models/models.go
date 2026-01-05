@@ -43,3 +43,22 @@ type CreateCompletionRequest struct {
 type ReorderGoalsRequest struct {
 	GoalIDs []string `json:"goal_ids"` // Goal IDs in desired order
 }
+
+// Auth types
+
+type User struct {
+	ID          string     `json:"id"`
+	Email       string     `json:"email"`
+	Name        string     `json:"name,omitempty"`
+	AvatarURL   string     `json:"avatar_url,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+}
+
+type Session struct {
+	ID        string
+	UserID    string
+	TokenHash string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}

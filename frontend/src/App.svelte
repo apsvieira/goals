@@ -4,6 +4,7 @@
   import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
   import AddGoalForm from './lib/components/AddGoalForm.svelte';
+  import AuthPage from './lib/components/AuthPage.svelte';
   import {
     getCalendar,
     createGoal,
@@ -12,10 +13,16 @@
     createCompletion,
     deleteCompletion,
     reorderGoals,
+    getCurrentUser,
     type Goal,
     type Completion,
   } from './lib/api';
   import EditGoalModal from './lib/components/EditGoalModal.svelte';
+  import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
+
+  // Auth state
+  let authState: AuthState;
+  authStore.subscribe(value => authState = value);
 
   // Current month in YYYY-MM format
   let currentMonth = new Date().toISOString().slice(0, 7);
@@ -201,68 +208,113 @@
     draggedGoalId = null;
   }
 
-  onMount(loadData);
-  $: currentMonth, loadData();
+  async function checkAuth() {
+    // Check if we have a session
+    try {
+      const user = await getCurrentUser();
+      if (user) {
+        authStore.set({ type: 'authenticated', user });
+        return;
+      }
+    } catch (e) {
+      // Not authenticated
+    }
+
+    // Check if we have local data (guest mode)
+    if (hasLocalData()) {
+      authStore.set({ type: 'guest' });
+      return;
+    }
+
+    // Not authenticated and no local data
+    authStore.set({ type: 'unauthenticated' });
+  }
+
+  function handleContinueAsGuest() {
+    setGuestMode(true);
+    authStore.set({ type: 'guest' });
+  }
+
+  onMount(async () => {
+    await checkAuth();
+    // Only load data if authenticated or guest
+    if (authState.type === 'authenticated' || authState.type === 'guest') {
+      await loadData();
+    }
+  });
+
+  // Reload data when month changes, but only if authenticated/guest
+  $: if (authState.type === 'authenticated' || authState.type === 'guest') {
+    currentMonth, loadData();
+  }
 </script>
 
-<div class="app-container">
-  <Header
-    month={currentMonth}
-    onPrev={prevMonth}
-    onNext={nextMonth}
-    {showAddForm}
-    onToggleAddForm={() => showAddForm = !showAddForm}
-  />
+{#if authState.type === 'loading'}
+  <div class="loading-container">
+    <p class="loading">Loading...</p>
+  </div>
+{:else if authState.type === 'unauthenticated'}
+  <AuthPage onContinueAsGuest={handleContinueAsGuest} />
+{:else}
+  <div class="app-container">
+    <Header
+      month={currentMonth}
+      onPrev={prevMonth}
+      onNext={nextMonth}
+      {showAddForm}
+      onToggleAddForm={() => showAddForm = !showAddForm}
+    />
 
-  <main>
-    {#if error}
-      <div class="error">{error}</div>
-    {/if}
+    <main>
+      {#if error}
+        <div class="error">{error}</div>
+      {/if}
 
-    {#if showAddForm}
-      <div class="form-container">
-        <AddGoalForm
-          onAdd={handleAddGoal}
-          onCancel={() => showAddForm = false}
-        />
-      </div>
-    {/if}
-
-    {#if editingGoal}
-      <EditGoalModal
-        goal={editingGoal}
-        onSave={handleSaveGoal}
-        onDelete={handleDeleteGoal}
-        onClose={() => editingGoal = null}
-      />
-    {/if}
-
-    {#if loading}
-      <p class="loading">Loading...</p>
-    {:else if goals.length === 0}
-      <p class="empty">No goals yet. Add one to get started!</p>
-    {:else}
-      <div class="goals" role="list">
-        {#each goals as goal (goal.id)}
-          <GoalRow
-            {goal}
-            {daysInMonth}
-            {currentDay}
-            completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
-            onToggle={(day) => handleToggle(goal.id, day)}
-            onEdit={() => handleEditGoal(goal)}
-            onDragStart={(e) => handleDragStart(goal.id, e)}
-            onDragOver={(e) => handleDragOver(goal.id, e)}
-            onDrop={(e) => handleDrop(goal.id, e)}
-            isDragOver={dragOverGoalId === goal.id}
+      {#if showAddForm}
+        <div class="form-container">
+          <AddGoalForm
+            onAdd={handleAddGoal}
+            onCancel={() => showAddForm = false}
           />
-        {/each}
-      </div>
-    {/if}
-  </main>
+        </div>
+      {/if}
 
-  <Footer />
-</div>
+      {#if editingGoal}
+        <EditGoalModal
+          goal={editingGoal}
+          onSave={handleSaveGoal}
+          onDelete={handleDeleteGoal}
+          onClose={() => editingGoal = null}
+        />
+      {/if}
+
+      {#if loading}
+        <p class="loading">Loading...</p>
+      {:else if goals.length === 0}
+        <p class="empty">No goals yet. Add one to get started!</p>
+      {:else}
+        <div class="goals" role="list">
+          {#each goals as goal (goal.id)}
+            <GoalRow
+              {goal}
+              {daysInMonth}
+              {currentDay}
+              completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
+              onToggle={(day) => handleToggle(goal.id, day)}
+              onEdit={() => handleEditGoal(goal)}
+              onDragStart={(e) => handleDragStart(goal.id, e)}
+              onDragOver={(e) => handleDragOver(goal.id, e)}
+              onDrop={(e) => handleDrop(goal.id, e)}
+              isDragOver={dragOverGoalId === goal.id}
+            />
+          {/each}
+        </div>
+      {/if}
+    </main>
+
+    <Footer />
+  </div>
+{/if}
 
 <style>
   :global(:root) {
@@ -323,5 +375,13 @@
   .form-container {
     padding: 0 24px;
     margin-bottom: 16px;
+  }
+
+  .loading-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
   }
 </style>

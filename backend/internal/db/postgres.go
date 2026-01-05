@@ -289,3 +289,240 @@ func (d *PostgresDB) DeleteCompletion(id string) error {
 	}
 	return nil
 }
+
+func (d *PostgresDB) Ping() error {
+	return d.DB.Ping()
+}
+
+// Users
+
+func (d *PostgresDB) GetUserByID(id string) (*models.User, error) {
+	var u models.User
+	var lastLoginAt sql.NullTime
+	err := d.QueryRow(
+		`SELECT id, email, name, avatar_url, created_at, last_login_at FROM users WHERE id = $1`,
+		id,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.CreatedAt, &lastLoginAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query user: %w", err)
+	}
+	if lastLoginAt.Valid {
+		u.LastLoginAt = &lastLoginAt.Time
+	}
+	return &u, nil
+}
+
+func (d *PostgresDB) GetUserByEmail(email string) (*models.User, error) {
+	var u models.User
+	var lastLoginAt sql.NullTime
+	err := d.QueryRow(
+		`SELECT id, email, name, avatar_url, created_at, last_login_at FROM users WHERE email = $1`,
+		email,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.CreatedAt, &lastLoginAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query user: %w", err)
+	}
+	if lastLoginAt.Valid {
+		u.LastLoginAt = &lastLoginAt.Time
+	}
+	return &u, nil
+}
+
+func (d *PostgresDB) CreateUser(u *models.User) error {
+	_, err := d.Exec(
+		`INSERT INTO users (id, email, name, avatar_url, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		u.ID, u.Email, u.Name, u.AvatarURL, u.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert user: %w", err)
+	}
+	return nil
+}
+
+func (d *PostgresDB) UpdateUserLastLogin(id string) error {
+	_, err := d.Exec(
+		`UPDATE users SET last_login_at = $1 WHERE id = $2`,
+		time.Now().UTC(), id,
+	)
+	if err != nil {
+		return fmt.Errorf("update last login: %w", err)
+	}
+	return nil
+}
+
+func (d *PostgresDB) GetOrCreateUserByProvider(provider, providerUserID, email, name, avatarURL string) (*models.User, error) {
+	tx, err := d.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Check if auth provider exists
+	var userID string
+	err = tx.QueryRow(
+		`SELECT user_id FROM auth_providers WHERE provider = $1 AND provider_user_id = $2`,
+		provider, providerUserID,
+	).Scan(&userID)
+
+	if err == nil {
+		// Provider exists, get user and update last login
+		var u models.User
+		var lastLoginAt sql.NullTime
+		err = tx.QueryRow(
+			`SELECT id, email, name, avatar_url, created_at, last_login_at FROM users WHERE id = $1`,
+			userID,
+		).Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.CreatedAt, &lastLoginAt)
+		if err != nil {
+			return nil, fmt.Errorf("get user: %w", err)
+		}
+		if lastLoginAt.Valid {
+			u.LastLoginAt = &lastLoginAt.Time
+		}
+
+		// Update last login
+		now := time.Now().UTC()
+		_, err = tx.Exec(`UPDATE users SET last_login_at = $1 WHERE id = $2`, now, u.ID)
+		if err != nil {
+			return nil, fmt.Errorf("update last login: %w", err)
+		}
+		u.LastLoginAt = &now
+
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit: %w", err)
+		}
+		return &u, nil
+	}
+
+	if err != sql.ErrNoRows {
+		return nil, fmt.Errorf("check auth provider: %w", err)
+	}
+
+	// Check if user exists by email
+	var existingUser models.User
+	var lastLoginAt sql.NullTime
+	err = tx.QueryRow(
+		`SELECT id, email, name, avatar_url, created_at, last_login_at FROM users WHERE email = $1`,
+		email,
+	).Scan(&existingUser.ID, &existingUser.Email, &existingUser.Name, &existingUser.AvatarURL, &existingUser.CreatedAt, &lastLoginAt)
+
+	if err == nil {
+		// User exists, add auth provider
+		if lastLoginAt.Valid {
+			existingUser.LastLoginAt = &lastLoginAt.Time
+		}
+		providerID := generatePostgresUUID()
+		_, err = tx.Exec(
+			`INSERT INTO auth_providers (id, user_id, provider, provider_user_id) VALUES ($1, $2, $3, $4)`,
+			providerID, existingUser.ID, provider, providerUserID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("insert auth provider: %w", err)
+		}
+
+		// Update last login
+		now := time.Now().UTC()
+		_, err = tx.Exec(`UPDATE users SET last_login_at = $1 WHERE id = $2`, now, existingUser.ID)
+		if err != nil {
+			return nil, fmt.Errorf("update last login: %w", err)
+		}
+		existingUser.LastLoginAt = &now
+
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit: %w", err)
+		}
+		return &existingUser, nil
+	}
+
+	if err != sql.ErrNoRows {
+		return nil, fmt.Errorf("check user by email: %w", err)
+	}
+
+	// Create new user
+	now := time.Now().UTC()
+	u := &models.User{
+		ID:          generatePostgresUUID(),
+		Email:       email,
+		Name:        name,
+		AvatarURL:   avatarURL,
+		CreatedAt:   now,
+		LastLoginAt: &now,
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO users (id, email, name, avatar_url, created_at, last_login_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+		u.ID, u.Email, u.Name, u.AvatarURL, u.CreatedAt, u.LastLoginAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("insert user: %w", err)
+	}
+
+	// Add auth provider
+	providerID := generatePostgresUUID()
+	_, err = tx.Exec(
+		`INSERT INTO auth_providers (id, user_id, provider, provider_user_id) VALUES ($1, $2, $3, $4)`,
+		providerID, u.ID, provider, providerUserID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("insert auth provider: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+	return u, nil
+}
+
+// Sessions
+
+func (d *PostgresDB) CreateSession(s *models.Session) error {
+	_, err := d.Exec(
+		`INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		s.ID, s.UserID, s.TokenHash, s.ExpiresAt, s.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert session: %w", err)
+	}
+	return nil
+}
+
+func (d *PostgresDB) GetSessionByTokenHash(tokenHash string) (*models.Session, error) {
+	var s models.Session
+	err := d.QueryRow(
+		`SELECT id, user_id, token_hash, expires_at, created_at FROM sessions WHERE token_hash = $1`,
+		tokenHash,
+	).Scan(&s.ID, &s.UserID, &s.TokenHash, &s.ExpiresAt, &s.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query session: %w", err)
+	}
+	return &s, nil
+}
+
+func (d *PostgresDB) DeleteSession(id string) error {
+	_, err := d.Exec(`DELETE FROM sessions WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	return nil
+}
+
+func (d *PostgresDB) DeleteExpiredSessions() error {
+	_, err := d.Exec(`DELETE FROM sessions WHERE expires_at < $1`, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("delete expired sessions: %w", err)
+	}
+	return nil
+}
+
+// generatePostgresUUID creates a simple UUID for IDs
+func generatePostgresUUID() string {
+	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().UnixNano()%1000000)
+}

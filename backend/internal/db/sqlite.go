@@ -108,3 +108,7 @@ func DefaultDBPath() string {
 	}
 	return filepath.Join(configDir, "goal-tracker", "goals.db")
 }
+
+func (d *SQLiteDB) Ping() error {
+	return d.DB.Ping()
+}
