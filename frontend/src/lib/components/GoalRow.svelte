@@ -28,8 +28,7 @@
       draggable="true"
       on:dragstart={onDragStart}
     >
-      <span class="color-dot" style="background-color: {goal.color}"></span>
-      <span class="goal-name">{goal.name}</span>
+      {goal.name}
     </button>
   </div>
   <div class="goal-grid">
@@ -89,36 +88,7 @@
     cursor: grabbing;
   }
 
-  .color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .goal-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .goal-grid {
-    padding-left: 4px;
-  }
-
-  @media (min-width: 600px) {
-    .goal-row {
-      flex-direction: row;
-      align-items: flex-start;
-      gap: 16px;
-    }
-
-    .goal-header {
-      min-width: 140px;
-    }
-
-    .goal-grid {
-      padding-left: 0;
-    }
+    width: 100%;
   }
 </style>
