@@ -37,6 +37,26 @@
   }
   let daysInMonth: number;
 
+  // Compute currentDay for disabling future dates
+  // If viewing current month: currentDay = today's day number
+  // If viewing past month: currentDay = 0 (no restriction)
+  // If viewing future month: currentDay = 0 but all days disabled via different logic
+  $: {
+    const now = new Date();
+    const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (currentMonth === todayMonth) {
+      // Current month: disable days after today
+      currentDay = now.getDate();
+    } else if (currentMonth < todayMonth) {
+      // Past month: no restriction
+      currentDay = 0;
+    } else {
+      // Future month: all days disabled (currentDay = -1 makes day > currentDay always true)
+      currentDay = -1;
+    }
+  }
+  let currentDay: number;
+
   // Map completions by goal
   $: completionsByGoal = completions.reduce((acc, c) => {
     const day = parseInt(c.date.split('-')[2], 10);
@@ -227,6 +247,7 @@
           <GoalRow
             {goal}
             {daysInMonth}
+            {currentDay}
             completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
             onToggle={(day) => handleToggle(goal.id, day)}
             onEdit={() => handleEditGoal(goal)}

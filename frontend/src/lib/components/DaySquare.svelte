@@ -3,13 +3,21 @@
   export let color = '#4CAF50';
   export let day: number;
   export let onClick: () => void = () => {};
+  export let disabled = false;
+
+  function handleClick() {
+    if (!disabled) {
+      onClick();
+    }
+  }
 </script>
 
 <button
   class="day-square"
   class:filled
+  class:disabled
   style="--day-color: {color}"
-  on:click={onClick}
+  on:click={handleClick}
   aria-label="Day {day}"
   title="Day {day}"
 >
@@ -41,7 +49,7 @@
     opacity: 1;
   }
 
-  .day-square:hover {
+  .day-square:hover:not(.disabled) {
     transform: scale(1.1);
     opacity: 1;
   }
@@ -49,5 +57,10 @@
   .day-square:focus {
     outline: 2px solid var(--day-color);
     outline-offset: 1px;
+  }
+
+  .day-square.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 </style>

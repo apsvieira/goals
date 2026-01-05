@@ -11,6 +11,7 @@
   export let onDragOver: (e: DragEvent) => void;
   export let onDrop: (e: DragEvent) => void;
   export let isDragOver = false;
+  export let currentDay: number = 0;
 </script>
 
 <div
@@ -34,6 +35,7 @@
     color={goal.color}
     {completedDays}
     {onToggle}
+    {currentDay}
   />
 </div>
 

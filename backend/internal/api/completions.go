@@ -65,6 +65,18 @@ func (s *Server) createCompletion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate date is not in the future (using UTC)
+	reqDate, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		http.Error(w, "invalid date", http.StatusBadRequest)
+		return
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	if reqDate.After(today) {
+		http.Error(w, "cannot create completions for future dates", http.StatusBadRequest)
+		return
+	}
+
 	// Check goal exists
 	goal, err := s.db.GetGoal(req.GoalID)
 	if err != nil {

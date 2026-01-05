@@ -14,13 +14,18 @@ import (
 )
 
 //go:embed migrations/*.sql
-var migrationsFS embed.FS
+var sqliteMigrationsFS embed.FS
 
-type DB struct {
+// SQLiteDB implements the Database interface for SQLite.
+type SQLiteDB struct {
 	*sql.DB
 }
 
-func New(dbPath string) (*DB, error) {
+// Ensure SQLiteDB implements Database interface
+var _ Database = (*SQLiteDB)(nil)
+
+// NewSQLite creates a new SQLite database connection.
+func NewSQLite(dbPath string) (*SQLiteDB, error) {
 	// Ensure directory exists
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -37,10 +42,10 @@ func New(dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
 	}
 
-	return &DB{db}, nil
+	return &SQLiteDB{db}, nil
 }
 
-func (d *DB) Migrate() error {
+func (d *SQLiteDB) Migrate() error {
 	// Create migrations tracking table
 	_, err := d.Exec(`CREATE TABLE IF NOT EXISTS _migrations (
 		name TEXT PRIMARY KEY,
@@ -51,7 +56,7 @@ func (d *DB) Migrate() error {
 	}
 
 	// Get list of migration files
-	entries, err := fs.ReadDir(migrationsFS, "migrations")
+	entries, err := fs.ReadDir(sqliteMigrationsFS, "migrations")
 	if err != nil {
 		return fmt.Errorf("read migrations dir: %w", err)
 	}
@@ -78,7 +83,7 @@ func (d *DB) Migrate() error {
 		}
 
 		// Read and execute migration
-		content, err := migrationsFS.ReadFile("migrations/" + name)
+		content, err := sqliteMigrationsFS.ReadFile("migrations/" + name)
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}

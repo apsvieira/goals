@@ -24,7 +24,7 @@ func setupTestServer(t *testing.T) (*api.Server, func()) {
 	}
 
 	dbPath := filepath.Join(tmpDir, "test.db")
-	database, err := db.New(dbPath)
+	database, err := db.NewSQLite(dbPath)
 	if err != nil {
 		os.RemoveAll(tmpDir)
 		t.Fatalf("failed to open database: %v", err)
@@ -289,8 +289,8 @@ func TestListCompletions(t *testing.T) {
 	var createdGoal models.Goal
 	json.NewDecoder(createW.Body).Decode(&createdGoal)
 
-	// Create completions for multiple days
-	dates := []string{"2026-01-01", "2026-01-05", "2026-01-10"}
+	// Create completions for multiple days (using past dates to avoid future date validation)
+	dates := []string{"2025-12-01", "2025-12-15", "2025-12-25"}
 	for _, date := range dates {
 		body := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "` + date + `"}`)
 		req := httptest.NewRequest("POST", "/api/v1/completions", body)
@@ -299,8 +299,8 @@ func TestListCompletions(t *testing.T) {
 		server.ServeHTTP(w, req)
 	}
 
-	// List completions for January
-	listReq := httptest.NewRequest("GET", "/api/v1/completions?from=2026-01-01&to=2026-01-31", nil)
+	// List completions for December 2025
+	listReq := httptest.NewRequest("GET", "/api/v1/completions?from=2025-12-01&to=2025-12-31", nil)
 	listW := httptest.NewRecorder()
 	server.ServeHTTP(listW, listReq)
 
@@ -359,6 +359,38 @@ func TestDeleteCompletion(t *testing.T) {
 
 	if len(completions) != 0 {
 		t.Errorf("expected 0 completions after delete, got %d", len(completions))
+	}
+}
+
+func TestCreateCompletion_FutureDateRejected(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Create a goal first
+	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
+	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createW := httptest.NewRecorder()
+	server.ServeHTTP(createW, createReq)
+
+	var createdGoal models.Goal
+	json.NewDecoder(createW.Body).Decode(&createdGoal)
+
+	// Try to create a completion for a future date (tomorrow)
+	futureDate := "2099-12-31"
+	completionBody := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "` + futureDate + `"}`)
+	completionReq := httptest.NewRequest("POST", "/api/v1/completions", completionBody)
+	completionReq.Header.Set("Content-Type", "application/json")
+	completionW := httptest.NewRecorder()
+	server.ServeHTTP(completionW, completionReq)
+
+	if completionW.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400 for future date, got %d: %s", completionW.Code, completionW.Body.String())
+	}
+
+	responseBody := completionW.Body.String()
+	if responseBody != "cannot create completions for future dates\n" {
+		t.Errorf("expected error message 'cannot create completions for future dates', got '%s'", responseBody)
 	}
 }
 

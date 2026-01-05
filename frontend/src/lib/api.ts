@@ -1,3 +1,17 @@
+import { get } from 'svelte/store';
+import { authStore } from './stores';
+import {
+  initStorage,
+  getLocalGoals,
+  saveLocalGoal,
+  deleteLocalGoal,
+  getLocalCompletions,
+  saveLocalCompletion,
+  deleteLocalCompletion,
+  getLocalCompletionByGoalAndDate,
+  getMaxPosition,
+} from './storage';
+
 const API_BASE = 'http://localhost:8080/api/v1';
 
 export interface Goal {
@@ -19,6 +33,26 @@ export interface Completion {
 export interface CalendarResponse {
   goals: Goal[];
   completions: Completion[];
+}
+
+// Check if we're in guest mode
+export function isGuestMode(): boolean {
+  const auth = get(authStore);
+  return auth.type === 'guest';
+}
+
+// Initialize storage for guest mode
+let storageInitialized = false;
+async function ensureStorageInitialized(): Promise<void> {
+  if (!storageInitialized) {
+    await initStorage();
+    storageInitialized = true;
+  }
+}
+
+// Generate a unique ID for local storage
+function generateId(): string {
+  return `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -43,10 +77,29 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export async function getCalendar(month: string): Promise<CalendarResponse> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    const goals = await getLocalGoals();
+    const completions = await getLocalCompletions(month);
+    return { goals, completions };
+  }
   return request<CalendarResponse>(`/calendar?month=${month}`);
 }
 
 export async function createGoal(name: string, color: string): Promise<Goal> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    const maxPosition = await getMaxPosition();
+    const goal: Goal = {
+      id: generateId(),
+      name,
+      color,
+      position: maxPosition + 1,
+      created_at: new Date().toISOString(),
+    };
+    await saveLocalGoal(goal);
+    return goal;
+  }
   return request<Goal>('/goals', {
     method: 'POST',
     body: JSON.stringify({ name, color }),
@@ -54,6 +107,20 @@ export async function createGoal(name: string, color: string): Promise<Goal> {
 }
 
 export async function updateGoal(id: string, updates: { name?: string; color?: string }): Promise<Goal> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    const goals = await getLocalGoals();
+    const existingGoal = goals.find(g => g.id === id);
+    if (!existingGoal) {
+      throw new Error('Goal not found');
+    }
+    const updatedGoal: Goal = {
+      ...existingGoal,
+      ...updates,
+    };
+    await saveLocalGoal(updatedGoal);
+    return updatedGoal;
+  }
   return request<Goal>(`/goals/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
@@ -61,12 +128,37 @@ export async function updateGoal(id: string, updates: { name?: string; color?: s
 }
 
 export async function archiveGoal(id: string): Promise<void> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    const goals = await getLocalGoals();
+    const existingGoal = goals.find(g => g.id === id);
+    if (!existingGoal) {
+      throw new Error('Goal not found');
+    }
+    const archivedGoal: Goal = {
+      ...existingGoal,
+      archived_at: new Date().toISOString(),
+    };
+    await saveLocalGoal(archivedGoal);
+    return;
+  }
   return request<void>(`/goals/${id}`, {
     method: 'DELETE',
   });
 }
 
 export async function createCompletion(goalId: string, date: string): Promise<Completion> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    const completion: Completion = {
+      id: generateId(),
+      goal_id: goalId,
+      date,
+      created_at: new Date().toISOString(),
+    };
+    await saveLocalCompletion(completion);
+    return completion;
+  }
   return request<Completion>('/completions', {
     method: 'POST',
     body: JSON.stringify({ goal_id: goalId, date }),
@@ -74,14 +166,46 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
 }
 
 export async function deleteCompletion(id: string): Promise<void> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    await deleteLocalCompletion(id);
+    return;
+  }
   return request<void>(`/completions/${id}`, {
     method: 'DELETE',
   });
 }
 
 export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    const goals = await getLocalGoals();
+    const updatedGoals: Goal[] = [];
+
+    for (let i = 0; i < goalIds.length; i++) {
+      const goal = goals.find(g => g.id === goalIds[i]);
+      if (goal) {
+        const updatedGoal = { ...goal, position: i + 1 };
+        await saveLocalGoal(updatedGoal);
+        updatedGoals.push(updatedGoal);
+      }
+    }
+
+    return updatedGoals.sort((a, b) => a.position - b.position);
+  }
   return request<Goal[]>('/goals/reorder', {
     method: 'PUT',
     body: JSON.stringify({ goal_ids: goalIds }),
   });
+}
+
+// Helper function to find and delete completion by goal and date (for toggle functionality)
+export async function findCompletionByGoalAndDate(goalId: string, date: string): Promise<Completion | undefined> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    return getLocalCompletionByGoalAndDate(goalId, date);
+  }
+  // For server mode, this would need to be handled differently
+  // The App.svelte currently tracks completions in memory
+  return undefined;
 }

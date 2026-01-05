@@ -5,6 +5,7 @@
   export let color: string;
   export let completedDays: Set<number>;
   export let onToggle: (day: number) => void;
+  export let currentDay: number = 0;
 
   $: days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 </script>
@@ -16,6 +17,7 @@
       {color}
       filled={completedDays.has(day)}
       onClick={() => onToggle(day)}
+      disabled={day > currentDay && currentDay > 0}
     />
   {/each}
 </div>

@@ -13,12 +13,12 @@ import (
 )
 
 type Server struct {
-	db       *db.DB
+	db       db.Database
 	router   chi.Router
 	staticFS fs.FS
 }
 
-func NewServer(database *db.DB, staticFS fs.FS) *Server {
+func NewServer(database db.Database, staticFS fs.FS) *Server {
 	s := &Server{db: database, staticFS: staticFS}
 	s.setupRoutes()
 	return s

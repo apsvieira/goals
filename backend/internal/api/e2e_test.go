@@ -36,9 +36,9 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	json.NewDecoder(createW.Body).Decode(&goal)
 	t.Logf("Created goal: %s (ID: %s)", goal.Name, goal.ID)
 
-	// Step 2: Toggle completions for days 1, 5, 10 of January 2026
-	t.Log("Step 2: Marking completions for days 1, 5, 10")
-	days := []string{"2026-01-01", "2026-01-05", "2026-01-10"}
+	// Step 2: Toggle completions for days 1, 5, 10 of December 2025 (using past dates to avoid future validation)
+	t.Log("Step 2: Marking completions for days 1, 5, 10 of December 2025")
+	days := []string{"2025-12-01", "2025-12-05", "2025-12-10"}
 	completionIDs := make([]string, 0, len(days))
 
 	for _, date := range days {
@@ -58,9 +58,9 @@ func TestE2E_FullUserFlow(t *testing.T) {
 		t.Logf("Marked complete: %s", date)
 	}
 
-	// Step 3: Get January 2026 calendar
-	t.Log("Step 3: Fetching calendar for January 2026")
-	calendarReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-01", nil)
+	// Step 3: Get December 2025 calendar
+	t.Log("Step 3: Fetching calendar for December 2025")
+	calendarReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2025-12", nil)
 	calendarW := httptest.NewRecorder()
 	server.ServeHTTP(calendarW, calendarReq)
 
@@ -79,9 +79,9 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	}
 	t.Logf("Calendar shows %d goals, %d completions", len(calendar.Goals), len(calendar.Completions))
 
-	// Step 4: Navigate to February (should be empty)
-	t.Log("Step 4: Checking February 2026 is empty")
-	febReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-02", nil)
+	// Step 4: Navigate to January 2026 (should be empty of completions since we used December)
+	t.Log("Step 4: Checking January 2026 is empty")
+	febReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-01", nil)
 	febW := httptest.NewRecorder()
 	server.ServeHTTP(febW, febReq)
 
@@ -89,12 +89,12 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	json.NewDecoder(febW.Body).Decode(&febCalendar)
 
 	if len(febCalendar.Goals) != 1 {
-		t.Errorf("Step 4: Expected 1 goal in Feb, got %d", len(febCalendar.Goals))
+		t.Errorf("Step 4: Expected 1 goal in Jan, got %d", len(febCalendar.Goals))
 	}
 	if len(febCalendar.Completions) != 0 {
-		t.Errorf("Step 4: Expected 0 completions in Feb, got %d", len(febCalendar.Completions))
+		t.Errorf("Step 4: Expected 0 completions in Jan, got %d", len(febCalendar.Completions))
 	}
-	t.Log("February correctly shows 0 completions")
+	t.Log("January correctly shows 0 completions")
 
 	// Step 5: Untoggle one completion (delete day 5)
 	t.Log("Step 5: Untoggling completion for day 5")
@@ -107,7 +107,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	}
 
 	// Verify only 2 completions remain
-	verifyReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-01", nil)
+	verifyReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2025-12", nil)
 	verifyW := httptest.NewRecorder()
 	server.ServeHTTP(verifyW, verifyReq)
 
@@ -155,7 +155,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	}
 
 	// Verify 2 goals in calendar
-	finalReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-01", nil)
+	finalReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2025-12", nil)
 	finalW := httptest.NewRecorder()
 	server.ServeHTTP(finalW, finalReq)
 

@@ -10,7 +10,7 @@ import (
 
 // Goals
 
-func (d *DB) ListGoals(includeArchived bool) ([]models.Goal, error) {
+func (d *SQLiteDB) ListGoals(includeArchived bool) ([]models.Goal, error) {
 	query := `SELECT id, name, color, position, created_at, archived_at FROM goals`
 	if !includeArchived {
 		query += ` WHERE archived_at IS NULL`
@@ -38,7 +38,7 @@ func (d *DB) ListGoals(includeArchived bool) ([]models.Goal, error) {
 	return goals, rows.Err()
 }
 
-func (d *DB) GetGoal(id string) (*models.Goal, error) {
+func (d *SQLiteDB) GetGoal(id string) (*models.Goal, error) {
 	var g models.Goal
 	var archivedAt sql.NullTime
 	err := d.QueryRow(
@@ -57,7 +57,7 @@ func (d *DB) GetGoal(id string) (*models.Goal, error) {
 	return &g, nil
 }
 
-func (d *DB) CreateGoal(g *models.Goal) error {
+func (d *SQLiteDB) CreateGoal(g *models.Goal) error {
 	// Get next position
 	var maxPos sql.NullInt64
 	d.QueryRow(`SELECT MAX(position) FROM goals`).Scan(&maxPos)
@@ -77,7 +77,7 @@ func (d *DB) CreateGoal(g *models.Goal) error {
 	return nil
 }
 
-func (d *DB) UpdateGoal(id string, name, color *string) error {
+func (d *SQLiteDB) UpdateGoal(id string, name, color *string) error {
 	if name == nil && color == nil {
 		return nil
 	}
@@ -111,7 +111,7 @@ func (d *DB) UpdateGoal(id string, name, color *string) error {
 	return nil
 }
 
-func (d *DB) ArchiveGoal(id string) error {
+func (d *SQLiteDB) ArchiveGoal(id string) error {
 	_, err := d.Exec(
 		`UPDATE goals SET archived_at = ? WHERE id = ?`,
 		time.Now().UTC(), id,
@@ -124,7 +124,7 @@ func (d *DB) ArchiveGoal(id string) error {
 
 // Completions
 
-func (d *DB) ListCompletions(from, to string, goalID *string) ([]models.Completion, error) {
+func (d *SQLiteDB) ListCompletions(from, to string, goalID *string) ([]models.Completion, error) {
 	query := `SELECT id, goal_id, date, created_at FROM completions WHERE date >= ? AND date <= ?`
 	args := []any{from, to}
 
@@ -151,7 +151,7 @@ func (d *DB) ListCompletions(from, to string, goalID *string) ([]models.Completi
 	return completions, rows.Err()
 }
 
-func (d *DB) GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error) {
+func (d *SQLiteDB) GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error) {
 	var c models.Completion
 	err := d.QueryRow(
 		`SELECT id, goal_id, date, created_at FROM completions WHERE goal_id = ? AND date = ?`,
@@ -166,7 +166,7 @@ func (d *DB) GetCompletionByGoalAndDate(goalID, date string) (*models.Completion
 	return &c, nil
 }
 
-func (d *DB) CreateCompletion(c *models.Completion) error {
+func (d *SQLiteDB) CreateCompletion(c *models.Completion) error {
 	_, err := d.Exec(
 		`INSERT INTO completions (id, goal_id, date, created_at) VALUES (?, ?, ?, ?)`,
 		c.ID, c.GoalID, c.Date, c.CreatedAt,
@@ -177,7 +177,7 @@ func (d *DB) CreateCompletion(c *models.Completion) error {
 	return nil
 }
 
-func (d *DB) DeleteCompletion(id string) error {
+func (d *SQLiteDB) DeleteCompletion(id string) error {
 	_, err := d.Exec(`DELETE FROM completions WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete completion: %w", err)
@@ -185,7 +185,7 @@ func (d *DB) DeleteCompletion(id string) error {
 	return nil
 }
 
-func (d *DB) ReorderGoals(goalIDs []string) error {
+func (d *SQLiteDB) ReorderGoals(goalIDs []string) error {
 	tx, err := d.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
