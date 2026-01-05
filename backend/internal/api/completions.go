@@ -77,8 +77,9 @@ func (s *Server) createCompletion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check goal exists
-	goal, err := s.db.GetGoal(req.GoalID)
+	// Check goal exists and belongs to user
+	userID := getUserID(r)
+	goal, err := s.db.GetGoal(userID, req.GoalID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -142,7 +143,9 @@ func (s *Server) getCalendar(w http.ResponseWriter, r *http.Request) {
 	from := t.Format("2006-01-02")
 	to := t.AddDate(0, 1, -1).Format("2006-01-02")
 
-	goals, err := s.db.ListGoals(false)
+	userID := getUserID(r)
+
+	goals, err := s.db.ListGoals(userID, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

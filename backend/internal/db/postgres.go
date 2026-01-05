@@ -97,14 +97,26 @@ func (d *PostgresDB) Migrate() error {
 
 // Goals
 
-func (d *PostgresDB) ListGoals(includeArchived bool) ([]models.Goal, error) {
-	query := `SELECT id, name, color, position, created_at, archived_at FROM goals`
+func (d *PostgresDB) ListGoals(userID *string, includeArchived bool) ([]models.Goal, error) {
+	query := `SELECT id, name, color, position, user_id, created_at, archived_at FROM goals WHERE `
+	var args []any
+	paramNum := 1
+
+	// Filter by user_id
+	if userID == nil {
+		query += `user_id IS NULL`
+	} else {
+		query += fmt.Sprintf(`user_id = $%d`, paramNum)
+		args = append(args, *userID)
+		paramNum++
+	}
+
 	if !includeArchived {
-		query += ` WHERE archived_at IS NULL`
+		query += ` AND archived_at IS NULL`
 	}
 	query += ` ORDER BY position ASC, created_at ASC`
 
-	rows, err := d.Query(query)
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query goals: %w", err)
 	}
@@ -114,24 +126,38 @@ func (d *PostgresDB) ListGoals(includeArchived bool) ([]models.Goal, error) {
 	for rows.Next() {
 		var g models.Goal
 		var archivedAt sql.NullTime
-		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &g.CreatedAt, &archivedAt); err != nil {
+		var goalUserID sql.NullString
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &archivedAt); err != nil {
 			return nil, fmt.Errorf("scan goal: %w", err)
 		}
 		if archivedAt.Valid {
 			g.ArchivedAt = &archivedAt.Time
+		}
+		if goalUserID.Valid {
+			g.UserID = &goalUserID.String
 		}
 		goals = append(goals, g)
 	}
 	return goals, rows.Err()
 }
 
-func (d *PostgresDB) GetGoal(id string) (*models.Goal, error) {
+func (d *PostgresDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	var g models.Goal
 	var archivedAt sql.NullTime
-	err := d.QueryRow(
-		`SELECT id, name, color, position, created_at, archived_at FROM goals WHERE id = $1`,
-		id,
-	).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &g.CreatedAt, &archivedAt)
+	var goalUserID sql.NullString
+
+	query := `SELECT id, name, color, position, user_id, created_at, archived_at FROM goals WHERE id = $1`
+	args := []any{id}
+
+	// Add user_id filter
+	if userID == nil {
+		query += ` AND user_id IS NULL`
+	} else {
+		query += ` AND user_id = $2`
+		args = append(args, *userID)
+	}
+
+	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &archivedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -141,13 +167,20 @@ func (d *PostgresDB) GetGoal(id string) (*models.Goal, error) {
 	if archivedAt.Valid {
 		g.ArchivedAt = &archivedAt.Time
 	}
+	if goalUserID.Valid {
+		g.UserID = &goalUserID.String
+	}
 	return &g, nil
 }
 
 func (d *PostgresDB) CreateGoal(g *models.Goal) error {
-	// Get next position
+	// Get next position for this user's goals
 	var maxPos sql.NullInt64
-	d.QueryRow(`SELECT MAX(position) FROM goals`).Scan(&maxPos)
+	if g.UserID == nil {
+		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id IS NULL`).Scan(&maxPos)
+	} else {
+		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id = $1`, *g.UserID).Scan(&maxPos)
+	}
 	nextPos := 0
 	if maxPos.Valid {
 		nextPos = int(maxPos.Int64) + 1
@@ -155,8 +188,8 @@ func (d *PostgresDB) CreateGoal(g *models.Goal) error {
 	g.Position = nextPos
 
 	_, err := d.Exec(
-		`INSERT INTO goals (id, name, color, position, created_at) VALUES ($1, $2, $3, $4, $5)`,
-		g.ID, g.Name, g.Color, g.Position, g.CreatedAt,
+		`INSERT INTO goals (id, name, color, position, user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+		g.ID, g.Name, g.Color, g.Position, g.UserID, g.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert goal: %w", err)
@@ -164,7 +197,7 @@ func (d *PostgresDB) CreateGoal(g *models.Goal) error {
 	return nil
 }
 
-func (d *PostgresDB) UpdateGoal(id string, name, color *string) error {
+func (d *PostgresDB) UpdateGoal(userID *string, id string, name, color *string) error {
 	if name == nil && color == nil {
 		return nil
 	}
@@ -188,6 +221,15 @@ func (d *PostgresDB) UpdateGoal(id string, name, color *string) error {
 	query += strings.Join(updates, ", ")
 	query += fmt.Sprintf(` WHERE id = $%d`, paramNum)
 	args = append(args, id)
+	paramNum++
+
+	// Add user_id filter for ownership verification
+	if userID == nil {
+		query += ` AND user_id IS NULL`
+	} else {
+		query += fmt.Sprintf(` AND user_id = $%d`, paramNum)
+		args = append(args, *userID)
+	}
 
 	_, err := d.Exec(query, args...)
 	if err != nil {
@@ -196,18 +238,26 @@ func (d *PostgresDB) UpdateGoal(id string, name, color *string) error {
 	return nil
 }
 
-func (d *PostgresDB) ArchiveGoal(id string) error {
-	_, err := d.Exec(
-		`UPDATE goals SET archived_at = $1 WHERE id = $2`,
-		time.Now().UTC(), id,
-	)
+func (d *PostgresDB) ArchiveGoal(userID *string, id string) error {
+	query := `UPDATE goals SET archived_at = $1 WHERE id = $2`
+	args := []any{time.Now().UTC(), id}
+
+	// Add user_id filter for ownership verification
+	if userID == nil {
+		query += ` AND user_id IS NULL`
+	} else {
+		query += ` AND user_id = $3`
+		args = append(args, *userID)
+	}
+
+	_, err := d.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("archive goal: %w", err)
 	}
 	return nil
 }
 
-func (d *PostgresDB) ReorderGoals(goalIDs []string) error {
+func (d *PostgresDB) ReorderGoals(userID *string, goalIDs []string) error {
 	tx, err := d.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -215,7 +265,18 @@ func (d *PostgresDB) ReorderGoals(goalIDs []string) error {
 	defer tx.Rollback()
 
 	for i, id := range goalIDs {
-		_, err := tx.Exec(`UPDATE goals SET position = $1 WHERE id = $2`, i, id)
+		query := `UPDATE goals SET position = $1 WHERE id = $2`
+		args := []any{i, id}
+
+		// Add user_id filter for ownership verification
+		if userID == nil {
+			query += ` AND user_id IS NULL`
+		} else {
+			query += ` AND user_id = $3`
+			args = append(args, *userID)
+		}
+
+		_, err := tx.Exec(query, args...)
 		if err != nil {
 			return fmt.Errorf("update position for %s: %w", id, err)
 		}

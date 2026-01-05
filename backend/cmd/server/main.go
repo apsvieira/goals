@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/api"
 	"github.com/apsv/goal-tracker/backend/internal/db"
@@ -62,15 +66,49 @@ func main() {
 	}
 
 	staticFS := getStaticFS()
-	server := api.NewServer(database, staticFS)
+	handler := api.NewServer(database, staticFS)
 
-	log.Printf("Starting server on %s", serverAddr)
-	if staticFS != nil {
-		log.Printf("Open http://localhost%s in your browser", serverAddr)
-	} else {
-		log.Printf("Running in dev mode (no embedded frontend)")
+	// Create HTTP server with the handler
+	server := &http.Server{
+		Addr:    serverAddr,
+		Handler: handler,
 	}
-	if err := http.ListenAndServe(serverAddr, server); err != nil {
-		log.Fatalf("Server failed: %v", err)
+
+	// Channel to receive shutdown signals
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server in a goroutine
+	go func() {
+		log.Printf("Starting server on %s", serverAddr)
+		if staticFS != nil {
+			log.Printf("Open http://localhost%s in your browser", serverAddr)
+		} else {
+			log.Printf("Running in dev mode (no embedded frontend)")
+		}
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-shutdown
+	log.Println("Shutdown signal received, initiating graceful shutdown...")
+
+	// Create context with timeout for graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Attempt graceful shutdown
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
 	}
+
+	// Close database connection
+	log.Println("Closing database connection...")
+	if err := database.Close(); err != nil {
+		log.Printf("Error closing database: %v", err)
+	}
+
+	log.Println("Server shutdown complete")
 }

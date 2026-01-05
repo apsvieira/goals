@@ -7,6 +7,7 @@ type Goal struct {
 	Name       string     `json:"name"`
 	Color      string     `json:"color"`
 	Position   int        `json:"position"`
+	UserID     *string    `json:"user_id,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	ArchivedAt *time.Time `json:"archived_at,omitempty"`
 }

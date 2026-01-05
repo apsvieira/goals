@@ -6,12 +6,13 @@ import "github.com/apsv/goal-tracker/backend/internal/models"
 // Both SQLite and PostgreSQL implementations must satisfy this interface.
 type Database interface {
 	// Goals
-	ListGoals(includeArchived bool) ([]models.Goal, error)
-	GetGoal(id string) (*models.Goal, error)
+	// userID: nil for guest mode (filters by user_id IS NULL), non-nil for authenticated users
+	ListGoals(userID *string, includeArchived bool) ([]models.Goal, error)
+	GetGoal(userID *string, id string) (*models.Goal, error)
 	CreateGoal(goal *models.Goal) error
-	UpdateGoal(id string, name, color *string) error
-	ArchiveGoal(id string) error
-	ReorderGoals(goalIDs []string) error
+	UpdateGoal(userID *string, id string, name, color *string) error
+	ArchiveGoal(userID *string, id string) error
+	ReorderGoals(userID *string, goalIDs []string) error
 
 	// Completions
 	ListCompletions(from, to string, goalID *string) ([]models.Completion, error)

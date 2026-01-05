@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/apsv/goal-tracker/backend/internal/models"
 )
@@ -71,14 +73,21 @@ func IsAuthenticated(ctx context.Context) bool {
 
 // SetSessionCookie sets the session cookie on the response
 func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+	// Determine if we should use secure cookies
+	// Default to true in production, can be disabled with COOKIE_SECURE=false
+	secure := true
+	if secureEnv := os.Getenv("COOKIE_SECURE"); strings.ToLower(secureEnv) == "false" {
+		secure = false
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    token,
 		Path:     "/",
 		MaxAge:   int(SessionDuration.Seconds()),
 		HttpOnly: true,
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   r.TLS != nil,
 	})
 }
 
