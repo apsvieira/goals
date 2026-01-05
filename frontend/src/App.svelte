@@ -191,11 +191,9 @@
       onPrev={prevMonth}
       onNext={nextMonth}
     />
-    {#if !showAddForm}
-      <button class="add-btn" on:click={() => showAddForm = true}>
-        + Add Goal
-      </button>
-    {/if}
+    <button class="add-btn" on:click={() => showAddForm = !showAddForm} aria-label={showAddForm ? 'Close form' : 'Add goal'}>
+      {showAddForm ? '×' : '+'}
+    </button>
   </header>
 
   {#if error}
@@ -279,13 +277,19 @@
   }
 
   .add-btn {
-    padding: 8px 16px;
-    font-size: 14px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 20px;
+    line-height: 1;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 50%;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .add-btn:hover {
