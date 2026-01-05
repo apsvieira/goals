@@ -19,6 +19,7 @@
   } from './lib/api';
   import EditGoalModal from './lib/components/EditGoalModal.svelte';
   import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
+  import { syncManager } from './lib/sync';
 
   // Auth state
   let authState: AuthState;
@@ -209,11 +210,20 @@
   }
 
   async function checkAuth() {
+    // Initialize sync manager
+    await syncManager.init();
+
     // Check if we have a session
     try {
       const user = await getCurrentUser();
       if (user) {
         authStore.set({ type: 'authenticated', user });
+        // Sync local data with server on successful auth
+        try {
+          await syncManager.sync();
+        } catch (syncError) {
+          console.error('Initial sync failed:', syncError);
+        }
         return;
       }
     } catch (e) {

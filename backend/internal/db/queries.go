@@ -11,7 +11,7 @@ import (
 // Goals
 
 func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goal, error) {
-	query := `SELECT id, name, color, position, user_id, created_at, archived_at FROM goals WHERE `
+	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
 	var args []any
 
 	// Filter by user_id
@@ -25,6 +25,8 @@ func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goa
 	if !includeArchived {
 		query += ` AND archived_at IS NULL`
 	}
+	// Always exclude soft-deleted goals
+	query += ` AND deleted_at IS NULL`
 	query += ` ORDER BY position ASC, created_at ASC`
 
 	rows, err := d.Query(query, args...)
@@ -36,13 +38,22 @@ func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goa
 	var goals []models.Goal
 	for rows.Next() {
 		var g models.Goal
-		var archivedAt sql.NullTime
+		var archivedAt, deletedAt sql.NullTime
+		var updatedAt sql.NullTime
 		var goalUserID sql.NullString
-		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &archivedAt); err != nil {
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
 			return nil, fmt.Errorf("scan goal: %w", err)
 		}
 		if archivedAt.Valid {
 			g.ArchivedAt = &archivedAt.Time
+		}
+		if deletedAt.Valid {
+			g.DeletedAt = &deletedAt.Time
+		}
+		if updatedAt.Valid {
+			g.UpdatedAt = updatedAt.Time
+		} else {
+			g.UpdatedAt = g.CreatedAt
 		}
 		if goalUserID.Valid {
 			g.UserID = &goalUserID.String
@@ -54,10 +65,11 @@ func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goa
 
 func (d *SQLiteDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	var g models.Goal
-	var archivedAt sql.NullTime
+	var archivedAt, deletedAt sql.NullTime
+	var updatedAt sql.NullTime
 	var goalUserID sql.NullString
 
-	query := `SELECT id, name, color, position, user_id, created_at, archived_at FROM goals WHERE id = ?`
+	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = ?`
 	args := []any{id}
 
 	// Add user_id filter
@@ -68,7 +80,7 @@ func (d *SQLiteDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 		args = append(args, *userID)
 	}
 
-	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &archivedAt)
+	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -77,6 +89,14 @@ func (d *SQLiteDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	}
 	if archivedAt.Valid {
 		g.ArchivedAt = &archivedAt.Time
+	}
+	if deletedAt.Valid {
+		g.DeletedAt = &deletedAt.Time
+	}
+	if updatedAt.Valid {
+		g.UpdatedAt = updatedAt.Time
+	} else {
+		g.UpdatedAt = g.CreatedAt
 	}
 	if goalUserID.Valid {
 		g.UserID = &goalUserID.String
@@ -88,9 +108,9 @@ func (d *SQLiteDB) CreateGoal(g *models.Goal) error {
 	// Get next position for this user's goals
 	var maxPos sql.NullInt64
 	if g.UserID == nil {
-		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id IS NULL`).Scan(&maxPos)
+		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id IS NULL AND deleted_at IS NULL`).Scan(&maxPos)
 	} else {
-		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id = ?`, *g.UserID).Scan(&maxPos)
+		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id = ? AND deleted_at IS NULL`, *g.UserID).Scan(&maxPos)
 	}
 	nextPos := 0
 	if maxPos.Valid {
@@ -98,9 +118,14 @@ func (d *SQLiteDB) CreateGoal(g *models.Goal) error {
 	}
 	g.Position = nextPos
 
+	now := time.Now().UTC()
+	if g.UpdatedAt.IsZero() {
+		g.UpdatedAt = now
+	}
+
 	_, err := d.Exec(
-		`INSERT INTO goals (id, name, color, position, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		g.ID, g.Name, g.Color, g.Position, g.UserID, g.CreatedAt,
+		`INSERT INTO goals (id, name, color, position, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		g.ID, g.Name, g.Color, g.Position, g.UserID, g.CreatedAt, g.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert goal: %w", err)
@@ -125,6 +150,10 @@ func (d *SQLiteDB) UpdateGoal(userID *string, id string, name, color *string) er
 		updates = append(updates, `color = ?`)
 		args = append(args, *color)
 	}
+
+	// Always update updated_at
+	updates = append(updates, `updated_at = ?`)
+	args = append(args, time.Now().UTC())
 
 	for i, u := range updates {
 		if i > 0 {
@@ -151,8 +180,9 @@ func (d *SQLiteDB) UpdateGoal(userID *string, id string, name, color *string) er
 }
 
 func (d *SQLiteDB) ArchiveGoal(userID *string, id string) error {
-	query := `UPDATE goals SET archived_at = ? WHERE id = ?`
-	args := []any{time.Now().UTC(), id}
+	now := time.Now().UTC()
+	query := `UPDATE goals SET archived_at = ?, updated_at = ? WHERE id = ?`
+	args := []any{now, now, id}
 
 	// Add user_id filter for ownership verification
 	if userID == nil {
@@ -172,13 +202,15 @@ func (d *SQLiteDB) ArchiveGoal(userID *string, id string) error {
 // Completions
 
 func (d *SQLiteDB) ListCompletions(from, to string, goalID *string) ([]models.Completion, error) {
-	query := `SELECT id, goal_id, date, created_at FROM completions WHERE date >= ? AND date <= ?`
+	query := `SELECT id, goal_id, date, created_at, updated_at, deleted_at FROM completions WHERE date >= ? AND date <= ?`
 	args := []any{from, to}
 
 	if goalID != nil {
 		query += ` AND goal_id = ?`
 		args = append(args, *goalID)
 	}
+	// Exclude soft-deleted completions
+	query += ` AND deleted_at IS NULL`
 	query += ` ORDER BY date ASC`
 
 	rows, err := d.Query(query, args...)
@@ -190,8 +222,18 @@ func (d *SQLiteDB) ListCompletions(from, to string, goalID *string) ([]models.Co
 	var completions []models.Completion
 	for rows.Next() {
 		var c models.Completion
-		if err := rows.Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt); err != nil {
+		var updatedAt sql.NullTime
+		var deletedAt sql.NullTime
+		if err := rows.Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt, &updatedAt, &deletedAt); err != nil {
 			return nil, fmt.Errorf("scan completion: %w", err)
+		}
+		if updatedAt.Valid {
+			c.UpdatedAt = updatedAt.Time
+		} else {
+			c.UpdatedAt = c.CreatedAt
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Time
 		}
 		completions = append(completions, c)
 	}
@@ -200,23 +242,38 @@ func (d *SQLiteDB) ListCompletions(from, to string, goalID *string) ([]models.Co
 
 func (d *SQLiteDB) GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error) {
 	var c models.Completion
+	var updatedAt sql.NullTime
+	var deletedAt sql.NullTime
 	err := d.QueryRow(
-		`SELECT id, goal_id, date, created_at FROM completions WHERE goal_id = ? AND date = ?`,
+		`SELECT id, goal_id, date, created_at, updated_at, deleted_at FROM completions WHERE goal_id = ? AND date = ? AND deleted_at IS NULL`,
 		goalID, date,
-	).Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt)
+	).Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt, &updatedAt, &deletedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query completion: %w", err)
 	}
+	if updatedAt.Valid {
+		c.UpdatedAt = updatedAt.Time
+	} else {
+		c.UpdatedAt = c.CreatedAt
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Time
+	}
 	return &c, nil
 }
 
 func (d *SQLiteDB) CreateCompletion(c *models.Completion) error {
+	now := time.Now().UTC()
+	if c.UpdatedAt.IsZero() {
+		c.UpdatedAt = now
+	}
+
 	_, err := d.Exec(
-		`INSERT INTO completions (id, goal_id, date, created_at) VALUES (?, ?, ?, ?)`,
-		c.ID, c.GoalID, c.Date, c.CreatedAt,
+		`INSERT INTO completions (id, goal_id, date, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert completion: %w", err)
@@ -494,4 +551,222 @@ func (d *SQLiteDB) DeleteExpiredSessions() error {
 // generateUUID creates a simple UUID for IDs
 func generateUUID() string {
 	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().UnixNano()%1000000)
+}
+
+// Sync operations
+
+func (d *SQLiteDB) GetGoalChangesSince(userID *string, since *time.Time) ([]models.Goal, error) {
+	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
+	var args []any
+
+	// Filter by user_id
+	if userID == nil {
+		query += `user_id IS NULL`
+	} else {
+		query += `user_id = ?`
+		args = append(args, *userID)
+	}
+
+	// Filter by updated_at if since is provided
+	if since != nil {
+		query += ` AND updated_at > ?`
+		args = append(args, *since)
+	}
+
+	query += ` ORDER BY updated_at ASC`
+
+	rows, err := d.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query goals: %w", err)
+	}
+	defer rows.Close()
+
+	var goals []models.Goal
+	for rows.Next() {
+		var g models.Goal
+		var archivedAt, deletedAt sql.NullTime
+		var updatedAt sql.NullTime
+		var goalUserID sql.NullString
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
+			return nil, fmt.Errorf("scan goal: %w", err)
+		}
+		if archivedAt.Valid {
+			g.ArchivedAt = &archivedAt.Time
+		}
+		if deletedAt.Valid {
+			g.DeletedAt = &deletedAt.Time
+		}
+		if updatedAt.Valid {
+			g.UpdatedAt = updatedAt.Time
+		} else {
+			g.UpdatedAt = g.CreatedAt
+		}
+		if goalUserID.Valid {
+			g.UserID = &goalUserID.String
+		}
+		goals = append(goals, g)
+	}
+	return goals, rows.Err()
+}
+
+func (d *SQLiteDB) GetCompletionChangesSince(userID *string, since *time.Time) ([]models.Completion, error) {
+	// For completions, we need to join with goals to filter by user_id
+	query := `SELECT c.id, c.goal_id, c.date, c.created_at, c.updated_at, c.deleted_at
+		FROM completions c
+		INNER JOIN goals g ON c.goal_id = g.id
+		WHERE `
+	var args []any
+
+	// Filter by user_id through goals
+	if userID == nil {
+		query += `g.user_id IS NULL`
+	} else {
+		query += `g.user_id = ?`
+		args = append(args, *userID)
+	}
+
+	// Filter by updated_at if since is provided
+	if since != nil {
+		query += ` AND c.updated_at > ?`
+		args = append(args, *since)
+	}
+
+	query += ` ORDER BY c.updated_at ASC`
+
+	rows, err := d.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query completions: %w", err)
+	}
+	defer rows.Close()
+
+	var completions []models.Completion
+	for rows.Next() {
+		var c models.Completion
+		var updatedAt sql.NullTime
+		var deletedAt sql.NullTime
+		if err := rows.Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt, &updatedAt, &deletedAt); err != nil {
+			return nil, fmt.Errorf("scan completion: %w", err)
+		}
+		if updatedAt.Valid {
+			c.UpdatedAt = updatedAt.Time
+		} else {
+			c.UpdatedAt = c.CreatedAt
+		}
+		if deletedAt.Valid {
+			c.DeletedAt = &deletedAt.Time
+		}
+		completions = append(completions, c)
+	}
+	return completions, rows.Err()
+}
+
+func (d *SQLiteDB) UpsertGoal(goal *models.Goal) error {
+	now := time.Now().UTC()
+	if goal.UpdatedAt.IsZero() {
+		goal.UpdatedAt = now
+	}
+
+	_, err := d.Exec(`
+		INSERT INTO goals (id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			name = excluded.name,
+			color = excluded.color,
+			position = excluded.position,
+			updated_at = excluded.updated_at,
+			archived_at = excluded.archived_at,
+			deleted_at = excluded.deleted_at
+		WHERE excluded.updated_at > goals.updated_at
+	`, goal.ID, goal.Name, goal.Color, goal.Position, goal.UserID, goal.CreatedAt, goal.UpdatedAt, goal.ArchivedAt, goal.DeletedAt)
+
+	if err != nil {
+		return fmt.Errorf("upsert goal: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) UpsertCompletion(c *models.Completion) error {
+	now := time.Now().UTC()
+	if c.UpdatedAt.IsZero() {
+		c.UpdatedAt = now
+	}
+
+	_, err := d.Exec(`
+		INSERT INTO completions (id, goal_id, date, created_at, updated_at, deleted_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			updated_at = excluded.updated_at,
+			deleted_at = excluded.deleted_at
+		WHERE excluded.updated_at > completions.updated_at
+	`, c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt, c.DeletedAt)
+
+	if err != nil {
+		return fmt.Errorf("upsert completion: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) SoftDeleteGoal(userID *string, id string) error {
+	now := time.Now().UTC()
+	query := `UPDATE goals SET deleted_at = ?, updated_at = ? WHERE id = ?`
+	args := []any{now, now, id}
+
+	// Add user_id filter for ownership verification
+	if userID == nil {
+		query += ` AND user_id IS NULL`
+	} else {
+		query += ` AND user_id = ?`
+		args = append(args, *userID)
+	}
+
+	_, err := d.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("soft delete goal: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) SoftDeleteCompletion(goalID, date string) error {
+	now := time.Now().UTC()
+	_, err := d.Exec(
+		`UPDATE completions SET deleted_at = ?, updated_at = ? WHERE goal_id = ? AND date = ?`,
+		now, now, goalID, date,
+	)
+	if err != nil {
+		return fmt.Errorf("soft delete completion: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) GetGoalByID(id string) (*models.Goal, error) {
+	var g models.Goal
+	var archivedAt, deletedAt sql.NullTime
+	var updatedAt sql.NullTime
+	var goalUserID sql.NullString
+
+	err := d.QueryRow(
+		`SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = ?`,
+		id,
+	).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query goal: %w", err)
+	}
+	if archivedAt.Valid {
+		g.ArchivedAt = &archivedAt.Time
+	}
+	if deletedAt.Valid {
+		g.DeletedAt = &deletedAt.Time
+	}
+	if updatedAt.Valid {
+		g.UpdatedAt = updatedAt.Time
+	} else {
+		g.UpdatedAt = g.CreatedAt
+	}
+	if goalUserID.Valid {
+		g.UserID = &goalUserID.String
+	}
+	return &g, nil
 }

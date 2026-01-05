@@ -1,6 +1,10 @@
 package db
 
-import "github.com/apsv/goal-tracker/backend/internal/models"
+import (
+	"time"
+
+	"github.com/apsv/goal-tracker/backend/internal/models"
+)
 
 // Database defines the interface for database operations.
 // Both SQLite and PostgreSQL implementations must satisfy this interface.
@@ -32,6 +36,15 @@ type Database interface {
 	GetSessionByTokenHash(tokenHash string) (*models.Session, error)
 	DeleteSession(id string) error
 	DeleteExpiredSessions() error
+
+	// Sync operations
+	GetGoalChangesSince(userID *string, since *time.Time) ([]models.Goal, error)
+	GetCompletionChangesSince(userID *string, since *time.Time) ([]models.Completion, error)
+	UpsertGoal(goal *models.Goal) error
+	UpsertCompletion(c *models.Completion) error
+	SoftDeleteGoal(userID *string, id string) error
+	SoftDeleteCompletion(goalID, date string) error
+	GetGoalByID(id string) (*models.Goal, error) // Get goal without user filter for sync
 
 	// Lifecycle
 	Migrate() error

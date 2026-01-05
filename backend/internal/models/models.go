@@ -9,14 +9,18 @@ type Goal struct {
 	Position   int        `json:"position"`
 	UserID     *string    `json:"user_id,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 	ArchivedAt *time.Time `json:"archived_at,omitempty"`
+	DeletedAt  *time.Time `json:"deleted_at,omitempty"`
 }
 
 type Completion struct {
-	ID        string    `json:"id"`
-	GoalID    string    `json:"goal_id"`
-	Date      string    `json:"date"` // YYYY-MM-DD format
-	CreatedAt time.Time `json:"created_at"`
+	ID        string     `json:"id"`
+	GoalID    string     `json:"goal_id"`
+	Date      string     `json:"date"` // YYYY-MM-DD format
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 }
 
 type CalendarResponse struct {

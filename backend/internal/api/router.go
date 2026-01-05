@@ -103,6 +103,11 @@ func (s *Server) setupRoutes() {
 			r.Post("/logout", s.logout)
 		})
 
+		// Sync endpoint (requires authentication)
+		r.Route("/sync", func(r chi.Router) {
+			r.Post("/", s.handleSync)
+		})
+
 		// Goals
 		r.Get("/goals", s.listGoals)
 		r.Post("/goals", s.createGoal)
