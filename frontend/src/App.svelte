@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import MonthNav from './lib/components/MonthNav.svelte';
+  import Header from './lib/components/Header.svelte';
+  import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
   import AddGoalForm from './lib/components/AddGoalForm.svelte';
   import {
@@ -184,60 +185,63 @@
   $: currentMonth, loadData();
 </script>
 
-<main>
-  <header>
-    <MonthNav
-      month={currentMonth}
-      onPrev={prevMonth}
-      onNext={nextMonth}
-    />
-    <button class="add-btn" on:click={() => showAddForm = !showAddForm} aria-label={showAddForm ? 'Close form' : 'Add goal'}>
-      {showAddForm ? '×' : '+'}
-    </button>
-  </header>
+<div class="app-container">
+  <Header
+    month={currentMonth}
+    onPrev={prevMonth}
+    onNext={nextMonth}
+    {showAddForm}
+    onToggleAddForm={() => showAddForm = !showAddForm}
+  />
 
-  {#if error}
-    <div class="error">{error}</div>
-  {/if}
+  <main>
+    {#if error}
+      <div class="error">{error}</div>
+    {/if}
 
-  {#if showAddForm}
-    <AddGoalForm
-      onAdd={handleAddGoal}
-      onCancel={() => showAddForm = false}
-    />
-  {/if}
-
-  {#if editingGoal}
-    <EditGoalModal
-      goal={editingGoal}
-      onSave={handleSaveGoal}
-      onDelete={handleDeleteGoal}
-      onClose={() => editingGoal = null}
-    />
-  {/if}
-
-  {#if loading}
-    <p class="loading">Loading...</p>
-  {:else if goals.length === 0}
-    <p class="empty">No goals yet. Add one to get started!</p>
-  {:else}
-    <div class="goals" role="list">
-      {#each goals as goal (goal.id)}
-        <GoalRow
-          {goal}
-          {daysInMonth}
-          completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
-          onToggle={(day) => handleToggle(goal.id, day)}
-          onEdit={() => handleEditGoal(goal)}
-          onDragStart={(e) => handleDragStart(goal.id, e)}
-          onDragOver={(e) => handleDragOver(goal.id, e)}
-          onDrop={(e) => handleDrop(goal.id, e)}
-          isDragOver={dragOverGoalId === goal.id}
+    {#if showAddForm}
+      <div class="form-container">
+        <AddGoalForm
+          onAdd={handleAddGoal}
+          onCancel={() => showAddForm = false}
         />
-      {/each}
-    </div>
-  {/if}
-</main>
+      </div>
+    {/if}
+
+    {#if editingGoal}
+      <EditGoalModal
+        goal={editingGoal}
+        onSave={handleSaveGoal}
+        onDelete={handleDeleteGoal}
+        onClose={() => editingGoal = null}
+      />
+    {/if}
+
+    {#if loading}
+      <p class="loading">Loading...</p>
+    {:else if goals.length === 0}
+      <p class="empty">No goals yet. Add one to get started!</p>
+    {:else}
+      <div class="goals" role="list">
+        {#each goals as goal (goal.id)}
+          <GoalRow
+            {goal}
+            {daysInMonth}
+            completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
+            onToggle={(day) => handleToggle(goal.id, day)}
+            onEdit={() => handleEditGoal(goal)}
+            onDragStart={(e) => handleDragStart(goal.id, e)}
+            onDragOver={(e) => handleDragOver(goal.id, e)}
+            onDrop={(e) => handleDrop(goal.id, e)}
+            isDragOver={dragOverGoalId === goal.id}
+          />
+        {/each}
+      </div>
+    {/if}
+  </main>
+
+  <Footer />
+</div>
 
 <style>
   :global(:root) {
@@ -258,47 +262,26 @@
   :global(body) {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     background: var(--bg-primary);
     color: var(--text-primary);
   }
 
+  .app-container {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+  }
+
   main {
-    max-width: 800px;
-    margin: 0 auto;
-  }
-
-  header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .add-btn {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    font-size: 20px;
-    line-height: 1;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .add-btn:hover {
-    background: var(--accent-hover);
+    padding: 24px 0;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .error {
     padding: 12px;
-    margin: 16px 0;
+    margin: 0 24px 16px;
     background: var(--error-bg);
     color: var(--error);
     border-radius: 4px;
@@ -308,9 +291,16 @@
   .loading, .empty {
     color: var(--text-secondary);
     font-style: italic;
+    text-align: center;
+    padding: 0 24px;
   }
 
   .goals {
-    margin-top: 24px;
+    width: 100%;
+  }
+
+  .form-container {
+    padding: 0 24px;
+    margin-bottom: 16px;
   }
 </style>

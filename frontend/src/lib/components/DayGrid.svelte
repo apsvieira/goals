@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Hex from './Hex.svelte';
+  import DaySquare from './DaySquare.svelte';
 
   export let daysInMonth: number;
   export let color: string;
@@ -9,9 +9,9 @@
   $: days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 </script>
 
-<div class="hex-grid">
+<div class="day-grid">
   {#each days as day}
-    <Hex
+    <DaySquare
       {day}
       {color}
       filled={completedDays.has(day)}
@@ -21,16 +21,18 @@
 </div>
 
 <style>
-  .hex-grid {
+  .day-grid {
     display: grid;
-    grid-template-columns: repeat(5, auto);
-    gap: 4px;
-    justify-content: start;
+    grid-template-columns: repeat(31, 1fr);
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
   }
 
-  @media (min-width: 600px) {
-    .hex-grid {
-      grid-template-columns: repeat(7, auto);
+  /* Small screens: 5 rows (7 per row) */
+  @media (max-width: 500px) {
+    .day-grid {
+      grid-template-columns: repeat(7, 1fr);
     }
   }
 </style>
