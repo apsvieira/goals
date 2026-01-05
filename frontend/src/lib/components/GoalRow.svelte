@@ -22,18 +22,17 @@
   role="listitem"
 >
   <div class="goal-header">
-    <div class="drag-handle" title="Drag to reorder">&#9776;</div>
-    <button class="goal-label" on:click={onEdit}>
+    <button
+      class="goal-label"
+      on:click={onEdit}
+      draggable="true"
+      on:dragstart={onDragStart}
+    >
       <span class="color-dot" style="background-color: {goal.color}"></span>
       <span class="goal-name">{goal.name}</span>
     </button>
   </div>
-  <div
-    class="goal-grid"
-    draggable="true"
-    on:dragstart={onDragStart}
-    role="group"
-  >
+  <div class="goal-grid">
     <HexGrid
       {daysInMonth}
       color={goal.color}
@@ -63,19 +62,6 @@
   .goal-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
-
-  .drag-handle {
-    cursor: grab;
-    padding: 4px;
-    color: var(--text-muted);
-    font-size: 14px;
-    user-select: none;
-  }
-
-  .drag-handle:active {
-    cursor: grabbing;
   }
 
   .goal-label {
@@ -83,19 +69,24 @@
     align-items: center;
     gap: 8px;
     flex: 1;
-    padding: 4px 8px;
+    padding: 8px 12px;
     background: none;
     border: 1px solid transparent;
     border-radius: 4px;
-    cursor: pointer;
+    cursor: grab;
     text-align: left;
     font-size: 14px;
     color: var(--text-primary);
+    user-select: none;
   }
 
   .goal-label:hover {
     border-color: var(--border);
     background: var(--bg-tertiary);
+  }
+
+  .goal-label:active {
+    cursor: grabbing;
   }
 
   .color-dot {
