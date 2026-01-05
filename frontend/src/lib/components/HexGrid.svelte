@@ -23,8 +23,14 @@
 <style>
   .hex-grid {
     display: grid;
-    grid-template-columns: repeat(7, auto);
+    grid-template-columns: repeat(5, auto);
     gap: 4px;
     justify-content: start;
+  }
+
+  @media (min-width: 600px) {
+    .hex-grid {
+      grid-template-columns: repeat(7, auto);
+    }
   }
 </style>
