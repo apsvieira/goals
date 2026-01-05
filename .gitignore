@@ -1,0 +1,17 @@
+# Binaries
+bin/
+
+# Backend
+*.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Embedded frontend in backend (copied during build)
+backend/cmd/server/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp

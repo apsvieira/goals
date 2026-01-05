@@ -1,0 +1,16 @@
+{
+  "name": "Goal Tracker",
+  "short_name": "Goals",
+  "description": "Track daily completion of your goals with a hexagon calendar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#4CAF50",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
