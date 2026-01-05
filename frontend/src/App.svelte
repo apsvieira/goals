@@ -128,10 +128,6 @@
     }
   }
 
-  function getCompletedDays(goalId: string): Set<number> {
-    const map = completionsByGoal[goalId];
-    return map ? new Set(map.keys()) : new Set();
-  }
 
   // Drag & drop handlers
   function handleDragStart(goalId: string, e: DragEvent) {
@@ -232,7 +228,7 @@
         <GoalRow
           {goal}
           {daysInMonth}
-          completedDays={getCompletedDays(goal.id)}
+          completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
           onToggle={(day) => handleToggle(goal.id, day)}
           onEdit={() => handleEditGoal(goal)}
           onDragStart={(e) => handleDragStart(goal.id, e)}
