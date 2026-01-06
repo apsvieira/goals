@@ -229,11 +229,36 @@ func requestLogger(next http.Handler) http.Handler {
 
 // securityHeaders adds security-related HTTP headers to all responses
 func securityHeaders(next http.Handler) http.Handler {
+	// Content Security Policy
+	// - default-src 'self': Only load resources from same origin by default
+	// - script-src 'self': Scripts only from same origin
+	// - style-src 'self' 'unsafe-inline': Styles from same origin + inline (needed for dynamic colors in Svelte)
+	// - img-src 'self' https://lh3.googleusercontent.com data:: Images from self, Google avatars, and data URIs
+	// - connect-src 'self': API/fetch calls only to same origin
+	// - font-src 'self': Fonts only from same origin
+	// - object-src 'none': Disallow plugins (Flash, etc.)
+	// - frame-ancestors 'none': Prevent embedding in iframes (aligns with X-Frame-Options)
+	// - base-uri 'self': Prevent base tag hijacking
+	// - form-action 'self': Forms only submit to same origin
+	// - worker-src 'self': Service workers from same origin
+	csp := "default-src 'self'; " +
+		"script-src 'self'; " +
+		"style-src 'self' 'unsafe-inline'; " +
+		"img-src 'self' https://lh3.googleusercontent.com data:; " +
+		"connect-src 'self'; " +
+		"font-src 'self'; " +
+		"object-src 'none'; " +
+		"frame-ancestors 'none'; " +
+		"base-uri 'self'; " +
+		"form-action 'self'; " +
+		"worker-src 'self'"
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Content-Security-Policy", csp)
 		next.ServeHTTP(w, r)
 	})
 }
