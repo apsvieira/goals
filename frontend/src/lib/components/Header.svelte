@@ -10,13 +10,14 @@
 
 <header>
   <div class="header-content">
+    <div class="spacer"></div>
     <MonthNav {month} {onPrev} {onNext} />
     <button
       class="add-btn"
       on:click={onToggleAddForm}
       aria-label={showAddForm ? 'Close form' : 'Add goal'}
     >
-      {showAddForm ? '×' : '+'}
+      {showAddForm ? 'Cancel' : 'New Goal'}
     </button>
   </div>
 </header>
@@ -33,27 +34,26 @@
 
   .header-content {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 16px;
     max-width: 1400px;
     margin: 0 auto;
   }
 
+  .spacer {
+    width: 90px;
+  }
+
   .add-btn {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    font-size: 20px;
-    line-height: 1;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 50%;
+    border-radius: 6px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-width: 90px;
   }
 
   .add-btn:hover {

@@ -42,7 +42,7 @@
 <style>
   .goal-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     padding: 6px 0;
   }
@@ -54,7 +54,7 @@
   .goal-name {
     flex-shrink: 0;
     min-width: 120px;
-    max-width: 200px;
+    width: 140px;
     padding: 4px 8px;
     background: none;
     border: 1px solid transparent;
@@ -64,9 +64,7 @@
     font-size: 14px;
     color: var(--text-primary);
     user-select: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
   }
 
   .goal-name:hover {

@@ -3,7 +3,7 @@
   import Header from './lib/components/Header.svelte';
   import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
-  import AddGoalForm from './lib/components/AddGoalForm.svelte';
+  import GoalEditor from './lib/components/GoalEditor.svelte';
   import AuthPage from './lib/components/AuthPage.svelte';
   import {
     getCalendar,
@@ -17,7 +17,6 @@
     type Goal,
     type Completion,
   } from './lib/api';
-  import EditGoalModal from './lib/components/EditGoalModal.svelte';
   import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
   import { syncManager } from './lib/sync';
 
@@ -31,8 +30,10 @@
   let completions: Completion[] = [];
   let loading = true;
   let error = '';
-  let showAddForm = false;
-  let editingGoal: Goal | null = null;
+
+  // Editor state: null = main view, { mode: 'add' } = add goal, { mode: 'edit', goal } = edit goal
+  type EditorState = null | { mode: 'add' } | { mode: 'edit'; goal: Goal };
+  let editorState: EditorState = null;
 
   // Drag & drop state
   let draggedGoalId: string | null = null;
@@ -119,42 +120,37 @@
     }
   }
 
-  async function handleAddGoal(name: string, color: string) {
+  async function handleEditorSave(data: { name: string; color: string }) {
+    if (!editorState) return;
+
     try {
-      const goal = await createGoal(name, color);
-      goals = [...goals, goal];
-      showAddForm = false;
+      if (editorState.mode === 'add') {
+        const goal = await createGoal(data.name, data.color);
+        goals = [...goals, goal];
+      } else {
+        const updated = await updateGoal(editorState.goal.id, data);
+        goals = goals.map(g => g.id === updated.id ? updated : g);
+      }
+      editorState = null;
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to create goal';
+      error = e instanceof Error ? e.message : 'Failed to save goal';
+    }
+  }
+
+  async function handleEditorDelete() {
+    if (!editorState || editorState.mode !== 'edit') return;
+
+    try {
+      await archiveGoal(editorState.goal.id);
+      goals = goals.filter(g => g.id !== editorState!.goal.id);
+      editorState = null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to delete goal';
     }
   }
 
   function handleEditGoal(goal: Goal) {
-    editingGoal = goal;
-  }
-
-  async function handleSaveGoal(updates: { name?: string; color?: string }) {
-    if (!editingGoal) return;
-
-    try {
-      const updated = await updateGoal(editingGoal.id, updates);
-      goals = goals.map(g => g.id === updated.id ? updated : g);
-      editingGoal = null;
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to update goal';
-    }
-  }
-
-  async function handleDeleteGoal() {
-    if (!editingGoal) return;
-
-    try {
-      await archiveGoal(editingGoal.id);
-      goals = goals.filter(g => g.id !== editingGoal!.id);
-      editingGoal = null;
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to delete goal';
-    }
+    editorState = { mode: 'edit', goal };
   }
 
 
@@ -267,36 +263,27 @@
   <AuthPage onContinueAsGuest={handleContinueAsGuest} />
 {:else}
   <div class="app-container">
-    <Header
-      month={currentMonth}
-      onPrev={prevMonth}
-      onNext={nextMonth}
-      {showAddForm}
-      onToggleAddForm={() => showAddForm = !showAddForm}
-    />
+    {#if editorState}
+      <GoalEditor
+        mode={editorState.mode}
+        goal={editorState.mode === 'edit' ? editorState.goal : null}
+        onSave={handleEditorSave}
+        onCancel={() => editorState = null}
+        onDelete={editorState.mode === 'edit' ? handleEditorDelete : null}
+      />
+    {:else}
+      <Header
+        month={currentMonth}
+        onPrev={prevMonth}
+        onNext={nextMonth}
+        showAddForm={false}
+        onToggleAddForm={() => editorState = { mode: 'add' }}
+      />
 
-    <main>
-      {#if error}
-        <div class="error">{error}</div>
-      {/if}
-
-      {#if showAddForm}
-        <div class="form-container">
-          <AddGoalForm
-            onAdd={handleAddGoal}
-            onCancel={() => showAddForm = false}
-          />
-        </div>
-      {/if}
-
-      {#if editingGoal}
-        <EditGoalModal
-          goal={editingGoal}
-          onSave={handleSaveGoal}
-          onDelete={handleDeleteGoal}
-          onClose={() => editingGoal = null}
-        />
-      {/if}
+      <main>
+        {#if error}
+          <div class="error">{error}</div>
+        {/if}
 
       {#if loading}
         <p class="loading">Loading...</p>
@@ -320,9 +307,10 @@
           {/each}
         </div>
       {/if}
-    </main>
+      </main>
 
-    <Footer />
+      <Footer />
+    {/if}
   </div>
 {/if}
 
@@ -380,11 +368,6 @@
 
   .goals {
     width: 100%;
-  }
-
-  .form-container {
-    padding: 0 24px;
-    margin-bottom: 16px;
   }
 
   .loading-container {
