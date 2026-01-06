@@ -67,12 +67,12 @@
     position: absolute;
     top: 100%;
     right: 0;
-    margin-top: 8px;
-    min-width: 200px;
+    margin-top: 0.5rem;
+    min-width: 12.5rem;
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
     z-index: 201;
     animation: fadeIn 0.15s ease-out;
   }
@@ -80,7 +80,7 @@
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(-8px);
+      transform: translateY(-0.5rem);
     }
     to {
       opacity: 1;
@@ -91,13 +91,13 @@
   .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
   }
 
   .avatar {
-    width: 40px;
-    height: 40px;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
@@ -120,7 +120,7 @@
   }
 
   .user-name {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
     word-break: break-word;
@@ -129,19 +129,19 @@
   .divider {
     height: 1px;
     background: var(--border);
-    margin: 4px 0;
+    margin: 0.25rem 0;
   }
 
   .menu-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
     width: 100%;
-    padding: 10px 16px;
+    padding: 0.625rem 1rem;
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
     text-align: left;
   }

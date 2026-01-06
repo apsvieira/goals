@@ -699,6 +699,13 @@
 
     /* Border */
     --border: #D5CEBC;          /* Warm gray border */
+
+    /* Spacing scale (scales with font-size on large screens) */
+    --space-xs: 0.25rem;        /* 4px at 16px base, 6px at 24px base */
+    --space-sm: 0.5rem;         /* 8px at 16px base, 12px at 24px base */
+    --space-md: 1rem;           /* 16px at 16px base, 24px at 24px base */
+    --space-lg: 1.5rem;         /* 24px at 16px base, 36px at 24px base */
+    --space-xl: 2rem;           /* 32px at 16px base, 48px at 24px base */
   }
 
   :global(body) {
@@ -716,17 +723,17 @@
   }
 
   main {
-    padding: 24px 0;
+    padding: var(--space-lg) 0;
     width: 100%;
     box-sizing: border-box;
   }
 
   .error {
-    padding: 12px;
-    margin: 0 24px 16px;
+    padding: 0.75rem;
+    margin: 0 var(--space-lg) var(--space-md);
     background: var(--error-bg);
     color: var(--error);
-    border-radius: 4px;
+    border-radius: 0.25rem;
     border: 1px solid var(--error);
   }
 
@@ -734,7 +741,7 @@
     color: var(--text-secondary);
     font-style: italic;
     text-align: center;
-    padding: 0 24px;
+    padding: 0 var(--space-lg);
   }
 
   .goals {
@@ -747,30 +754,30 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: var(--space-md);
     background: var(--bg-primary);
   }
 
   .loading-text {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   .inline-loading {
     display: flex;
     justify-content: center;
-    padding: 48px 0;
+    padding: 3rem 0;
   }
 
   /* Sync status banner */
   .sync-banner {
-    padding: 12px 16px;
-    margin: 0 24px 16px;
-    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin: 0 var(--space-lg) var(--space-md);
+    border-radius: 0.25rem;
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 14px;
+    gap: 0.75rem;
+    font-size: 0.875rem;
   }
 
   .sync-syncing {
@@ -780,8 +787,8 @@
   }
 
   .sync-spinner {
-    width: 16px;
-    height: 16px;
+    width: 1rem;
+    height: 1rem;
     border: 2px solid var(--border);
     border-top-color: var(--accent);
     border-radius: 50%;
@@ -794,56 +801,56 @@
 
   /* Offline indicator banner */
   .offline-banner {
-    padding: 12px 16px;
-    margin: 0 24px 16px;
-    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin: 0 var(--space-lg) var(--space-md);
+    border-radius: 0.25rem;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: var(--space-sm);
+    font-size: 0.875rem;
     background: #FFF3CD;
     color: #856404;
     border: 1px solid #FFEEBA;
   }
 
   .offline-icon {
-    font-size: 16px;
+    font-size: 1rem;
   }
 
   /* Welcome/onboarding card */
   .welcome-card {
-    max-width: 400px;
-    margin: 32px auto;
-    padding: 24px;
+    max-width: 25rem;
+    margin: var(--space-xl) auto;
+    padding: var(--space-lg);
     background: var(--bg-secondary);
-    border-radius: 8px;
+    border-radius: 0.5rem;
     text-align: center;
   }
 
   .welcome-title {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 8px 0;
+    margin: 0 0 var(--space-sm) 0;
   }
 
   .welcome-text {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
-    margin: 0 0 20px 0;
+    margin: 0 0 1.25rem 0;
   }
 
   .welcome-features {
     text-align: left;
-    padding-left: 20px;
-    margin: 0 0 24px 0;
-    font-size: 14px;
+    padding-left: 1.25rem;
+    margin: 0 0 var(--space-lg) 0;
+    font-size: 0.875rem;
     color: var(--text-secondary);
     line-height: 1.8;
   }
 
   .welcome-features li {
-    margin-bottom: 4px;
+    margin-bottom: var(--space-xs);
   }
 
   .welcome-features strong {
@@ -853,13 +860,13 @@
   .welcome-cta {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
+    gap: 0.375rem;
+    padding: 0.625rem 1.25rem;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.15s;

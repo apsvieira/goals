@@ -29,7 +29,7 @@
     width: 100%;
     aspect-ratio: 1;
     border: 1.5px solid var(--day-color);
-    border-radius: 3px;
+    border-radius: 0.1875rem;
     background: var(--bg-tertiary);
     opacity: 0.75;
     cursor: pointer;
@@ -38,7 +38,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--day-color);
   }

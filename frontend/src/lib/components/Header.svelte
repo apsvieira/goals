@@ -111,14 +111,14 @@
     z-index: 100;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
+    padding: 1rem 1.5rem;
   }
 
   .header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1400px;
+    max-width: 87.5rem;
     margin: 0 auto;
   }
 
@@ -129,13 +129,13 @@
   .user-indicator {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 8px 4px 4px;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: 1.25rem;
     cursor: pointer;
-    min-width: 90px;
+    min-width: 5.625rem;
   }
 
   .user-indicator:hover {
@@ -143,8 +143,8 @@
   }
 
   .avatar {
-    width: 32px;
-    height: 32px;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
     object-fit: cover;
   }
@@ -158,7 +158,7 @@
   }
 
   .user-name {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-primary);
   }
 
@@ -174,16 +174,16 @@
   .add-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    font-size: 14px;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     background: var(--accent);
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 0.375rem;
     cursor: pointer;
-    min-width: 90px;
+    min-width: 5.625rem;
   }
 
   .add-btn:hover {
@@ -196,7 +196,7 @@
 
   @media (max-width: 480px) {
     .user-indicator {
-      padding: 4px;
+      padding: 0.25rem;
       min-width: auto;
       border-radius: 50%;
     }
@@ -207,9 +207,9 @@
     }
 
     .add-btn {
-      padding: 8px;
+      padding: 0.5rem;
       min-width: auto;
-      border-radius: 6px;
+      border-radius: 0.375rem;
     }
 
     .btn-text {

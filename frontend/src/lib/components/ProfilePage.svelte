@@ -391,24 +391,24 @@
   }
 
   .content {
-    max-width: 480px;
+    max-width: 30rem;
     width: 100%;
     margin: 0 auto;
-    padding: 24px;
+    padding: 1.5rem;
     box-sizing: border-box;
   }
 
   .back-button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: 1rem;
     cursor: pointer;
-    padding: 8px 0;
-    margin-bottom: 24px;
+    padding: 0.5rem 0;
+    margin-bottom: 1.5rem;
   }
 
   .back-button:hover {
@@ -420,19 +420,19 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 16px 0;
+    padding: 1rem 0;
   }
 
   .avatar {
-    width: 80px;
-    height: 80px;
+    width: 5rem;
+    height: 5rem;
     border-radius: 50%;
     background: var(--bg-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    margin-bottom: 16px;
+    margin-bottom: 1rem;
     border: 2px solid var(--border);
   }
 
@@ -448,27 +448,27 @@
   }
 
   .avatar-initial {
-    font-size: 32px;
+    font-size: 2rem;
     font-weight: 600;
     color: var(--text-primary);
     text-transform: uppercase;
   }
 
   .user-name {
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 4px 0;
+    margin: 0 0 0.25rem 0;
   }
 
   .user-email {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
-    margin: 0 0 8px 0;
+    margin: 0 0 0.5rem 0;
   }
 
   .member-since {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--text-muted, var(--text-secondary));
     margin: 0;
   }
@@ -476,7 +476,7 @@
   .divider {
     height: 1px;
     background: var(--border);
-    margin: 24px 0;
+    margin: 1.5rem 0;
   }
 
   .stats-section {
@@ -484,27 +484,27 @@
   }
 
   .stats-title {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 20px 0;
+    margin: 0 0 1.25rem 0;
   }
 
   .no-goals {
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 0.875rem;
     text-align: center;
-    padding: 32px 0;
+    padding: 2rem 0;
   }
 
   .goals-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 1rem;
   }
 
   .goal-stat {
-    padding: 12px 0;
+    padding: 0.75rem 0;
     border-bottom: 1px solid var(--border);
   }
 
@@ -515,52 +515,52 @@
   .goal-info {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 4px;
+    gap: 0.625rem;
+    margin-bottom: 0.25rem;
   }
 
   .goal-dot {
-    width: 12px;
-    height: 12px;
+    width: 0.75rem;
+    height: 0.75rem;
     border-radius: 50%;
     flex-shrink: 0;
   }
 
   .goal-name {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--text-primary);
   }
 
   .goal-progress {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
-    margin: 0 0 0 22px;
+    margin: 0 0 0 1.375rem;
   }
 
   .goal-period-success {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--accent);
-    margin: 4px 0 0 22px;
+    margin: 0.25rem 0 0 1.375rem;
     font-weight: 500;
   }
 
   /* Overall stats grid */
   .overall-stats {
-    margin-bottom: 8px;
+    margin-bottom: 0.5rem;
   }
 
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 0.75rem;
   }
 
   .stat-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: 0.5rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -568,25 +568,25 @@
   }
 
   .stat-value {
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--accent);
     line-height: 1.2;
   }
 
   .stat-label {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: 0.25rem;
   }
 
   /* Goal stats row with streak badge */
   .goal-stats-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: 22px;
-    margin-bottom: 6px;
+    gap: 0.5rem;
+    margin-left: 1.375rem;
+    margin-bottom: 0.375rem;
   }
 
   .goal-stats-row .goal-progress {
@@ -596,10 +596,10 @@
   .streak-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 600;
   }
 
@@ -612,95 +612,95 @@
   .goal-details {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-left: 22px;
-    margin-top: 4px;
-    margin-bottom: 4px;
+    gap: 0.75rem;
+    margin-left: 1.375rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
   }
 
   .detail-item {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
+    gap: 0.25rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
   }
 
   .detail-icon {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   @media (max-width: 480px) {
     .content {
-      padding: 16px;
+      padding: 1rem;
     }
 
     .back-button {
-      margin-bottom: 16px;
+      margin-bottom: 1rem;
     }
 
     .avatar {
-      width: 64px;
-      height: 64px;
+      width: 4rem;
+      height: 4rem;
     }
 
     .avatar.guest svg {
-      width: 32px;
-      height: 32px;
+      width: 2rem;
+      height: 2rem;
     }
 
     .avatar-initial {
-      font-size: 28px;
+      font-size: 1.75rem;
     }
 
     .user-name {
-      font-size: 20px;
+      font-size: 1.25rem;
     }
 
     .stats-title {
-      font-size: 16px;
+      font-size: 1rem;
     }
 
     .goal-name {
-      font-size: 15px;
+      font-size: 0.9375rem;
     }
 
     .goal-progress {
-      font-size: 13px;
+      font-size: 0.8125rem;
     }
 
     .section-title {
-      font-size: 16px;
+      font-size: 1rem;
     }
   }
 
   /* Export section styles */
   .export-section {
-    padding: 8px 0;
+    padding: 0.5rem 0;
   }
 
   .section-title {
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 8px 0;
+    margin: 0 0 0.5rem 0;
   }
 
   .export-description {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
-    margin: 0 0 16px 0;
+    margin: 0 0 1rem 0;
   }
 
   .export-button {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
     color: var(--text-primary);
     cursor: pointer;
     transition: background-color 0.15s;

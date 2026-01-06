@@ -12,7 +12,7 @@
 <style>
   .spinner {
     display: flex;
-    gap: 4px;
+    gap: 0.25rem;
     align-items: center;
     justify-content: center;
   }
@@ -28,18 +28,18 @@
   .dot:nth-child(3) { animation-delay: 0s; }
 
   .small .dot {
-    width: 6px;
-    height: 6px;
+    width: 0.375rem;
+    height: 0.375rem;
   }
 
   .medium .dot {
-    width: 10px;
-    height: 10px;
+    width: 0.625rem;
+    height: 0.625rem;
   }
 
   .large .dot {
-    width: 14px;
-    height: 14px;
+    width: 0.875rem;
+    height: 0.875rem;
   }
 
   @keyframes bounce {

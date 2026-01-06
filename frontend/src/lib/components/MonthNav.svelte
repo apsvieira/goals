@@ -34,17 +34,17 @@
   .month-nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
   }
 
   .nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4px;
+    padding: 0.25rem;
     background: transparent;
     border: none;
-    border-radius: 4px;
+    border-radius: 0.25rem;
     cursor: pointer;
     color: var(--text-secondary);
   }
@@ -55,7 +55,7 @@
   }
 
   .month-display {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--text-primary);
   }

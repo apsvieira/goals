@@ -53,50 +53,50 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 1.5rem;
     background: var(--bg-primary);
   }
 
   .auth-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 48px;
-    max-width: 400px;
+    border-radius: 0.75rem;
+    padding: 3rem;
+    max-width: 25rem;
     width: 100%;
     text-align: center;
   }
 
   h1 {
-    margin: 0 0 8px;
-    font-size: 28px;
+    margin: 0 0 0.5rem;
+    font-size: 1.75rem;
     font-weight: 600;
     color: var(--text-primary);
   }
 
   .subtitle {
-    margin: 0 0 32px;
+    margin: 0 0 2rem;
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: 1rem;
   }
 
   .auth-buttons {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0.75rem;
   }
 
   .auth-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 0.75rem;
     width: 100%;
-    padding: 12px 24px;
-    font-size: 16px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
     font-weight: 500;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0.5rem;
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s;
   }
@@ -113,7 +113,7 @@
   .divider {
     display: flex;
     align-items: center;
-    margin: 24px 0;
+    margin: 1.5rem 0;
     color: var(--text-muted);
   }
 
@@ -126,19 +126,19 @@
   }
 
   .divider span {
-    padding: 0 16px;
-    font-size: 14px;
+    padding: 0 1rem;
+    font-size: 0.875rem;
   }
 
   .guest-btn {
     width: 100%;
-    padding: 12px 24px;
-    font-size: 16px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
     font-weight: 500;
     background: transparent;
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0.5rem;
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s;
   }
@@ -149,16 +149,16 @@
   }
 
   .guest-note {
-    margin: 16px 0 0;
-    font-size: 13px;
+    margin: 1rem 0 0;
+    font-size: 0.8125rem;
     color: var(--text-muted);
   }
 
   .legal-links {
-    margin-top: 24px;
-    padding-top: 16px;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--border);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .legal-links a {
@@ -173,6 +173,6 @@
 
   .legal-links .separator {
     color: var(--border);
-    margin: 0 8px;
+    margin: 0 0.5rem;
   }
 </style>

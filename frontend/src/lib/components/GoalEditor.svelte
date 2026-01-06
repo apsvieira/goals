@@ -175,10 +175,10 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    max-width: 480px;
+    max-width: 30rem;
     width: 100%;
     margin: 0 auto;
-    padding: 24px;
+    padding: 1.5rem;
     box-sizing: border-box;
   }
 
@@ -186,26 +186,26 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    padding-top: 24px;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
   }
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
   }
 
   label {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
 
   input {
-    padding: 12px 16px;
-    font-size: 16px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0.5rem;
     background: var(--bg-tertiary);
     color: var(--text-primary);
   }
@@ -226,24 +226,24 @@
   }
 
   .target-field legend {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
     padding: 0;
-    margin-bottom: 8px;
+    margin-bottom: 0.5rem;
   }
 
   .target-options {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
   }
 
   .target-option {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-primary);
   }
 
@@ -257,37 +257,37 @@
   .target-count {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 12px;
-    padding: 12px;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
     background: var(--bg-tertiary);
-    border-radius: 8px;
+    border-radius: 0.5rem;
   }
 
   .target-count label {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
 
   .target-count input[type="number"] {
-    width: 80px;
-    padding: 8px 12px;
+    width: 5rem;
+    padding: 0.5rem 0.75rem;
     text-align: center;
   }
 
   .preview {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
+    gap: 0.75rem;
+    padding: 1rem;
     background: var(--bg-tertiary);
-    border-radius: 8px;
+    border-radius: 0.5rem;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   .preview-name {
-    width: 100px;
+    width: 6.25rem;
     flex-shrink: 0;
     word-wrap: break-word;
   }
@@ -299,9 +299,9 @@
   }
 
   .preview-square {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.1875rem;
     border: 1.5px solid;
     flex-shrink: 0;
   }
@@ -310,21 +310,21 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    padding-top: 24px;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
     border-top: 1px solid var(--border);
   }
 
   .right-actions {
     display: flex;
-    gap: 12px;
+    gap: 0.75rem;
     margin-left: auto;
   }
 
   button {
-    padding: 12px 20px;
-    font-size: 16px;
-    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;
     cursor: pointer;
     font-weight: 500;
   }
@@ -380,24 +380,24 @@
 
   .confirm-dialog {
     background: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 320px;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    max-width: 20rem;
     width: 90%;
     border: 1px solid var(--border);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.4);
   }
 
   .confirm-dialog p {
-    margin: 0 0 20px 0;
-    font-size: 16px;
+    margin: 0 0 1.25rem 0;
+    font-size: 1rem;
     color: var(--text-primary);
     text-align: center;
   }
 
   .confirm-actions {
     display: flex;
-    gap: 12px;
+    gap: 0.75rem;
     justify-content: center;
   }
 
@@ -413,17 +413,17 @@
 
   @media (max-width: 480px) {
     form {
-      padding: 16px;
+      padding: 1rem;
     }
 
     .form-content {
-      gap: 20px;
-      padding-top: 16px;
+      gap: 1.25rem;
+      padding-top: 1rem;
     }
 
     button {
-      padding: 10px 16px;
-      font-size: 14px;
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
     }
   }
 </style>

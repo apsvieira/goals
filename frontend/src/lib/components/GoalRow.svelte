@@ -63,9 +63,9 @@
   .goal-row {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 6px 0;
-    margin: 0 5px;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+    margin: 0 0.3125rem;
   }
 
   .goal-row.drag-over {
@@ -75,26 +75,26 @@
   .goal-row.keyboard-focused {
     background-color: var(--bg-secondary);
     border-left: 3px solid var(--accent);
-    padding-left: 2px;
+    padding-left: 0.125rem;
   }
 
   .goal-info {
     flex-shrink: 0;
-    min-width: 120px;
-    width: 140px;
+    min-width: 7.5rem;
+    width: 8.75rem;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.25rem;
   }
 
   .goal-name {
-    padding: 4px 8px;
+    padding: 0.25rem 0.5rem;
     background: none;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 0.25rem;
     cursor: grab;
     text-align: left;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-primary);
     user-select: none;
     word-wrap: break-word;

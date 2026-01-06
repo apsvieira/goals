@@ -72,3 +72,10 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Large screen zoom: 150% scale for comfortable viewing on desktop monitors */
+@media (min-width: 1200px) {
+  :root {
+    font-size: 24px; /* 150% of 16px base */
+  }
+}

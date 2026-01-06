@@ -26,24 +26,24 @@
   footer {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border);
-    padding: 24px;
+    padding: 1.5rem;
   }
 
   .footer-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
-    max-width: 1400px;
+    gap: 0.75rem;
+    max-width: 87.5rem;
     margin: 0 auto;
   }
 
   .attribution {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 0.875rem;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 0.375rem;
   }
 
   .github-link {
@@ -58,12 +58,12 @@
 
   .footer-links {
     display: flex;
-    gap: 24px;
+    gap: 1.5rem;
   }
 
   .footer-links a {
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 0.875rem;
     text-decoration: none;
   }
 

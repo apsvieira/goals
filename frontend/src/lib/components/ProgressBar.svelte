@@ -29,27 +29,27 @@
   .progress-bar {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 8px;
+    gap: 0.375rem;
+    padding: 0 0.5rem;
   }
 
   .bar-container {
     flex: 1;
-    height: 6px;
+    height: 0.375rem;
     background: var(--bg-tertiary);
-    border-radius: 3px;
+    border-radius: 0.1875rem;
     overflow: hidden;
-    min-width: 40px;
+    min-width: 2.5rem;
   }
 
   .bar-fill {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 0.1875rem;
     transition: width 0.3s ease;
   }
 
   .progress-text {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--text-muted);
     white-space: nowrap;
   }
