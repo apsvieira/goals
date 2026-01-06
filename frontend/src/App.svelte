@@ -109,7 +109,7 @@
   let currentDay: number;
 
   // Map completions by goal
-  $: completionsByGoal = completions.reduce((acc, c) => {
+  $: completionsByGoal = (completions ?? []).reduce((acc, c) => {
     const day = parseInt(c.date.split('-')[2], 10);
     if (!acc[c.goal_id]) acc[c.goal_id] = new Map();
     acc[c.goal_id].set(day, c.id);
@@ -117,14 +117,14 @@
   }, {} as Record<string, Map<number, string>>);
 
   // Auto-assign colors to goals based on their index
-  $: goalsWithColors = goals.map((goal, index) => ({
+  $: goalsWithColors = (goals ?? []).map((goal, index) => ({
     ...goal,
     color: GOAL_PALETTE[index % GOAL_PALETTE.length]
   }));
 
   // Reactive map of period completions per goal (updates when completions change)
   // Note: explicitly reference completions before reduce to ensure Svelte tracks it as a dependency
-  $: periodCompletionsMap = ((allCompletions) => goals.reduce((acc, goal) => {
+  $: periodCompletionsMap = ((allCompletions) => (goals ?? []).reduce((acc, goal) => {
     if (!goal.target_period) {
       acc[goal.id] = 0;
       return acc;
@@ -153,15 +153,15 @@
       }).length;
     }
     return acc;
-  }, {} as Record<string, number>))(completions);
+  }, {} as Record<string, number>))(completions ?? []);
 
   async function loadData() {
     loading = true;
     error = '';
     try {
       const data = await getCalendar(currentMonth);
-      goals = data.goals;
-      completions = data.completions;
+      goals = data.goals ?? [];
+      completions = data.completions ?? [];
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load data';
     } finally {
