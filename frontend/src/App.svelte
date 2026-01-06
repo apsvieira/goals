@@ -126,36 +126,39 @@
   }));
 
   // Reactive map of period completions per goal (uses periodCompletions for accurate weekly/monthly counts)
-  $: periodCompletionsMap = ((allCompletions) => (goals ?? []).reduce((acc, goal) => {
-    if (!goal.target_period) {
-      acc[goal.id] = 0;
+  $: periodCompletionsMap = ((allCompletions) => {
+    console.log('[periodCompletionsMap] recalculating with', allCompletions.length, 'completions,', (goals ?? []).length, 'goals');
+    return (goals ?? []).reduce((acc, goal) => {
+      if (!goal.target_period) {
+        acc[goal.id] = 0;
+        return acc;
+      }
+
+      const goalCompletions = allCompletions.filter(c => c.goal_id === goal.id);
+      const now = new Date();
+
+      if (goal.target_period === 'week') {
+        // Get start of current week (Sunday)
+        const dayOfWeek = now.getDay();
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - dayOfWeek);
+        weekStart.setHours(0, 0, 0, 0);
+
+        acc[goal.id] = goalCompletions.filter(c => {
+          const completionDate = new Date(c.date + 'T00:00:00');
+          return completionDate >= weekStart && completionDate <= now;
+        }).length;
+      } else {
+        // Current month
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        acc[goal.id] = goalCompletions.filter(c => {
+          const completionDate = new Date(c.date + 'T00:00:00');
+          return completionDate >= monthStart && completionDate <= now;
+        }).length;
+      }
       return acc;
-    }
-
-    const goalCompletions = allCompletions.filter(c => c.goal_id === goal.id);
-    const now = new Date();
-
-    if (goal.target_period === 'week') {
-      // Get start of current week (Sunday)
-      const dayOfWeek = now.getDay();
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - dayOfWeek);
-      weekStart.setHours(0, 0, 0, 0);
-
-      acc[goal.id] = goalCompletions.filter(c => {
-        const completionDate = new Date(c.date + 'T00:00:00');
-        return completionDate >= weekStart && completionDate <= now;
-      }).length;
-    } else {
-      // Current month
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      acc[goal.id] = goalCompletions.filter(c => {
-        const completionDate = new Date(c.date + 'T00:00:00');
-        return completionDate >= monthStart && completionDate <= now;
-      }).length;
-    }
-    return acc;
-  }, {} as Record<string, number>))(periodCompletions ?? []);
+    }, {} as Record<string, number>);
+  })(periodCompletions ?? []);
 
   async function loadData() {
     loading = true;
@@ -165,8 +168,11 @@
       goals = data.goals ?? [];
       completions = data.completions ?? [];
       // Fetch completions for current period (weekly/monthly targets)
-      periodCompletions = await getCurrentPeriodCompletions();
+      const periodData = await getCurrentPeriodCompletions();
+      console.log('[loadData] periodCompletions fetched:', periodData.length, 'items', periodData);
+      periodCompletions = periodData;
     } catch (e) {
+      console.error('[loadData] error:', e);
       error = getUserFriendlyMessage(e);
     } finally {
       loading = false;
