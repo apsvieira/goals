@@ -86,27 +86,36 @@ class SyncManager {
     syncStatus.set({ state: 'syncing', message: 'Syncing your data...' });
 
     try {
-      // 1. Get pending local changes (all local goals and completions)
-      const localGoals = await getAllLocalGoals();
-      const localCompletions = await getAllLocalCompletions();
+      // Only upload local data during initial sync (migration from guest mode)
+      // After initial sync, the server is the source of truth
+      const isInitialSync = this.lastSyncedAt === null;
 
-      // Convert local goals to GoalChanges
-      const goalChanges: GoalChange[] = localGoals.map(goal => ({
-        id: goal.id,
-        name: goal.name,
-        color: goal.color,
-        position: goal.position,
-        updated_at: goal.created_at, // Use created_at as updated_at for local-only goals
-        deleted: !!goal.archived_at,
-      }));
+      let goalChanges: GoalChange[] = [];
+      let completionChanges: CompletionChange[] = [];
 
-      // Convert local completions to CompletionChanges
-      const completionChanges: CompletionChange[] = localCompletions.map(completion => ({
-        goal_id: completion.goal_id,
-        date: completion.date,
-        completed: true, // All completions in local storage are completed
-        updated_at: completion.created_at,
-      }));
+      if (isInitialSync) {
+        // 1. Get pending local changes (all local goals and completions)
+        const localGoals = await getAllLocalGoals();
+        const localCompletions = await getAllLocalCompletions();
+
+        // Convert local goals to GoalChanges
+        goalChanges = localGoals.map(goal => ({
+          id: goal.id,
+          name: goal.name,
+          color: goal.color,
+          position: goal.position,
+          updated_at: goal.created_at, // Use created_at as updated_at for local-only goals
+          deleted: !!goal.archived_at,
+        }));
+
+        // Convert local completions to CompletionChanges
+        completionChanges = localCompletions.map(completion => ({
+          goal_id: completion.goal_id,
+          date: completion.date,
+          completed: true, // All completions in local storage are completed
+          updated_at: completion.created_at,
+        }));
+      }
 
       // 2. POST to /api/v1/sync
       const req: SyncRequest = {
