@@ -83,8 +83,8 @@
           </div>
         {/if}
         <span class="user-name">{displayName}</span>
-        <svg class="chevron" class:open={dropdownOpen} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 12 15 18 9"></polyline>
+        <svg class="chevron" class:open={dropdownOpen} viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
         </svg>
       </button>
       {#if dropdownOpen}
@@ -160,7 +160,7 @@
   }
 
   .chevron {
-    color: var(--text-secondary);
+    fill: var(--text-secondary);
     transition: transform 0.2s ease;
   }
 
@@ -182,5 +182,18 @@
 
   .add-btn:hover {
     background: var(--accent-hover);
+  }
+
+  @media (max-width: 480px) {
+    .user-indicator {
+      padding: 4px;
+      min-width: auto;
+      border-radius: 50%;
+    }
+
+    .user-name,
+    .chevron {
+      display: none;
+    }
   }
 </style>

@@ -54,10 +54,8 @@
     </button>
   {:else}
     <button class="menu-item logout" on:click={onLogout} role="menuitem">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-        <polyline points="16 17 21 12 16 7"></polyline>
-        <line x1="21" y1="12" x2="9" y2="12"></line>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
       </svg>
       <span>Log Out</span>
     </button>
@@ -153,7 +151,7 @@
   }
 
   .menu-item svg {
-    color: var(--text-secondary);
+    fill: var(--text-secondary);
     flex-shrink: 0;
   }
 
@@ -166,6 +164,6 @@
   }
 
   .menu-item.logout svg {
-    color: var(--error);
+    fill: var(--error);
   }
 </style>

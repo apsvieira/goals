@@ -12,19 +12,29 @@
     const goalCompletions = completions.filter(c => c.goal_id === goal.id);
     const daysCompleted = goalCompletions.length;
 
-    const createdDate = new Date(goal.created_at);
+    if (daysCompleted === 0) {
+      return { daysCompleted, daysSinceFirstCompletion: 0, rate: 0 };
+    }
+
+    // Find the earliest completion date for this goal
+    const sortedDates = goalCompletions
+      .map(c => new Date(c.date))
+      .sort((a, b) => a.getTime() - b.getTime());
+    const firstCompletionDate = sortedDates[0];
+
     const today = new Date();
-    const daysSinceCreated = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    today.setHours(0, 0, 0, 0);
+    const daysSinceFirstCompletion = Math.floor((today.getTime() - firstCompletionDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const rate = daysSinceCreated > 0 ? Math.round((daysCompleted / daysSinceCreated) * 100) : 0;
+    const rate = daysSinceFirstCompletion > 0 ? Math.round((daysCompleted / daysSinceFirstCompletion) * 100) : 0;
 
-    return { daysCompleted, daysSinceCreated, rate };
+    return { daysCompleted, daysSinceFirstCompletion, rate };
   }
 
   function formatMemberSince(dateStr: string | undefined): string {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   // Find the earliest goal creation date as a proxy for member since date for guests
@@ -39,8 +49,8 @@
 <div class="profile-page">
   <div class="content">
     <button class="back-button" on:click={onBack}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
       </svg>
       Back
     </button>
