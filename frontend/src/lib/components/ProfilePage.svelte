@@ -8,12 +8,103 @@
   export let completions: Completion[] = [];
   export let onBack: () => void;
 
+  function calculateStreaks(goalCompletions: Completion[]) {
+    if (goalCompletions.length === 0) {
+      return { currentStreak: 0, longestStreak: 0 };
+    }
+
+    // Sort by date ascending
+    const sortedDates = goalCompletions
+      .map(c => c.date)
+      .sort();
+
+    // Remove duplicates (in case of multiple entries on the same day)
+    const uniqueDates = [...new Set(sortedDates)];
+
+    // Calculate current streak (counting backward from today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    let currentStreak = 0;
+    let checkDate = new Date(today);
+
+    // Check if today or yesterday has a completion to start the streak
+    const lastCompletion = uniqueDates[uniqueDates.length - 1];
+    const lastCompletionDate = new Date(lastCompletion + 'T00:00:00');
+    const daysSinceLastCompletion = Math.floor((today.getTime() - lastCompletionDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysSinceLastCompletion <= 1) {
+      // Start counting from the last completion date
+      checkDate = new Date(lastCompletionDate);
+      const dateSet = new Set(uniqueDates);
+
+      while (dateSet.has(checkDate.toISOString().split('T')[0])) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+    }
+
+    // Calculate longest streak
+    let longestStreak = 0;
+    let streak = 1;
+
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prevDate = new Date(uniqueDates[i - 1] + 'T00:00:00');
+      const currDate = new Date(uniqueDates[i] + 'T00:00:00');
+      const dayDiff = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (dayDiff === 1) {
+        streak++;
+      } else {
+        longestStreak = Math.max(longestStreak, streak);
+        streak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, streak);
+
+    return { currentStreak, longestStreak };
+  }
+
+  function calculateBestPeriod(goalCompletions: Completion[]) {
+    if (goalCompletions.length === 0) {
+      return { bestWeek: 0, bestMonth: 0 };
+    }
+
+    // Group by week
+    const weekMap = new Map<string, number>();
+    const monthMap = new Map<string, number>();
+
+    goalCompletions.forEach(c => {
+      const date = new Date(c.date);
+      const weekKey = getISOWeek(date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + 1);
+      monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + 1);
+    });
+
+    const bestWeek = Math.max(...Array.from(weekMap.values()), 0);
+    const bestMonth = Math.max(...Array.from(monthMap.values()), 0);
+
+    return { bestWeek, bestMonth };
+  }
+
   function calculateStats(goal: Goal, completions: Completion[]) {
     const goalCompletions = completions.filter(c => c.goal_id === goal.id);
     const daysCompleted = goalCompletions.length;
 
     if (daysCompleted === 0) {
-      return { daysCompleted, daysSinceFirstCompletion: 0, rate: 0, periodStats: null };
+      return {
+        daysCompleted,
+        daysSinceFirstCompletion: 0,
+        rate: 0,
+        periodStats: null,
+        currentStreak: 0,
+        longestStreak: 0,
+        bestWeek: 0,
+        bestMonth: 0
+      };
     }
 
     // Find the earliest completion date for this goal
@@ -27,6 +118,12 @@
     const daysSinceFirstCompletion = Math.floor((today.getTime() - firstCompletionDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     const rate = daysSinceFirstCompletion > 0 ? Math.round((daysCompleted / daysSinceFirstCompletion) * 100) : 0;
+
+    // Calculate streaks
+    const { currentStreak, longestStreak } = calculateStreaks(goalCompletions);
+
+    // Calculate best week/month
+    const { bestWeek, bestMonth } = calculateBestPeriod(goalCompletions);
 
     // Calculate weekly/monthly target success rate if goal has targets
     let periodStats = null;
@@ -66,8 +163,40 @@
       }
     }
 
-    return { daysCompleted, daysSinceFirstCompletion, rate, periodStats };
+    return { daysCompleted, daysSinceFirstCompletion, rate, periodStats, currentStreak, longestStreak, bestWeek, bestMonth };
   }
+
+  // Calculate overall summary stats
+  function calculateOverallStats(goals: Goal[], completions: Completion[]) {
+    const activeGoals = goals.filter(g => !g.archived_at);
+    if (activeGoals.length === 0 || completions.length === 0) {
+      return {
+        totalCompletions: 0,
+        avgCompletionRate: 0,
+        bestOverallStreak: 0,
+        totalActiveGoals: 0
+      };
+    }
+
+    const totalCompletions = completions.length;
+    const totalActiveGoals = activeGoals.length;
+
+    // Calculate average completion rate across all goals
+    let totalRate = 0;
+    let bestOverallStreak = 0;
+
+    activeGoals.forEach(goal => {
+      const stats = calculateStats(goal, completions);
+      totalRate += stats.rate;
+      bestOverallStreak = Math.max(bestOverallStreak, stats.longestStreak);
+    });
+
+    const avgCompletionRate = Math.round(totalRate / activeGoals.length);
+
+    return { totalCompletions, avgCompletionRate, bestOverallStreak, totalActiveGoals };
+  }
+
+  $: overallStats = calculateOverallStats(goals ?? [], completions ?? []);
 
   // Helper to get ISO week string
   function getISOWeek(date: Date): string {
@@ -159,6 +288,32 @@
 
     <div class="divider"></div>
 
+    {#if goals && goals.length > 0 && completions && completions.length > 0}
+      <div class="overall-stats">
+        <h2 class="stats-title">Overview</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value">{overallStats.totalCompletions}</span>
+            <span class="stat-label">Total Completions</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{overallStats.avgCompletionRate}%</span>
+            <span class="stat-label">Avg Completion Rate</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{overallStats.bestOverallStreak}</span>
+            <span class="stat-label">Best Streak (days)</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">{overallStats.totalActiveGoals}</span>
+            <span class="stat-label">Active Goals</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+    {/if}
+
     <div class="stats-section">
       <h2 class="stats-title">Goal Statistics</h2>
 
@@ -173,12 +328,33 @@
                 <span class="goal-dot" style="background-color: {goal.color}"></span>
                 <span class="goal-name">{goal.name}</span>
               </div>
-              <p class="goal-progress">
-                {stats.daysCompleted} days completed ({stats.daysCompleted}/{stats.daysSinceFirstCompletion})
-              </p>
+              <div class="goal-stats-row">
+                <p class="goal-progress">
+                  {stats.daysCompleted} days ({stats.rate}% rate)
+                </p>
+                {#if stats.currentStreak > 0}
+                  <span class="streak-badge current">
+                    {stats.currentStreak} day streak
+                  </span>
+                {/if}
+              </div>
+              <div class="goal-details">
+                <span class="detail-item">
+                  <span class="detail-icon">&#128293;</span>
+                  Best: {stats.longestStreak} days
+                </span>
+                <span class="detail-item">
+                  <span class="detail-icon">&#128197;</span>
+                  Best week: {stats.bestWeek}
+                </span>
+                <span class="detail-item">
+                  <span class="detail-icon">&#128198;</span>
+                  Best month: {stats.bestMonth}
+                </span>
+              </div>
               {#if stats.periodStats}
                 <p class="goal-period-success">
-                  {stats.periodStats.successRate}% of {stats.periodStats.period} succeeded ({stats.periodStats.successful}/{stats.periodStats.total})
+                  {stats.periodStats.successRate}% of {stats.periodStats.period} target met ({stats.periodStats.successful}/{stats.periodStats.total})
                 </p>
               {/if}
             </div>
@@ -367,6 +543,91 @@
     color: var(--accent);
     margin: 4px 0 0 22px;
     font-weight: 500;
+  }
+
+  /* Overall stats grid */
+  .overall-stats {
+    margin-bottom: 8px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.2;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Goal stats row with streak badge */
+  .goal-stats-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 22px;
+    margin-bottom: 6px;
+  }
+
+  .goal-stats-row .goal-progress {
+    margin: 0;
+  }
+
+  .streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .streak-badge.current {
+    background: var(--accent);
+    color: white;
+  }
+
+  /* Goal details row */
+  .goal-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-left: 22px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+
+  .detail-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .detail-icon {
+    font-size: 12px;
   }
 
   @media (max-width: 480px) {
