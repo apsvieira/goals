@@ -53,6 +53,7 @@ type Server struct {
 	authRateLimiter *RateLimiter
 	apiRateLimiter  *RateLimiter
 	syncRateLimiter *RateLimiter
+	frontendURL     string
 }
 
 func NewServer(database db.Database, staticFS fs.FS) *Server {
@@ -61,6 +62,11 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}
+
+	// Frontend URL for redirects after OAuth (different in dev vs prod)
+	frontendURL := os.Getenv("FRONTEND_URL")
+	// In production, frontend is served from same origin, so empty means "/"
+	// In dev, set FRONTEND_URL=http://localhost:5173
 
 	authManager := auth.NewManager(database)
 	oauthHandler := auth.NewOAuthHandler(database, authManager, baseURL)
@@ -81,6 +87,7 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 		authRateLimiter: authRateLimiter,
 		apiRateLimiter:  apiRateLimiter,
 		syncRateLimiter: syncRateLimiter,
+		frontendURL:     frontendURL,
 	}
 	s.setupRoutes()
 	return s

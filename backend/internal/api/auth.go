@@ -42,15 +42,17 @@ func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	token, err := s.oauthHandler.HandleCallback(w, r, provider)
 	if err != nil {
 		// Redirect to frontend with error
-		http.Redirect(w, r, "/?auth_error="+err.Error(), http.StatusTemporaryRedirect)
+		redirectURL := s.frontendURL + "/?auth_error=" + err.Error()
+		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
 
 	// Set session cookie
 	auth.SetSessionCookie(w, r, token)
 
-	// Redirect to frontend
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	// Redirect to frontend (frontendURL is empty in prod, so "/" works)
+	redirectURL := s.frontendURL + "/"
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
 // logout invalidates the current session
