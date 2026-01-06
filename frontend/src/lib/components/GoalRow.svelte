@@ -1,5 +1,6 @@
 <script lang="ts">
   import DayGrid from './DayGrid.svelte';
+  import ProgressBar from './ProgressBar.svelte';
   import type { Goal } from '../api';
 
   export let goal: Goal;
@@ -12,6 +13,9 @@
   export let onDrop: (e: DragEvent) => void;
   export let isDragOver = false;
   export let currentDay: number = 0;
+  export let periodCompletions: number = 0; // Completions in current period (week/month)
+
+  $: hasTarget = goal.target_count && goal.target_period;
 </script>
 
 <div
@@ -22,14 +26,24 @@
   on:dragleave={() => isDragOver = false}
   role="listitem"
 >
-  <button
-    class="goal-name"
-    on:click={onEdit}
-    draggable="true"
-    on:dragstart={onDragStart}
-  >
-    {goal.name}
-  </button>
+  <div class="goal-info">
+    <button
+      class="goal-name"
+      on:click={onEdit}
+      draggable="true"
+      on:dragstart={onDragStart}
+    >
+      {goal.name}
+    </button>
+    {#if hasTarget}
+      <ProgressBar
+        current={periodCompletions}
+        target={goal.target_count!}
+        period={goal.target_period!}
+        color={goal.color}
+      />
+    {/if}
+  </div>
   <DayGrid
     {daysInMonth}
     color={goal.color}
@@ -51,10 +65,16 @@
     background-color: var(--bg-tertiary);
   }
 
-  .goal-name {
+  .goal-info {
     flex-shrink: 0;
     min-width: 120px;
     width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .goal-name {
     padding: 4px 8px;
     background: none;
     border: 1px solid transparent;

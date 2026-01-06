@@ -1,32 +1,36 @@
 <script lang="ts">
   export let mode: 'add' | 'edit' = 'add';
-  export let goal: { id: string; name: string; color: string } | null = null;
-  export let onSave: (data: { name: string; color: string }) => void;
+  export let goal: { id: string; name: string; color: string; target_count?: number; target_period?: 'week' | 'month' } | null = null;
+  export let previewColor: string = '#5B8C5A'; // Default to first palette color
+  export let onSave: (data: { name: string; target_count?: number; target_period?: 'week' | 'month' }) => void;
   export let onCancel: () => void;
   export let onDelete: (() => void) | null = null;
 
   let name = goal?.name ?? '';
-  let color = goal?.color ?? '#4CAF50';
   let showDeleteConfirm = false;
 
-  const colors = [
-    '#4CAF50', // Green
-    '#2196F3', // Blue
-    '#FF9800', // Orange
-    '#E91E63', // Pink
-    '#9C27B0', // Purple
-    '#00BCD4', // Cyan
-    '#FF5722', // Deep Orange
-    '#607D8B', // Blue Grey
-    '#795548', // Brown
-    '#F44336', // Red
-    '#3F51B5', // Indigo
-    '#009688', // Teal
-  ];
+  // Target state
+  type TargetType = 'daily' | 'weekly' | 'monthly';
+  let targetType: TargetType = goal?.target_period === 'week' ? 'weekly' : goal?.target_period === 'month' ? 'monthly' : 'daily';
+  let targetCount = goal?.target_count ?? 4;
+
+  // Use goal's assigned color for preview in edit mode, otherwise use previewColor
+  $: displayColor = goal?.color ?? previewColor;
+  $: maxTarget = targetType === 'weekly' ? 7 : targetType === 'monthly' ? 31 : 0;
 
   function handleSave() {
     if (name.trim()) {
-      onSave({ name: name.trim(), color });
+      const data: { name: string; target_count?: number; target_period?: 'week' | 'month' } = {
+        name: name.trim(),
+      };
+      if (targetType === 'weekly') {
+        data.target_count = targetCount;
+        data.target_period = 'week';
+      } else if (targetType === 'monthly') {
+        data.target_count = targetCount;
+        data.target_period = 'month';
+      }
+      onSave(data);
     }
   }
 
@@ -58,27 +62,41 @@
         />
       </div>
 
-      <div class="field">
-        <span class="label">Color</span>
-        <div class="color-picker">
-          {#each colors as c}
-            <button
-              type="button"
-              class="color-swatch"
-              class:selected={color === c}
-              style="background-color: {c}"
-              on:click={() => color = c}
-              aria-label="Select color {c}"
-            ></button>
-          {/each}
+      <fieldset class="field target-field">
+        <legend>Target frequency</legend>
+        <div class="target-options">
+          <label class="target-option">
+            <input type="radio" bind:group={targetType} value="daily" />
+            <span>Daily (no target)</span>
+          </label>
+          <label class="target-option">
+            <input type="radio" bind:group={targetType} value="weekly" />
+            <span>Weekly target</span>
+          </label>
+          <label class="target-option">
+            <input type="radio" bind:group={targetType} value="monthly" />
+            <span>Monthly target</span>
+          </label>
         </div>
-      </div>
+        {#if targetType !== 'daily'}
+          <div class="target-count">
+            <label for="target-count">Times per {targetType === 'weekly' ? 'week' : 'month'}</label>
+            <input
+              id="target-count"
+              type="number"
+              min="1"
+              max={maxTarget}
+              bind:value={targetCount}
+            />
+          </div>
+        {/if}
+      </fieldset>
 
       <div class="preview">
         <span class="preview-name">{name || 'Goal Name'}</span>
         <div class="preview-squares">
           {#each Array(7) as _}
-            <span class="preview-square" style="border-color: {color}; background-color: {color}"></span>
+            <span class="preview-square" style="border-color: {displayColor}; background-color: {displayColor}"></span>
           {/each}
         </div>
       </div>
@@ -103,7 +121,7 @@
 
   {#if showDeleteConfirm}
     <div class="confirm-overlay" on:click={cancelDelete} on:keydown={(e) => e.key === 'Escape' && cancelDelete()} role="dialog" aria-modal="true" tabindex="-1">
-      <div class="confirm-dialog" on:click|stopPropagation>
+      <div class="confirm-dialog" role="document" on:click|stopPropagation on:keydown|stopPropagation>
         <p>Are you sure you want to delete this goal?</p>
         <div class="confirm-actions">
           <button type="button" class="btn-cancel" on:click={cancelDelete}>
@@ -156,7 +174,7 @@
     gap: 8px;
   }
 
-  label, .label {
+  label {
     font-size: 14px;
     color: var(--text-secondary);
   }
@@ -179,28 +197,60 @@
     border-color: var(--accent);
   }
 
-  .color-picker {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .color-swatch {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 3px solid transparent;
-    cursor: pointer;
-    transition: transform 0.1s ease;
+  .target-field {
+    border: none;
     padding: 0;
+    margin: 0;
   }
 
-  .color-swatch:hover {
-    transform: scale(1.1);
+  .target-field legend {
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 0;
+    margin-bottom: 8px;
   }
 
-  .color-swatch.selected {
-    border-color: var(--text-primary);
+  .target-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .target-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .target-option input[type="radio"] {
+    width: auto;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .target-count {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+  }
+
+  .target-count label {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .target-count input[type="number"] {
+    width: 80px;
+    padding: 8px 12px;
+    text-align: center;
   }
 
   .preview {
@@ -347,15 +397,6 @@
     .form-content {
       gap: 20px;
       padding-top: 16px;
-    }
-
-    .color-picker {
-      gap: 10px;
-    }
-
-    .color-swatch {
-      width: 36px;
-      height: 36px;
     }
 
     button {

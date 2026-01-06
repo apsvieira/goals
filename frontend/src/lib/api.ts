@@ -22,6 +22,8 @@ export interface Goal {
   name: string;
   color: string;
   position: number;
+  target_count?: number;
+  target_period?: 'week' | 'month';
   created_at: string;
   archived_at?: string;
 }
@@ -90,7 +92,12 @@ export async function getCalendar(month: string): Promise<CalendarResponse> {
   return request<CalendarResponse>(`/calendar?month=${month}`);
 }
 
-export async function createGoal(name: string, color: string): Promise<Goal> {
+export async function createGoal(
+  name: string,
+  color: string,
+  targetCount?: number,
+  targetPeriod?: 'week' | 'month'
+): Promise<Goal> {
   if (isGuestMode()) {
     await ensureStorageInitialized();
     const maxPosition = await getMaxPosition();
@@ -99,6 +106,8 @@ export async function createGoal(name: string, color: string): Promise<Goal> {
       name,
       color,
       position: maxPosition + 1,
+      target_count: targetCount,
+      target_period: targetPeriod,
       created_at: new Date().toISOString(),
     };
     await saveLocalGoal(goal);
@@ -106,11 +115,14 @@ export async function createGoal(name: string, color: string): Promise<Goal> {
   }
   return request<Goal>('/goals', {
     method: 'POST',
-    body: JSON.stringify({ name, color }),
+    body: JSON.stringify({ name, color, target_count: targetCount, target_period: targetPeriod }),
   });
 }
 
-export async function updateGoal(id: string, updates: { name?: string; color?: string }): Promise<Goal> {
+export async function updateGoal(
+  id: string,
+  updates: { name?: string; color?: string; target_count?: number; target_period?: 'week' | 'month' }
+): Promise<Goal> {
   if (isGuestMode()) {
     await ensureStorageInitialized();
     const goals = await getLocalGoals();
