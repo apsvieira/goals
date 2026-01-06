@@ -5,7 +5,6 @@
   import GoalRow from './lib/components/GoalRow.svelte';
   import GoalEditor from './lib/components/GoalEditor.svelte';
   import AuthPage from './lib/components/AuthPage.svelte';
-  import UserDrawer from './lib/components/UserDrawer.svelte';
   import ProfilePage from './lib/components/ProfilePage.svelte';
   import {
     getCalendar,
@@ -24,6 +23,12 @@
   import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
   import { syncManager } from './lib/sync';
 
+  // Color palette for auto-assigned goal colors (alternating green and slate gray)
+  const GOAL_PALETTE = [
+    '#5B8C5A', // Sage green
+    '#708090', // Slate gray
+  ];
+
   // Auth state
   let authState: AuthState;
   authStore.subscribe(value => authState = value);
@@ -39,8 +44,7 @@
   type EditorState = null | { mode: 'add' } | { mode: 'edit'; goal: Goal };
   let editorState: EditorState = null;
 
-  // Drawer and Profile state
-  let drawerOpen = false;
+  // Profile state
   let showProfile = false;
   let allCompletions: Completion[] = [];
 
@@ -86,6 +90,40 @@
     acc[c.goal_id].set(day, c.id);
     return acc;
   }, {} as Record<string, Map<number, string>>);
+
+  // Auto-assign colors to goals based on their index
+  $: goalsWithColors = goals.map((goal, index) => ({
+    ...goal,
+    color: GOAL_PALETTE[index % GOAL_PALETTE.length]
+  }));
+
+  // Calculate period completions for a goal
+  function getPeriodCompletions(goalId: string, targetPeriod: 'week' | 'month' | undefined): number {
+    if (!targetPeriod) return 0;
+
+    const goalCompletions = completions.filter(c => c.goal_id === goalId);
+    const now = new Date();
+
+    if (targetPeriod === 'week') {
+      // Get start of current week (Sunday)
+      const dayOfWeek = now.getDay();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - dayOfWeek);
+      weekStart.setHours(0, 0, 0, 0);
+
+      return goalCompletions.filter(c => {
+        const completionDate = new Date(c.date + 'T00:00:00');
+        return completionDate >= weekStart && completionDate <= now;
+      }).length;
+    } else {
+      // Current month
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      return goalCompletions.filter(c => {
+        const completionDate = new Date(c.date + 'T00:00:00');
+        return completionDate >= monthStart && completionDate <= now;
+      }).length;
+    }
+  }
 
   async function loadData() {
     loading = true;
@@ -133,15 +171,25 @@
     }
   }
 
-  async function handleEditorSave(data: { name: string; color: string }) {
+  async function handleEditorSave(data: { name: string; target_count?: number; target_period?: 'week' | 'month' }) {
     if (!editorState) return;
 
     try {
       if (editorState.mode === 'add') {
-        const goal = await createGoal(data.name, data.color);
+        // Color will be auto-assigned based on index, use placeholder for API
+        const goal = await createGoal(
+          data.name,
+          GOAL_PALETTE[goals.length % GOAL_PALETTE.length],
+          data.target_count,
+          data.target_period
+        );
         goals = [...goals, goal];
       } else {
-        const updated = await updateGoal(editorState.goal.id, data);
+        const updated = await updateGoal(editorState.goal.id, {
+          name: data.name,
+          target_count: data.target_count,
+          target_period: data.target_period,
+        });
         goals = goals.map(g => g.id === updated.id ? updated : g);
       }
       editorState = null;
@@ -254,16 +302,7 @@
     authStore.set({ type: 'guest' });
   }
 
-  function handleUserClick() {
-    drawerOpen = true;
-  }
-
-  function handleDrawerClose() {
-    drawerOpen = false;
-  }
-
   async function handleLogout() {
-    drawerOpen = false;
     try {
       await logout();
       setGuestMode(false);
@@ -277,7 +316,6 @@
   }
 
   async function handleProfileClick() {
-    drawerOpen = false;
     // Load all completions for statistics
     try {
       allCompletions = await getAllCompletions();
@@ -334,7 +372,8 @@
     {:else if editorState}
       <GoalEditor
         mode={editorState.mode}
-        goal={editorState.mode === 'edit' ? editorState.goal : null}
+        goal={editorState.mode === 'edit' ? goalsWithColors.find(g => g.id === editorState.goal.id) ?? null : null}
+        previewColor={GOAL_PALETTE[goals.length % GOAL_PALETTE.length]}
         onSave={handleEditorSave}
         onCancel={() => editorState = null}
         onDelete={editorState.mode === 'edit' ? handleEditorDelete : null}
@@ -348,7 +387,9 @@
         onToggleAddForm={() => editorState = { mode: 'add' }}
         {user}
         {isGuest}
-        onUserClick={handleUserClick}
+        onLogout={handleLogout}
+        onProfileClick={handleProfileClick}
+        onSignIn={handleSignIn}
       />
 
       <main>
@@ -362,12 +403,13 @@
         <p class="empty">No goals yet. Add one to get started!</p>
       {:else}
         <div class="goals" role="list">
-          {#each goals as goal (goal.id)}
+          {#each goalsWithColors as goal (goal.id)}
             <GoalRow
               {goal}
               {daysInMonth}
               {currentDay}
               completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
+              periodCompletions={getPeriodCompletions(goal.id, goal.target_period)}
               onToggle={(day) => handleToggle(goal.id, day)}
               onEdit={() => handleEditGoal(goal)}
               onDragStart={(e) => handleDragStart(goal.id, e)}
@@ -382,33 +424,32 @@
 
       <Footer />
     {/if}
-
-    <UserDrawer
-      open={drawerOpen}
-      {user}
-      {isGuest}
-      onClose={handleDrawerClose}
-      onLogout={handleLogout}
-      onProfileClick={handleProfileClick}
-      onSignIn={handleSignIn}
-    />
   </div>
 {/if}
 
 <style>
   :global(:root) {
-    --bg-primary: #0f0f1a;
-    --bg-secondary: #1a1a2e;
-    --bg-tertiary: #252542;
-    --text-primary: #e8e8f0;
-    --text-secondary: #a0a0b8;
-    --text-muted: #6b6b80;
-    --accent: #6366f1;
-    --accent-hover: #818cf8;
-    --success: #22c55e;
-    --error: #ef4444;
-    --error-bg: #2d1f1f;
-    --border: #353550;
+    /* Backgrounds - warm yellow tint */
+    --bg-primary: #F7F3E3;      /* Main background - warm yellow */
+    --bg-secondary: #EFE9D8;    /* Secondary - slightly darker */
+    --bg-tertiary: #E5DECA;     /* Tertiary - warm beige */
+
+    /* Text - dark for contrast */
+    --text-primary: #2D2A26;    /* Main text - warm dark */
+    --text-secondary: #6B6560;  /* Secondary text */
+    --text-muted: #9A948C;      /* Muted text */
+
+    /* Accent - sage green (primary color) */
+    --accent: #5B8C5A;
+    --accent-hover: #4A7349;
+
+    /* Status colors */
+    --success: #5B8C5A;         /* Sage green */
+    --error: #C65D4A;           /* Muted red */
+    --error-bg: #FEF2F0;        /* Light red bg */
+
+    /* Border */
+    --border: #D5CEBC;          /* Warm gray border */
   }
 
   :global(body) {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import MonthNav from './MonthNav.svelte';
+  import UserDropdown from './UserDropdown.svelte';
   import type { User } from '../stores';
 
   export let month: string;
@@ -9,30 +10,59 @@
   export let onToggleAddForm: () => void;
   export let user: User | null = null;
   export let isGuest: boolean = false;
-  export let onUserClick: () => void = () => {};
+  export let onLogout: () => void = () => {};
+  export let onProfileClick: () => void = () => {};
+  export let onSignIn: () => void = () => {};
+
+  let dropdownOpen = false;
 
   $: displayName = user?.name
     ? user.name.split(' ')[0]
     : isGuest
       ? 'Anonymous'
       : '';
+
+  function toggleDropdown() {
+    dropdownOpen = !dropdownOpen;
+  }
+
+  function closeDropdown() {
+    dropdownOpen = false;
+  }
+
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.user-menu')) {
+      closeDropdown();
+    }
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      closeDropdown();
+    }
+  }
+
+  function handleProfileClick() {
+    closeDropdown();
+    onProfileClick();
+  }
+
+  function handleLogout() {
+    closeDropdown();
+    onLogout();
+  }
+
+  function handleSignIn() {
+    closeDropdown();
+    onSignIn();
+  }
 </script>
+
+<svelte:window on:click={handleClickOutside} on:keydown={handleKeydown} />
 
 <header>
   <div class="header-content">
-    <button class="user-indicator" on:click={onUserClick}>
-      {#if user?.avatar_url}
-        <img src={user.avatar_url} alt="User avatar" class="avatar" />
-      {:else}
-        <div class="avatar avatar-placeholder">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-        </div>
-      {/if}
-      <span class="user-name">{displayName}</span>
-    </button>
-    <MonthNav {month} {onPrev} {onNext} />
     <button
       class="add-btn"
       on:click={onToggleAddForm}
@@ -40,6 +70,34 @@
     >
       {showAddForm ? 'Cancel' : 'New Goal'}
     </button>
+    <MonthNav {month} {onPrev} {onNext} />
+    <div class="user-menu">
+      <button class="user-indicator" on:click|stopPropagation={toggleDropdown} aria-expanded={dropdownOpen}>
+        {#if user?.avatar_url}
+          <img src={user.avatar_url} alt="User avatar" class="avatar" />
+        {:else}
+          <div class="avatar avatar-placeholder">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+        {/if}
+        <span class="user-name">{displayName}</span>
+        <svg class="chevron" class:open={dropdownOpen} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      {#if dropdownOpen}
+        <UserDropdown
+          {user}
+          {isGuest}
+          onClose={closeDropdown}
+          onLogout={handleLogout}
+          onProfileClick={handleProfileClick}
+          onSignIn={handleSignIn}
+        />
+      {/if}
+    </div>
   </div>
 </header>
 
@@ -61,11 +119,15 @@
     margin: 0 auto;
   }
 
+  .user-menu {
+    position: relative;
+  }
+
   .user-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 12px 4px 4px;
+    padding: 4px 8px 4px 4px;
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 20px;
@@ -95,6 +157,15 @@
   .user-name {
     font-size: 14px;
     color: var(--text-primary);
+  }
+
+  .chevron {
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+  }
+
+  .chevron.open {
+    transform: rotate(180deg);
   }
 
   .add-btn {

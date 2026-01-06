@@ -18,11 +18,15 @@
 
 <div class="month-nav">
   <button class="nav-btn" on:click={onPrev} aria-label="Previous month">
-    ‹
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
   </button>
   <span class="month-display">{displayMonth}</span>
   <button class="nav-btn" on:click={onNext} aria-label="Next month">
-    ›
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
   </button>
 </div>
 
@@ -34,14 +38,15 @@
   }
 
   .nav-btn {
-    padding: 4px 8px;
-    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
     background: transparent;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     color: var(--text-secondary);
-    line-height: 1;
   }
 
   .nav-btn:hover {
