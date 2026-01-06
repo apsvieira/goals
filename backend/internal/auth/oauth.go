@@ -13,13 +13,11 @@ import (
 
 	"github.com/apsv/goal-tracker/backend/internal/db"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 )
 
 const (
 	ProviderGoogle = "google"
-	ProviderGitHub = "github"
 )
 
 var (
@@ -31,11 +29,10 @@ var (
 
 // OAuthHandler handles OAuth authentication
 type OAuthHandler struct {
-	db            db.Database
-	authManager   *Manager
-	googleConfig  *oauth2.Config
-	githubConfig  *oauth2.Config
-	baseURL       string
+	db           db.Database
+	authManager  *Manager
+	googleConfig *oauth2.Config
+	baseURL      string
 }
 
 // GoogleUserInfo represents the user info response from Google
@@ -45,22 +42,6 @@ type GoogleUserInfo struct {
 	VerifiedEmail bool   `json:"verified_email"`
 	Name          string `json:"name"`
 	Picture       string `json:"picture"`
-}
-
-// GitHubUserInfo represents the user info response from GitHub
-type GitHubUserInfo struct {
-	ID        int64  `json:"id"`
-	Login     string `json:"login"`
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url"`
-}
-
-// GitHubEmail represents an email from GitHub's emails API
-type GitHubEmail struct {
-	Email    string `json:"email"`
-	Primary  bool   `json:"primary"`
-	Verified bool   `json:"verified"`
 }
 
 // NewOAuthHandler creates a new OAuth handler
@@ -84,19 +65,6 @@ func NewOAuthHandler(database db.Database, authManager *Manager, baseURL string)
 		}
 	}
 
-	// Configure GitHub OAuth
-	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
-	githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
-	if githubClientID != "" && githubClientSecret != "" {
-		h.githubConfig = &oauth2.Config{
-			ClientID:     githubClientID,
-			ClientSecret: githubClientSecret,
-			RedirectURL:  baseURL + "/api/v1/auth/oauth/github/callback",
-			Scopes:       []string{"user:email"},
-			Endpoint:     github.Endpoint,
-		}
-	}
-
 	return h
 }
 
@@ -107,8 +75,6 @@ func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provid
 	switch provider {
 	case ProviderGoogle:
 		config = h.googleConfig
-	case ProviderGitHub:
-		config = h.githubConfig
 	default:
 		return ErrUnsupportedProvider
 	}
@@ -148,8 +114,6 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request, pr
 	switch provider {
 	case ProviderGoogle:
 		config = h.googleConfig
-	case ProviderGitHub:
-		config = h.githubConfig
 	default:
 		return "", ErrUnsupportedProvider
 	}
@@ -184,46 +148,15 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request, pr
 		return "", fmt.Errorf("%w: %v", ErrOAuthExchange, err)
 	}
 
-	// Get user info based on provider
-	var providerUserID, email, name, avatarURL string
-
-	switch provider {
-	case ProviderGoogle:
-		userInfo, err := h.getGoogleUserInfo(token)
-		if err != nil {
-			return "", err
-		}
-		providerUserID = userInfo.ID
-		email = userInfo.Email
-		name = userInfo.Name
-		avatarURL = userInfo.Picture
-
-	case ProviderGitHub:
-		userInfo, err := h.getGitHubUserInfo(token)
-		if err != nil {
-			return "", err
-		}
-		providerUserID = fmt.Sprintf("%d", userInfo.ID)
-		email = userInfo.Email
-		name = userInfo.Name
-		if name == "" {
-			name = userInfo.Login
-		}
-		avatarURL = userInfo.AvatarURL
-
-		// If email is empty, try to get it from the emails API
-		if email == "" {
-			emails, err := h.getGitHubEmails(token)
-			if err == nil {
-				for _, e := range emails {
-					if e.Primary && e.Verified {
-						email = e.Email
-						break
-					}
-				}
-			}
-		}
+	// Get user info from Google
+	userInfo, err := h.getGoogleUserInfo(token)
+	if err != nil {
+		return "", err
 	}
+	providerUserID := userInfo.ID
+	email := userInfo.Email
+	name := userInfo.Name
+	avatarURL := userInfo.Picture
 
 	if email == "" {
 		return "", fmt.Errorf("%w: email not available", ErrGetUserInfo)
@@ -266,68 +199,7 @@ func (h *OAuthHandler) getGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, 
 	return &userInfo, nil
 }
 
-// getGitHubUserInfo fetches user info from GitHub
-func (h *OAuthHandler) getGitHubUserInfo(token *oauth2.Token) (*GitHubUserInfo, error) {
-	client := h.githubConfig.Client(context.Background(), token)
-	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
-	if err != nil {
-		return nil, fmt.Errorf("%w: create request: %v", ErrGetUserInfo, err)
-	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrGetUserInfo, err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("%w: read body: %v", ErrGetUserInfo, err)
-	}
-
-	var userInfo GitHubUserInfo
-	if err := json.Unmarshal(body, &userInfo); err != nil {
-		return nil, fmt.Errorf("%w: parse response: %v", ErrGetUserInfo, err)
-	}
-
-	return &userInfo, nil
-}
-
-// getGitHubEmails fetches user emails from GitHub
-func (h *OAuthHandler) getGitHubEmails(token *oauth2.Token) ([]GitHubEmail, error) {
-	client := h.githubConfig.Client(context.Background(), token)
-	req, err := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("get emails: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read body: %w", err)
-	}
-
-	var emails []GitHubEmail
-	if err := json.Unmarshal(body, &emails); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
-	}
-
-	return emails, nil
-}
-
 // IsGoogleConfigured returns true if Google OAuth is configured
 func (h *OAuthHandler) IsGoogleConfigured() bool {
 	return h.googleConfig != nil
-}
-
-// IsGitHubConfigured returns true if GitHub OAuth is configured
-func (h *OAuthHandler) IsGitHubConfigured() bool {
-	return h.githubConfig != nil
 }
