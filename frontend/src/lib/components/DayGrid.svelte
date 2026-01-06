@@ -26,7 +26,7 @@
   .day-grid {
     display: grid;
     grid-template-columns: repeat(31, 1fr);
-    gap: 0;
+    gap: 1px;
     flex: 1;
     min-width: 0;
   }
