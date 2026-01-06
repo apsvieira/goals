@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -170,10 +171,7 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Serve the file
-	http.ServeContent(w, r, stat.Name(), stat.ModTime(), file.(fs.File).(interface {
-		Seek(offset int64, whence int) (int64, error)
-		Read(p []byte) (n int, err error)
-	}).(http.File))
+	http.ServeContent(w, r, stat.Name(), stat.ModTime(), file.(io.ReadSeeker))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

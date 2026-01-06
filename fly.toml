@@ -1,5 +1,5 @@
 app = "goal-tracker-app"
-primary_region = "sea"
+primary_region = "gru"
 
 [build]
 
