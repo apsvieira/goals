@@ -97,33 +97,37 @@
     color: GOAL_PALETTE[index % GOAL_PALETTE.length]
   }));
 
-  // Calculate period completions for a goal
-  function getPeriodCompletions(goalId: string, targetPeriod: 'week' | 'month' | undefined): number {
-    if (!targetPeriod) return 0;
+  // Reactive map of period completions per goal (updates when completions change)
+  $: periodCompletionsMap = goals.reduce((acc, goal) => {
+    if (!goal.target_period) {
+      acc[goal.id] = 0;
+      return acc;
+    }
 
-    const goalCompletions = completions.filter(c => c.goal_id === goalId);
+    const goalCompletions = completions.filter(c => c.goal_id === goal.id);
     const now = new Date();
 
-    if (targetPeriod === 'week') {
+    if (goal.target_period === 'week') {
       // Get start of current week (Sunday)
       const dayOfWeek = now.getDay();
       const weekStart = new Date(now);
       weekStart.setDate(now.getDate() - dayOfWeek);
       weekStart.setHours(0, 0, 0, 0);
 
-      return goalCompletions.filter(c => {
+      acc[goal.id] = goalCompletions.filter(c => {
         const completionDate = new Date(c.date + 'T00:00:00');
         return completionDate >= weekStart && completionDate <= now;
       }).length;
     } else {
       // Current month
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      return goalCompletions.filter(c => {
+      acc[goal.id] = goalCompletions.filter(c => {
         const completionDate = new Date(c.date + 'T00:00:00');
         return completionDate >= monthStart && completionDate <= now;
       }).length;
     }
-  }
+    return acc;
+  }, {} as Record<string, number>);
 
   async function loadData() {
     loading = true;
@@ -409,7 +413,7 @@
               {daysInMonth}
               {currentDay}
               completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
-              periodCompletions={getPeriodCompletions(goal.id, goal.target_period)}
+              periodCompletions={periodCompletionsMap[goal.id] ?? 0}
               onToggle={(day) => handleToggle(goal.id, day)}
               onEdit={() => handleEditGoal(goal)}
               onDragStart={(e) => handleDragStart(goal.id, e)}
