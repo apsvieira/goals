@@ -53,17 +53,19 @@
       <span class="user-name">{displayName}</span>
     </div>
 
-    <div class="divider"></div>
+    {#if !isGuest}
+      <div class="divider"></div>
 
-    <nav class="menu">
-      <button class="menu-item" on:click={onProfileClick}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-        <span>Profile</span>
-      </button>
-    </nav>
+      <nav class="menu">
+        <button class="menu-item" on:click={onProfileClick}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Profile</span>
+        </button>
+      </nav>
+    {/if}
 
     <div class="divider"></div>
 
