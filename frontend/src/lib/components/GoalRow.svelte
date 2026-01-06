@@ -26,6 +26,7 @@
   on:drop={onDrop}
   on:dragleave={() => isDragOver = false}
   role="listitem"
+  aria-label="Goal: {goal.name}"
 >
   <div class="goal-info">
     <button
@@ -33,6 +34,7 @@
       on:click={onEdit}
       draggable="true"
       on:dragstart={onDragStart}
+      aria-label="Edit {goal.name}. Drag to reorder."
     >
       {goal.name}
     </button>

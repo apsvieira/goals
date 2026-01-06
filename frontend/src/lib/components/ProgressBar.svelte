@@ -8,14 +8,21 @@
   $: periodShort = period === 'week' ? '/wk' : '/mo';
 </script>
 
-<div class="progress-bar">
+<div
+  class="progress-bar"
+  role="progressbar"
+  aria-valuenow={current}
+  aria-valuemin={0}
+  aria-valuemax={target}
+  aria-label="{current} of {target} {period === 'week' ? 'weekly' : 'monthly'} goal completed"
+>
   <div class="bar-container">
     <div
       class="bar-fill"
       style="width: {percentage}%; background-color: {color}"
     ></div>
   </div>
-  <span class="progress-text">{current}/{target}{periodShort}</span>
+  <span class="progress-text" aria-hidden="true">{current}/{target}{periodShort}</span>
 </div>
 
 <style>

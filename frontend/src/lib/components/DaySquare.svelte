@@ -31,7 +31,7 @@
     border: 1.5px solid var(--day-color);
     border-radius: 3px;
     background: var(--bg-tertiary);
-    opacity: 0.6;
+    opacity: 0.75;
     cursor: pointer;
     padding: 0;
     transition: opacity 0.1s ease;
@@ -59,7 +59,7 @@
   }
 
   .day-square.disabled {
-    opacity: 0.3;
+    opacity: 0.45;
     cursor: not-allowed;
   }
 </style>

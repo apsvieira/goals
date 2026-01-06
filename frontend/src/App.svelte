@@ -7,6 +7,7 @@
   import AuthPage from './lib/components/AuthPage.svelte';
   import ProfilePage from './lib/components/ProfilePage.svelte';
   import PrivacyPolicy from './lib/components/PrivacyPolicy.svelte';
+  import Spinner from './lib/components/Spinner.svelte';
   import {
     getCalendar,
     createGoal,
@@ -23,7 +24,7 @@
     type Completion,
   } from './lib/api';
   import { getUserFriendlyMessage } from './lib/errors';
-  import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
+  import { authStore, hasLocalData, setGuestMode, isOnline, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
@@ -40,6 +41,10 @@
   let currentSyncStatus: SyncStatus;
   syncStatus.subscribe(value => currentSyncStatus = value);
 
+  // Online/offline state
+  let online = true;
+  isOnline.subscribe(value => online = value);
+
   // Current month in YYYY-MM format
   let currentMonth = new Date().toISOString().slice(0, 7);
   let goals: Goal[] = [];
@@ -55,6 +60,9 @@
   // Profile state
   let showProfile = false;
   let allCompletions: Completion[] = [];
+
+  // Flag to prevent race condition between sync and loadData during initial auth
+  let initialAuthInProgress = false;
 
   // Route state for legal pages
   type Route = 'home' | 'privacy';
@@ -195,6 +203,33 @@
     currentMonth = d.toISOString().slice(0, 7);
   }
 
+  // Touch swipe handling for month navigation
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const SWIPE_THRESHOLD = 50; // Minimum swipe distance in pixels
+  const SWIPE_RATIO = 1.5; // Horizontal must be 1.5x vertical to count as horizontal swipe
+
+  function handleTouchStart(e: TouchEvent) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }
+
+  function handleTouchEnd(e: TouchEvent) {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+
+    // Check if horizontal swipe is significant and dominant
+    if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * SWIPE_RATIO) {
+      if (deltaX > 0) {
+        prevMonth(); // Swipe right = previous month
+      } else {
+        nextMonth(); // Swipe left = next month
+      }
+    }
+  }
+
   async function handleToggle(goalId: string, day: number) {
     const [year, month] = currentMonth.split('-');
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
@@ -320,6 +355,8 @@
     try {
       const user = await getCurrentUser();
       if (user) {
+        // Set flag to prevent reactive from triggering loadData during sync
+        initialAuthInProgress = true;
         authStore.set({ type: 'authenticated', user });
         // Sync local data with server on successful auth
         try {
@@ -327,6 +364,9 @@
         } catch (syncError) {
           console.error('Initial sync failed:', syncError);
         }
+        // Now explicitly load data after sync completes
+        initialAuthInProgress = false;
+        await loadData();
         return;
       }
     } catch (e) {
@@ -400,7 +440,8 @@
   });
 
   // Reload data when month changes, but only if authenticated/guest
-  $: if (authState.type === 'authenticated' || authState.type === 'guest') {
+  // Skip during initial auth to avoid race condition with sync
+  $: if ((authState.type === 'authenticated' || authState.type === 'guest') && !initialAuthInProgress) {
     currentMonth, loadData();
   }
 </script>
@@ -409,7 +450,8 @@
   <PrivacyPolicy onBack={() => navigateTo('home')} />
 {:else if authState.type === 'loading'}
   <div class="loading-container">
-    <p class="loading">Loading...</p>
+    <Spinner size="large" />
+    <p class="loading-text">Loading your goals...</p>
   </div>
 {:else if authState.type === 'unauthenticated'}
   <AuthPage onContinueAsGuest={handleContinueAsGuest} />
@@ -446,22 +488,43 @@
         onSignIn={handleSignIn}
       />
 
-      <main>
+      <main on:touchstart={handleTouchStart} on:touchend={handleTouchEnd}>
         {#if error}
-          <div class="error">{error}</div>
+          <div class="error" role="alert" aria-live="assertive">{error}</div>
         {/if}
 
         {#if currentSyncStatus.state === 'syncing'}
-          <div class="sync-banner sync-syncing">
-            <span class="sync-spinner"></span>
+          <div class="sync-banner sync-syncing" role="status" aria-live="polite">
+            <span class="sync-spinner" aria-hidden="true"></span>
             <span>{currentSyncStatus.message}</span>
           </div>
         {/if}
 
+        {#if !online}
+          <div class="offline-banner" role="alert" aria-live="assertive">
+            <span class="offline-icon" aria-hidden="true">⚡</span>
+            <span>You're offline. Changes will be saved locally.</span>
+          </div>
+        {/if}
+
       {#if loading}
-        <p class="loading">Loading...</p>
+        <div class="inline-loading">
+          <Spinner size="medium" />
+        </div>
       {:else if goals.length === 0}
-        <p class="empty">No goals yet. Add one to get started!</p>
+        <div class="welcome-card">
+          <h2 class="welcome-title">Welcome to Goal Tracker!</h2>
+          <p class="welcome-text">Track daily habits and goals with a visual calendar.</p>
+          <ul class="welcome-features">
+            <li><strong>Create goals</strong> - Click "New Goal" to start tracking</li>
+            <li><strong>Mark completions</strong> - Click day squares to toggle</li>
+            <li><strong>Set targets</strong> - Optional weekly/monthly targets with progress bars</li>
+            <li><strong>Swipe to navigate</strong> - View past or future months</li>
+          </ul>
+          <button class="welcome-cta" on:click={() => editorState = { mode: 'add' }}>
+            Create Your First Goal
+          </button>
+        </div>
       {:else}
         <div class="goals" role="list">
           {#each goalsWithColors as goal (goal.id)}
@@ -496,10 +559,10 @@
     --bg-secondary: #EFE9D8;    /* Secondary - slightly darker */
     --bg-tertiary: #E5DECA;     /* Tertiary - warm beige */
 
-    /* Text - dark for contrast */
+    /* Text - dark for contrast (WCAG AA compliant) */
     --text-primary: #2D2A26;    /* Main text - warm dark */
-    --text-secondary: #6B6560;  /* Secondary text */
-    --text-muted: #9A948C;      /* Muted text */
+    --text-secondary: #5D5853;  /* Secondary text - 4.8:1 contrast */
+    --text-muted: #736D65;      /* Muted text - 4.6:1 contrast */
 
     /* Accent - sage green (primary color) */
     --accent: #5B8C5A;
@@ -557,9 +620,22 @@
   .loading-container {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 16px;
     background: var(--bg-primary);
+  }
+
+  .loading-text {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .inline-loading {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
   }
 
   /* Sync status banner */
@@ -590,5 +666,82 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  /* Offline indicator banner */
+  .offline-banner {
+    padding: 12px 16px;
+    margin: 0 24px 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    background: #FFF3CD;
+    color: #856404;
+    border: 1px solid #FFEEBA;
+  }
+
+  .offline-icon {
+    font-size: 16px;
+  }
+
+  /* Welcome/onboarding card */
+  .welcome-card {
+    max-width: 400px;
+    margin: 32px auto;
+    padding: 24px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .welcome-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .welcome-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 20px 0;
+  }
+
+  .welcome-features {
+    text-align: left;
+    padding-left: 20px;
+    margin: 0 0 24px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  .welcome-features li {
+    margin-bottom: 4px;
+  }
+
+  .welcome-features strong {
+    color: var(--text-primary);
+  }
+
+  .welcome-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .welcome-cta:hover {
+    background: var(--accent-hover);
   }
 </style>

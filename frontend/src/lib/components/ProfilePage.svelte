@@ -92,6 +92,35 @@
         return goalDate < earliest ? goalDate : earliest;
       }, new Date(goals[0].created_at)).toISOString()
     : null;
+
+  function exportData() {
+    const exportObj = {
+      exportedAt: new Date().toISOString(),
+      goals: (goals ?? []).map(g => ({
+        name: g.name,
+        color: g.color,
+        created_at: g.created_at,
+        target_count: g.target_count,
+        target_period: g.target_period,
+        archived_at: g.archived_at,
+      })),
+      completions: (completions ?? []).map(c => ({
+        goal_name: goals.find(g => g.id === c.goal_id)?.name || 'Unknown',
+        date: c.date,
+        created_at: c.created_at,
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `goal-tracker-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <div class="profile-page">
@@ -156,6 +185,19 @@
           {/each}
         </div>
       {/if}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="export-section">
+      <h2 class="section-title">Data Export</h2>
+      <p class="export-description">Download a copy of all your goals and completions.</p>
+      <button class="export-button" on:click={exportData}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
+        Export Data (JSON)
+      </button>
     </div>
   </div>
 </div>
@@ -365,5 +407,45 @@
     .goal-progress {
       font-size: 13px;
     }
+
+    .section-title {
+      font-size: 16px;
+    }
+  }
+
+  /* Export section styles */
+  .export-section {
+    padding: 8px 0;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .export-description {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+  }
+
+  .export-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .export-button:hover {
+    background: var(--bg-tertiary);
   }
 </style>
