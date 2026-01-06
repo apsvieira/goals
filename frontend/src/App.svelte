@@ -6,6 +6,9 @@
   import GoalEditor from './lib/components/GoalEditor.svelte';
   import AuthPage from './lib/components/AuthPage.svelte';
   import ProfilePage from './lib/components/ProfilePage.svelte';
+  import PrivacyPolicy from './lib/components/PrivacyPolicy.svelte';
+  import TermsOfService from './lib/components/TermsOfService.svelte';
+  import AboutPage from './lib/components/AboutPage.svelte';
   import {
     getCalendar,
     createGoal,
@@ -21,7 +24,7 @@
     type Completion,
   } from './lib/api';
   import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
-  import { syncManager } from './lib/sync';
+  import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
   const GOAL_PALETTE = [
@@ -32,6 +35,10 @@
   // Auth state
   let authState: AuthState;
   authStore.subscribe(value => authState = value);
+
+  // Sync state
+  let currentSyncStatus: SyncStatus;
+  syncStatus.subscribe(value => currentSyncStatus = value);
 
   // Current month in YYYY-MM format
   let currentMonth = new Date().toISOString().slice(0, 7);
@@ -47,6 +54,28 @@
   // Profile state
   let showProfile = false;
   let allCompletions: Completion[] = [];
+
+  // Route state for legal pages
+  type Route = 'home' | 'privacy' | 'terms' | 'about';
+  let currentRoute: Route = 'home';
+
+  function getRouteFromPath(): Route {
+    const path = window.location.pathname;
+    if (path === '/privacy') return 'privacy';
+    if (path === '/terms') return 'terms';
+    if (path === '/about') return 'about';
+    return 'home';
+  }
+
+  function navigateTo(route: Route) {
+    currentRoute = route;
+    const path = route === 'home' ? '/' : `/${route}`;
+    window.history.pushState({}, '', path);
+  }
+
+  function handlePopState() {
+    currentRoute = getRouteFromPath();
+  }
 
   // Derived user state
   $: user = authState.type === 'authenticated' ? authState.user : null;
@@ -343,12 +372,28 @@
     window.location.href = `${apiBase}/auth/google`;
   }
 
+  async function handleSyncRetry() {
+    await syncManager.retry();
+  }
+
+  function handleSyncDismiss() {
+    syncManager.dismissError();
+  }
+
   onMount(async () => {
+    // Initialize route from URL
+    currentRoute = getRouteFromPath();
+    window.addEventListener('popstate', handlePopState);
+
     await checkAuth();
     // Only load data if authenticated or guest
     if (authState.type === 'authenticated' || authState.type === 'guest') {
       await loadData();
     }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   });
 
   // Reload data when month changes, but only if authenticated/guest
@@ -357,7 +402,13 @@
   }
 </script>
 
-{#if authState.type === 'loading'}
+{#if currentRoute === 'privacy'}
+  <PrivacyPolicy onBack={() => navigateTo('home')} />
+{:else if currentRoute === 'terms'}
+  <TermsOfService onBack={() => navigateTo('home')} />
+{:else if currentRoute === 'about'}
+  <AboutPage onBack={() => navigateTo('home')} />
+{:else if authState.type === 'loading'}
   <div class="loading-container">
     <p class="loading">Loading...</p>
   </div>
@@ -399,6 +450,27 @@
       <main>
         {#if error}
           <div class="error">{error}</div>
+        {/if}
+
+        {#if currentSyncStatus.state === 'syncing'}
+          <div class="sync-banner sync-syncing">
+            <span class="sync-spinner"></span>
+            <span>{currentSyncStatus.message}</span>
+          </div>
+        {:else if currentSyncStatus.state === 'success'}
+          <div class="sync-banner sync-success">
+            <span>{currentSyncStatus.message}</span>
+          </div>
+        {:else if currentSyncStatus.state === 'error'}
+          <div class="sync-banner sync-error">
+            <span>{currentSyncStatus.message}</span>
+            <div class="sync-actions">
+              {#if currentSyncStatus.canRetry}
+                <button class="sync-btn" on:click={handleSyncRetry}>Retry</button>
+              {/if}
+              <button class="sync-btn sync-btn-dismiss" on:click={handleSyncDismiss}>Dismiss</button>
+            </div>
+          </div>
         {/if}
 
       {#if loading}
@@ -503,5 +575,82 @@
     align-items: center;
     justify-content: center;
     background: var(--bg-primary);
+  }
+
+  /* Sync status banner */
+  .sync-banner {
+    padding: 12px 16px;
+    margin: 0 24px 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+  }
+
+  .sync-syncing {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .sync-success {
+    background: #E8F5E9;
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+
+  .sync-error {
+    background: var(--error-bg);
+    color: var(--error);
+    border: 1px solid var(--error);
+    flex-wrap: wrap;
+  }
+
+  .sync-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .sync-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .sync-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .sync-btn:not(.sync-btn-dismiss) {
+    background: var(--accent);
+    color: white;
+  }
+
+  .sync-btn:not(.sync-btn-dismiss):hover {
+    background: var(--accent-hover);
+  }
+
+  .sync-btn-dismiss {
+    background: transparent;
+    color: var(--error);
+    text-decoration: underline;
+  }
+
+  .sync-btn-dismiss:hover {
+    background: rgba(0, 0, 0, 0.05);
   }
 </style>

@@ -4,6 +4,12 @@
   function handleGoogleLogin() {
     window.location.href = '/api/v1/auth/oauth/google';
   }
+
+  function handleLinkClick(e: MouseEvent, path: string) {
+    e.preventDefault();
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 </script>
 
 <div class="auth-container">
@@ -34,6 +40,12 @@
     <p class="guest-note">
       Your data will be stored locally in your browser
     </p>
+
+    <nav class="legal-links">
+      <a href="/privacy" on:click={(e) => handleLinkClick(e, '/privacy')}>Privacy Policy</a>
+      <span class="separator">|</span>
+      <a href="/terms" on:click={(e) => handleLinkClick(e, '/terms')}>Terms of Service</a>
+    </nav>
   </div>
 </div>
 
@@ -142,5 +154,27 @@
     margin: 16px 0 0;
     font-size: 13px;
     color: var(--text-muted);
+  }
+
+  .legal-links {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .legal-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .legal-links a:hover {
+    color: var(--text-secondary);
+    text-decoration: underline;
+  }
+
+  .legal-links .separator {
+    color: var(--border);
+    margin: 0 8px;
   }
 </style>

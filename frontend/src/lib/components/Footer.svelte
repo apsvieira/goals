@@ -1,14 +1,20 @@
 <script lang="ts">
   const currentYear = new Date().getFullYear();
+
+  function handleLinkClick(e: MouseEvent, path: string) {
+    e.preventDefault();
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 </script>
 
 <footer>
   <div class="footer-content">
     <span class="copyright">© {currentYear} Goal Tracker</span>
     <nav class="footer-links">
-      <a href="/privacy">Privacy</a>
-      <a href="/terms">Terms</a>
-      <a href="/about">About</a>
+      <a href="/privacy" on:click={(e) => handleLinkClick(e, '/privacy')}>Privacy</a>
+      <a href="/terms" on:click={(e) => handleLinkClick(e, '/terms')}>Terms</a>
+      <a href="/about" on:click={(e) => handleLinkClick(e, '/about')}>About</a>
     </nav>
   </div>
 </footer>

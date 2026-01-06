@@ -78,6 +78,10 @@ func main() {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
+	// Start background session cleanup (runs every hour)
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	handler.StartSessionCleanup(cleanupCtx, time.Hour)
+
 	// Start server in a goroutine
 	go func() {
 		log.Printf("Starting server on %s", serverAddr)
@@ -94,6 +98,9 @@ func main() {
 	// Wait for shutdown signal
 	<-shutdown
 	log.Println("Shutdown signal received, initiating graceful shutdown...")
+
+	// Stop background session cleanup
+	cleanupCancel()
 
 	// Create context with timeout for graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

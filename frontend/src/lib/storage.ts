@@ -123,3 +123,18 @@ export async function getMaxPosition(): Promise<number> {
   if (goals.length === 0) return 0;
   return Math.max(...goals.map(g => g.position));
 }
+
+// Get ALL local completions (for sync)
+export async function getAllLocalCompletions(): Promise<Completion[]> {
+  const database = getDB();
+  return database.getAll('completions');
+}
+
+// Delete completion by goal and date
+export async function deleteLocalCompletionByGoalAndDate(goalId: string, date: string): Promise<void> {
+  const database = getDB();
+  const completion = await getLocalCompletionByGoalAndDate(goalId, date);
+  if (completion) {
+    await database.delete('completions', completion.id);
+  }
+}

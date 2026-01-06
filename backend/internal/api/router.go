@@ -45,12 +45,14 @@ func initLogger() {
 }
 
 type Server struct {
-	db             db.Database
-	router         chi.Router
-	staticFS       fs.FS
-	authManager    *auth.Manager
-	oauthHandler   *auth.OAuthHandler
+	db              db.Database
+	router          chi.Router
+	staticFS        fs.FS
+	authManager     *auth.Manager
+	oauthHandler    *auth.OAuthHandler
 	authRateLimiter *RateLimiter
+	apiRateLimiter  *RateLimiter
+	syncRateLimiter *RateLimiter
 }
 
 func NewServer(database db.Database, staticFS fs.FS) *Server {
@@ -63,8 +65,13 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 	authManager := auth.NewManager(database)
 	oauthHandler := auth.NewOAuthHandler(database, authManager, baseURL)
 
-	// Create rate limiter for auth endpoints: 10 requests per minute per IP
+	// Create rate limiters per IP
+	// Auth endpoints: 10 requests per minute (strict - prevent brute force)
 	authRateLimiter := NewRateLimiter(10, time.Minute)
+	// General API endpoints: 100 requests per minute (generous for normal use)
+	apiRateLimiter := NewRateLimiter(100, time.Minute)
+	// Sync endpoint: 30 requests per minute (moderate - more expensive operation)
+	syncRateLimiter := NewRateLimiter(30, time.Minute)
 
 	s := &Server{
 		db:              database,
@@ -72,6 +79,8 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 		authManager:     authManager,
 		oauthHandler:    oauthHandler,
 		authRateLimiter: authRateLimiter,
+		apiRateLimiter:  apiRateLimiter,
+		syncRateLimiter: syncRateLimiter,
 	}
 	s.setupRoutes()
 	return s
@@ -95,7 +104,7 @@ func (s *Server) setupRoutes() {
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
-		// Auth routes with rate limiting
+		// Auth routes with strict rate limiting (10/min - prevent brute force)
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(RateLimitMiddleware(s.authRateLimiter))
 			r.Get("/me", s.getCurrentUser)
@@ -104,25 +113,31 @@ func (s *Server) setupRoutes() {
 			r.Post("/logout", s.logout)
 		})
 
-		// Sync endpoint (requires authentication)
+		// Sync endpoint with moderate rate limiting (30/min - expensive operation)
 		r.Route("/sync", func(r chi.Router) {
+			r.Use(RateLimitMiddleware(s.syncRateLimiter))
 			r.Post("/", s.handleSync)
 		})
 
-		// Goals
-		r.Get("/goals", s.listGoals)
-		r.Post("/goals", s.createGoal)
-		r.Patch("/goals/{id}", s.updateGoal)
-		r.Delete("/goals/{id}", s.archiveGoal)
-		r.Put("/goals/reorder", s.reorderGoals)
+		// Data endpoints with generous rate limiting (100/min - normal API use)
+		r.Group(func(r chi.Router) {
+			r.Use(RateLimitMiddleware(s.apiRateLimiter))
 
-		// Completions
-		r.Get("/completions", s.listCompletions)
-		r.Post("/completions", s.createCompletion)
-		r.Delete("/completions/{id}", s.deleteCompletion)
+			// Goals
+			r.Get("/goals", s.listGoals)
+			r.Post("/goals", s.createGoal)
+			r.Patch("/goals/{id}", s.updateGoal)
+			r.Delete("/goals/{id}", s.archiveGoal)
+			r.Put("/goals/reorder", s.reorderGoals)
 
-		// Calendar convenience endpoint
-		r.Get("/calendar", s.getCalendar)
+			// Completions
+			r.Get("/completions", s.listCompletions)
+			r.Post("/completions", s.createCompletion)
+			r.Delete("/completions/{id}", s.deleteCompletion)
+
+			// Calendar convenience endpoint
+			r.Get("/calendar", s.getCalendar)
+		})
 	})
 
 	// Serve embedded frontend if available
@@ -228,18 +243,27 @@ func requestTimeout(timeout time.Duration) func(http.Handler) http.Handler {
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
-	// Get allowed origins from environment, default to "*" for dev
+	// Get allowed origins from environment
+	// SECURITY: Defaults to no CORS (same-origin only) if not set
+	// Set CORS_ORIGINS=* for development or specific origins for production
 	allowedOrigins := os.Getenv("CORS_ORIGINS")
-	if allowedOrigins == "" {
-		allowedOrigins = "*"
-	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
+		// If no CORS_ORIGINS configured, don't set CORS headers (same-origin only)
+		if allowedOrigins == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Check if origin is allowed
+		originAllowed := false
 		if allowedOrigins == "*" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
+			originAllowed = true
+			// Note: Cannot use credentials with wildcard origin per CORS spec
+			// Don't set Access-Control-Allow-Credentials with "*"
 		} else {
 			// Parse comma-separated origins
 			origins := strings.Split(allowedOrigins, ",")
@@ -247,14 +271,17 @@ func corsMiddleware(next http.Handler) http.Handler {
 				if strings.TrimSpace(allowed) == origin {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Vary", "Origin")
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+					originAllowed = true
 					break
 				}
 			}
 		}
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		if originAllowed {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		}
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -263,6 +290,36 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// StartSessionCleanup starts a background goroutine that periodically cleans up
+// expired sessions. It runs every cleanupInterval and stops when the context is cancelled.
+func (s *Server) StartSessionCleanup(ctx context.Context, cleanupInterval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(cleanupInterval)
+		defer ticker.Stop()
+
+		// Run cleanup immediately on startup
+		if err := s.authManager.CleanupExpiredSessions(); err != nil {
+			Logger.Error("session cleanup failed", slog.String("error", err.Error()))
+		} else {
+			Logger.Info("session cleanup completed")
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				Logger.Info("session cleanup stopped")
+				return
+			case <-ticker.C:
+				if err := s.authManager.CleanupExpiredSessions(); err != nil {
+					Logger.Error("session cleanup failed", slog.String("error", err.Error()))
+				} else {
+					Logger.Info("session cleanup completed")
+				}
+			}
+		}
+	}()
 }
 
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {

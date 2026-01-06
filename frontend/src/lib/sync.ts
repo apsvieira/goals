@@ -1,4 +1,4 @@
-import { get } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { authStore } from './stores';
 import {
   initStorage,
@@ -7,8 +7,19 @@ import {
   getLastSyncedAt,
   setLastSyncedAt,
   saveLocalCompletion,
+  getAllLocalCompletions,
+  deleteLocalCompletionByGoalAndDate,
 } from './storage';
 import type { Goal, Completion } from './api';
+
+// Sync status store for UI feedback
+export type SyncStatus =
+  | { state: 'idle' }
+  | { state: 'syncing'; message: string }
+  | { state: 'success'; message: string }
+  | { state: 'error'; message: string; canRetry: boolean };
+
+export const syncStatus = writable<SyncStatus>({ state: 'idle' });
 
 // Use relative URL in production, absolute in dev
 const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
@@ -72,10 +83,12 @@ class SyncManager {
     }
 
     this.isSyncing = true;
+    syncStatus.set({ state: 'syncing', message: 'Syncing your data...' });
 
     try {
       // 1. Get pending local changes (all local goals and completions)
       const localGoals = await getAllLocalGoals();
+      const localCompletions = await getAllLocalCompletions();
 
       // Convert local goals to GoalChanges
       const goalChanges: GoalChange[] = localGoals.map(goal => ({
@@ -87,9 +100,13 @@ class SyncManager {
         deleted: !!goal.archived_at,
       }));
 
-      // For now, we don't track completion updates in local storage
-      // We'll send empty completions and just receive server state
-      const completionChanges: CompletionChange[] = [];
+      // Convert local completions to CompletionChanges
+      const completionChanges: CompletionChange[] = localCompletions.map(completion => ({
+        goal_id: completion.goal_id,
+        date: completion.date,
+        completed: true, // All completions in local storage are completed
+        updated_at: completion.created_at,
+      }));
 
       // 2. POST to /api/v1/sync
       const req: SyncRequest = {
@@ -122,8 +139,26 @@ class SyncManager {
       await setLastSyncedAt(response.server_time);
 
       console.log('Sync completed successfully');
+
+      const totalItems = goalChanges.length + completionChanges.length;
+      const message = totalItems > 0
+        ? `Synced ${goalChanges.length} goals and ${completionChanges.length} completions`
+        : 'Sync complete';
+      syncStatus.set({ state: 'success', message });
+
+      // Clear success status after 3 seconds
+      setTimeout(() => {
+        syncStatus.update(current => {
+          if (current.state === 'success') {
+            return { state: 'idle' };
+          }
+          return current;
+        });
+      }, 3000);
     } catch (error) {
       console.error('Sync failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Sync failed';
+      syncStatus.set({ state: 'error', message: errorMessage, canRetry: true });
       throw error;
     } finally {
       this.isSyncing = false;
@@ -167,17 +202,32 @@ class SyncManager {
           created_at: compChange.updated_at,
         };
         await saveLocalCompletion(completion);
+      } else {
+        // Server says this completion was deleted, remove from local
+        await deleteLocalCompletionByGoalAndDate(compChange.goal_id, compChange.date);
       }
-      // For deleted completions, we'd need a deleteLocalCompletion by goal+date
-      // For now, we'll let the next full refresh handle it
     }
   }
 
   async linkAccount(): Promise<void> {
     // Upload all local data to server on first sync after login
     // This is essentially a full sync with no last_synced_at
+    syncStatus.set({ state: 'syncing', message: 'Migrating your guest data...' });
     this.lastSyncedAt = null;
     await this.sync();
+  }
+
+  async retry(): Promise<void> {
+    syncStatus.set({ state: 'idle' });
+    try {
+      await this.sync();
+    } catch {
+      // Error is already handled in sync()
+    }
+  }
+
+  dismissError(): void {
+    syncStatus.set({ state: 'idle' });
   }
 
   getLastSyncedAt(): Date | null {
