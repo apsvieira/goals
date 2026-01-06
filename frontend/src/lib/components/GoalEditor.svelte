@@ -75,8 +75,12 @@
       </div>
 
       <div class="preview">
-        <span class="preview-dot" style="background-color: {color}"></span>
-        <span>{name || 'Goal Name'}</span>
+        <span class="preview-name">{name || 'Goal Name'}</span>
+        <div class="preview-squares">
+          {#each Array(7) as _}
+            <span class="preview-square" style="border-color: {color}; background-color: {color}"></span>
+          {/each}
+        </div>
       </div>
     </div>
 
@@ -207,13 +211,26 @@
     background: var(--bg-tertiary);
     border-radius: 8px;
     color: var(--text-primary);
-    font-size: 16px;
+    font-size: 14px;
   }
 
-  .preview-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+  .preview-name {
+    width: 100px;
+    flex-shrink: 0;
+    word-wrap: break-word;
+  }
+
+  .preview-squares {
+    display: flex;
+    gap: 1px;
+    flex: 1;
+  }
+
+  .preview-square {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1.5px solid;
     flex-shrink: 0;
   }
 
