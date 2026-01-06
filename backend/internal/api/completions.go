@@ -32,7 +32,8 @@ func (s *Server) listCompletions(w http.ResponseWriter, r *http.Request) {
 		goalID = &g
 	}
 
-	completions, err := s.db.ListCompletions(from, to, goalID)
+	userID := getUserID(r)
+	completions, err := s.db.ListCompletions(userID, from, to, goalID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -117,6 +118,29 @@ func (s *Server) createCompletion(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) deleteCompletion(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	userID := getUserID(r)
+
+	// Get the completion to verify it exists
+	completion, err := s.db.GetCompletionByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if completion == nil {
+		http.Error(w, "completion not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify the completion's goal belongs to the current user
+	goal, err := s.db.GetGoal(userID, completion.GoalID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if goal == nil {
+		http.Error(w, "completion not found", http.StatusNotFound)
+		return
+	}
 
 	if err := s.db.DeleteCompletion(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -151,7 +175,7 @@ func (s *Server) getCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	completions, err := s.db.ListCompletions(from, to, nil)
+	completions, err := s.db.ListCompletions(userID, from, to, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

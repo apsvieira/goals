@@ -15,3 +15,6 @@ backend/cmd/server/dist/
 .idea/
 .vscode/
 *.swp
+
+# bv (beads viewer) local config and caches
+.bv/

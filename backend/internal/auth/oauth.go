@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/apsv/goal-tracker/backend/internal/db"
 	"golang.org/x/oauth2"
@@ -90,6 +91,13 @@ func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provid
 	}
 	state := base64.URLEncoding.EncodeToString(stateBytes)
 
+	// Determine if we should use secure cookies
+	// Default to true in production, can be disabled with COOKIE_SECURE=false
+	secure := true
+	if secureEnv := os.Getenv("COOKIE_SECURE"); strings.ToLower(secureEnv) == "false" {
+		secure = false
+	}
+
 	// Store state in cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
@@ -98,7 +106,7 @@ func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provid
 		MaxAge:   300, // 5 minutes
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   r.TLS != nil,
+		Secure:   secure,
 	})
 
 	// Redirect to OAuth provider

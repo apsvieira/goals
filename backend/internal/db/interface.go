@@ -19,7 +19,9 @@ type Database interface {
 	ReorderGoals(userID *string, goalIDs []string) error
 
 	// Completions
-	ListCompletions(from, to string, goalID *string) ([]models.Completion, error)
+	// userID: nil for guest mode (filters by user_id IS NULL), non-nil for authenticated users
+	ListCompletions(userID *string, from, to string, goalID *string) ([]models.Completion, error)
+	GetCompletionByID(id string) (*models.Completion, error)
 	GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error)
 	CreateCompletion(c *models.Completion) error
 	DeleteCompletion(id string) error

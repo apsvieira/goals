@@ -227,17 +227,29 @@ func (d *SQLiteDB) ArchiveGoal(userID *string, id string) error {
 
 // Completions
 
-func (d *SQLiteDB) ListCompletions(from, to string, goalID *string) ([]models.Completion, error) {
-	query := `SELECT id, goal_id, date, created_at, updated_at, deleted_at FROM completions WHERE date >= ? AND date <= ?`
+func (d *SQLiteDB) ListCompletions(userID *string, from, to string, goalID *string) ([]models.Completion, error) {
+	// Join with goals to filter by user ownership
+	query := `SELECT c.id, c.goal_id, c.date, c.created_at, c.updated_at, c.deleted_at
+		FROM completions c
+		INNER JOIN goals g ON c.goal_id = g.id
+		WHERE c.date >= ? AND c.date <= ?`
 	args := []any{from, to}
 
+	// Filter by user ownership
+	if userID == nil {
+		query += ` AND g.user_id IS NULL`
+	} else {
+		query += ` AND g.user_id = ?`
+		args = append(args, *userID)
+	}
+
 	if goalID != nil {
-		query += ` AND goal_id = ?`
+		query += ` AND c.goal_id = ?`
 		args = append(args, *goalID)
 	}
 	// Exclude soft-deleted completions
-	query += ` AND deleted_at IS NULL`
-	query += ` ORDER BY date ASC`
+	query += ` AND c.deleted_at IS NULL`
+	query += ` ORDER BY c.date ASC`
 
 	rows, err := d.Query(query, args...)
 	if err != nil {
@@ -264,6 +276,31 @@ func (d *SQLiteDB) ListCompletions(from, to string, goalID *string) ([]models.Co
 		completions = append(completions, c)
 	}
 	return completions, rows.Err()
+}
+
+func (d *SQLiteDB) GetCompletionByID(id string) (*models.Completion, error) {
+	var c models.Completion
+	var updatedAt sql.NullTime
+	var deletedAt sql.NullTime
+	err := d.QueryRow(
+		`SELECT id, goal_id, date, created_at, updated_at, deleted_at FROM completions WHERE id = ? AND deleted_at IS NULL`,
+		id,
+	).Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt, &updatedAt, &deletedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query completion by id: %w", err)
+	}
+	if updatedAt.Valid {
+		c.UpdatedAt = updatedAt.Time
+	} else {
+		c.UpdatedAt = c.CreatedAt
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Time
+	}
+	return &c, nil
 }
 
 func (d *SQLiteDB) GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error) {
