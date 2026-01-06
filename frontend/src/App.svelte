@@ -127,13 +127,14 @@
   }));
 
   // Reactive map of period completions per goal (updates when completions change)
-  $: periodCompletionsMap = goals.reduce((acc, goal) => {
+  // Note: explicitly reference completions before reduce to ensure Svelte tracks it as a dependency
+  $: periodCompletionsMap = ((allCompletions) => goals.reduce((acc, goal) => {
     if (!goal.target_period) {
       acc[goal.id] = 0;
       return acc;
     }
 
-    const goalCompletions = completions.filter(c => c.goal_id === goal.id);
+    const goalCompletions = allCompletions.filter(c => c.goal_id === goal.id);
     const now = new Date();
 
     if (goal.target_period === 'week') {
@@ -156,7 +157,7 @@
       }).length;
     }
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>))(completions);
 
   async function loadData() {
     loading = true;
