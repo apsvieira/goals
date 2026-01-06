@@ -68,7 +68,10 @@
       on:click={onToggleAddForm}
       aria-label={showAddForm ? 'Close form' : 'Add goal'}
     >
-      {showAddForm ? 'Cancel' : 'New Goal'}
+      <svg class="plus-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+      </svg>
+      <span class="btn-text">{showAddForm ? 'Cancel' : 'New Goal'}</span>
     </button>
     <MonthNav {month} {onPrev} {onNext} />
     <div class="user-menu">
@@ -169,6 +172,9 @@
   }
 
   .add-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 8px 16px;
     font-size: 14px;
     font-weight: 500;
@@ -184,6 +190,10 @@
     background: var(--accent-hover);
   }
 
+  .plus-icon {
+    display: none;
+  }
+
   @media (max-width: 480px) {
     .user-indicator {
       padding: 4px;
@@ -194,6 +204,20 @@
     .user-name,
     .chevron {
       display: none;
+    }
+
+    .add-btn {
+      padding: 8px;
+      min-width: auto;
+      border-radius: 6px;
+    }
+
+    .btn-text {
+      display: none;
+    }
+
+    .plus-icon {
+      display: block;
     }
   }
 </style>

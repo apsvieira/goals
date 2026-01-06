@@ -10,7 +10,7 @@
 
   $: {
     const [year, monthNum] = month.split('-').map(Number);
-    displayMonth = `${monthNames[monthNum - 1]} ${year}`;
+    displayMonth = monthNames[monthNum - 1];
   }
 
   let displayMonth: string;

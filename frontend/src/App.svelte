@@ -412,6 +412,7 @@
               {goal}
               {daysInMonth}
               {currentDay}
+              month={currentMonth}
               completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
               periodCompletions={periodCompletionsMap[goal.id] ?? 0}
               onToggle={(day) => handleToggle(goal.id, day)}

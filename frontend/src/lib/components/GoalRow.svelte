@@ -14,6 +14,7 @@
   export let isDragOver = false;
   export let currentDay: number = 0;
   export let periodCompletions: number = 0; // Completions in current period (week/month)
+  export let month: string = ''; // YYYY-MM format for 7-day limit
 
   $: hasTarget = goal.target_count && goal.target_period;
 </script>
@@ -50,6 +51,7 @@
     {completedDays}
     {onToggle}
     {currentDay}
+    {month}
   />
 </div>
 
@@ -59,6 +61,7 @@
     align-items: flex-start;
     gap: 12px;
     padding: 6px 0;
+    margin: 0 5px;
   }
 
   .goal-row.drag-over {

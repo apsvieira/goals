@@ -13,7 +13,7 @@
     const daysCompleted = goalCompletions.length;
 
     if (daysCompleted === 0) {
-      return { daysCompleted, daysSinceFirstCompletion: 0, rate: 0 };
+      return { daysCompleted, daysSinceFirstCompletion: 0, rate: 0, periodStats: null };
     }
 
     // Find the earliest completion date for this goal
@@ -28,7 +28,55 @@
 
     const rate = daysSinceFirstCompletion > 0 ? Math.round((daysCompleted / daysSinceFirstCompletion) * 100) : 0;
 
-    return { daysCompleted, daysSinceFirstCompletion, rate };
+    // Calculate weekly/monthly target success rate if goal has targets
+    let periodStats = null;
+    if (goal.target_count && goal.target_period) {
+      const completionDates = goalCompletions.map(c => new Date(c.date));
+
+      if (goal.target_period === 'week') {
+        // Group completions by ISO week
+        const weekMap = new Map<string, number>();
+        completionDates.forEach(date => {
+          const weekKey = getISOWeek(date);
+          weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + 1);
+        });
+
+        // Count weeks from first completion to now
+        const totalWeeks = Math.ceil(daysSinceFirstCompletion / 7);
+        const successfulWeeks = Array.from(weekMap.values()).filter(count => count >= goal.target_count!).length;
+        const successRate = totalWeeks > 0 ? Math.round((successfulWeeks / totalWeeks) * 100) : 0;
+
+        periodStats = { successRate, successful: successfulWeeks, total: totalWeeks, period: 'weeks' };
+      } else if (goal.target_period === 'month') {
+        // Group completions by month
+        const monthMap = new Map<string, number>();
+        completionDates.forEach(date => {
+          const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+          monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + 1);
+        });
+
+        // Count months from first completion to now
+        const firstMonth = new Date(firstCompletionDate.getFullYear(), firstCompletionDate.getMonth(), 1);
+        const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const totalMonths = Math.max(1, Math.round((currentMonth.getTime() - firstMonth.getTime()) / (1000 * 60 * 60 * 24 * 30)) + 1);
+        const successfulMonths = Array.from(monthMap.values()).filter(count => count >= goal.target_count!).length;
+        const successRate = totalMonths > 0 ? Math.round((successfulMonths / totalMonths) * 100) : 0;
+
+        periodStats = { successRate, successful: successfulMonths, total: totalMonths, period: 'months' };
+      }
+    }
+
+    return { daysCompleted, daysSinceFirstCompletion, rate, periodStats };
+  }
+
+  // Helper to get ISO week string
+  function getISOWeek(date: Date): string {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${d.getFullYear()}-W${weekNo}`;
   }
 
   function formatMemberSince(dateStr: string | undefined): string {
@@ -97,8 +145,13 @@
                 <span class="goal-name">{goal.name}</span>
               </div>
               <p class="goal-progress">
-                {stats.daysCompleted} days completed ({stats.rate}%)
+                {stats.daysCompleted} days completed ({stats.daysCompleted}/{stats.daysSinceFirstCompletion})
               </p>
+              {#if stats.periodStats}
+                <p class="goal-period-success">
+                  {stats.periodStats.successRate}% of {stats.periodStats.period} succeeded ({stats.periodStats.successful}/{stats.periodStats.total})
+                </p>
+              {/if}
             </div>
           {/each}
         </div>
@@ -265,6 +318,13 @@
     font-size: 14px;
     color: var(--text-secondary);
     margin: 0 0 0 22px;
+  }
+
+  .goal-period-success {
+    font-size: 13px;
+    color: var(--accent);
+    margin: 4px 0 0 22px;
+    font-weight: 500;
   }
 
   @media (max-width: 480px) {
