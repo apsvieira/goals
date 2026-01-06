@@ -34,7 +34,7 @@
     opacity: 0.6;
     cursor: pointer;
     padding: 0;
-    transition: transform 0.1s ease, opacity 0.1s ease;
+    transition: opacity 0.1s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -50,7 +50,6 @@
   }
 
   .day-square:hover:not(.disabled) {
-    transform: scale(1.1);
     opacity: 1;
   }
 
