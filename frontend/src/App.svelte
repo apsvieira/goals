@@ -7,8 +7,6 @@
   import AuthPage from './lib/components/AuthPage.svelte';
   import ProfilePage from './lib/components/ProfilePage.svelte';
   import PrivacyPolicy from './lib/components/PrivacyPolicy.svelte';
-  import TermsOfService from './lib/components/TermsOfService.svelte';
-  import AboutPage from './lib/components/AboutPage.svelte';
   import {
     getCalendar,
     createGoal,
@@ -56,14 +54,12 @@
   let allCompletions: Completion[] = [];
 
   // Route state for legal pages
-  type Route = 'home' | 'privacy' | 'terms' | 'about';
+  type Route = 'home' | 'privacy';
   let currentRoute: Route = 'home';
 
   function getRouteFromPath(): Route {
     const path = window.location.pathname;
     if (path === '/privacy') return 'privacy';
-    if (path === '/terms') return 'terms';
-    if (path === '/about') return 'about';
     return 'home';
   }
 
@@ -405,10 +401,6 @@
 
 {#if currentRoute === 'privacy'}
   <PrivacyPolicy onBack={() => navigateTo('home')} />
-{:else if currentRoute === 'terms'}
-  <TermsOfService onBack={() => navigateTo('home')} />
-{:else if currentRoute === 'about'}
-  <AboutPage onBack={() => navigateTo('home')} />
 {:else if authState.type === 'loading'}
   <div class="loading-container">
     <p class="loading">Loading...</p>

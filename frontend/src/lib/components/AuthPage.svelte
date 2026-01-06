@@ -43,8 +43,6 @@
 
     <nav class="legal-links">
       <a href="/privacy" on:click={(e) => handleLinkClick(e, '/privacy')}>Privacy Policy</a>
-      <span class="separator">|</span>
-      <a href="/terms" on:click={(e) => handleLinkClick(e, '/terms')}>Terms of Service</a>
     </nav>
   </div>
 </div>
