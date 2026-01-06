@@ -126,9 +126,9 @@
   }));
 
   // Reactive map of period completions per goal (uses periodCompletions for accurate weekly/monthly counts)
-  $: periodCompletionsMap = ((allCompletions) => {
-    console.log('[periodCompletionsMap] recalculating with', allCompletions.length, 'completions,', (goals ?? []).length, 'goals');
-    return (goals ?? []).reduce((acc, goal) => {
+  // Note: Pass goals as a second IIFE parameter to ensure Svelte detects it as a reactive dependency
+  $: periodCompletionsMap = ((allCompletions, allGoals) => {
+    return allGoals.reduce((acc, goal) => {
       if (!goal.target_period) {
         acc[goal.id] = 0;
         return acc;
@@ -158,19 +158,23 @@
       }
       return acc;
     }, {} as Record<string, number>);
-  })(periodCompletions ?? []);
+  })(periodCompletions ?? [], goals ?? []);
 
   async function loadData() {
     loading = true;
     error = '';
     try {
-      const data = await getCalendar(currentMonth);
+      // Fetch both calendar data and period completions before setting state
+      // This prevents the periodCompletionsMap reactive from running with stale data
+      const [data, periodData] = await Promise.all([
+        getCalendar(currentMonth),
+        getCurrentPeriodCompletions()
+      ]);
+
+      // Set periodCompletions FIRST so the reactive has data when goals triggers it
+      periodCompletions = periodData;
       goals = data.goals ?? [];
       completions = data.completions ?? [];
-      // Fetch completions for current period (weekly/monthly targets)
-      const periodData = await getCurrentPeriodCompletions();
-      console.log('[loadData] periodCompletions fetched:', periodData.length, 'items', periodData);
-      periodCompletions = periodData;
     } catch (e) {
       console.error('[loadData] error:', e);
       error = getUserFriendlyMessage(e);
@@ -387,10 +391,8 @@
     window.addEventListener('popstate', handlePopState);
 
     await checkAuth();
-    // Only load data if authenticated or guest
-    if (authState.type === 'authenticated' || authState.type === 'guest') {
-      await loadData();
-    }
+    // Note: loadData() is called by the reactive statement when authState changes,
+    // so we don't need to call it here explicitly
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
