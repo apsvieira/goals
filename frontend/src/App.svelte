@@ -373,14 +373,6 @@
     window.location.href = `${apiBase}/auth/google`;
   }
 
-  async function handleSyncRetry() {
-    await syncManager.retry();
-  }
-
-  function handleSyncDismiss() {
-    syncManager.dismissError();
-  }
-
   onMount(async () => {
     // Initialize route from URL
     currentRoute = getRouteFromPath();
@@ -453,20 +445,6 @@
           <div class="sync-banner sync-syncing">
             <span class="sync-spinner"></span>
             <span>{currentSyncStatus.message}</span>
-          </div>
-        {:else if currentSyncStatus.state === 'success'}
-          <div class="sync-banner sync-success">
-            <span>{currentSyncStatus.message}</span>
-          </div>
-        {:else if currentSyncStatus.state === 'error'}
-          <div class="sync-banner sync-error">
-            <span>{currentSyncStatus.message}</span>
-            <div class="sync-actions">
-              {#if currentSyncStatus.canRetry}
-                <button class="sync-btn" on:click={handleSyncRetry}>Retry</button>
-              {/if}
-              <button class="sync-btn sync-btn-dismiss" on:click={handleSyncDismiss}>Dismiss</button>
-            </div>
           </div>
         {/if}
 
@@ -591,19 +569,6 @@
     border: 1px solid var(--border);
   }
 
-  .sync-success {
-    background: #E8F5E9;
-    color: var(--success);
-    border: 1px solid var(--success);
-  }
-
-  .sync-error {
-    background: var(--error-bg);
-    color: var(--error);
-    border: 1px solid var(--error);
-    flex-wrap: wrap;
-  }
-
   .sync-spinner {
     width: 16px;
     height: 16px;
@@ -615,39 +580,5 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-
-  .sync-actions {
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-  }
-
-  .sync-btn {
-    padding: 4px 12px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .sync-btn:not(.sync-btn-dismiss) {
-    background: var(--accent);
-    color: white;
-  }
-
-  .sync-btn:not(.sync-btn-dismiss):hover {
-    background: var(--accent-hover);
-  }
-
-  .sync-btn-dismiss {
-    background: transparent;
-    color: var(--error);
-    text-decoration: underline;
-  }
-
-  .sync-btn-dismiss:hover {
-    background: rgba(0, 0, 0, 0.05);
   }
 </style>

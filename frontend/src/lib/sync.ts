@@ -139,27 +139,10 @@ class SyncManager {
       await setLastSyncedAt(response.server_time);
 
       console.log('Sync completed successfully');
-
-      const totalItems = goalChanges.length + completionChanges.length;
-      const message = totalItems > 0
-        ? `Synced ${goalChanges.length} goals and ${completionChanges.length} completions`
-        : 'Sync complete';
-      syncStatus.set({ state: 'success', message });
-
-      // Clear success status after 3 seconds
-      setTimeout(() => {
-        syncStatus.update(current => {
-          if (current.state === 'success') {
-            return { state: 'idle' };
-          }
-          return current;
-        });
-      }, 3000);
+      syncStatus.set({ state: 'idle' });
     } catch (error) {
       console.error('Sync failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Sync failed';
-      syncStatus.set({ state: 'error', message: errorMessage, canRetry: true });
-      throw error;
+      syncStatus.set({ state: 'idle' });
     } finally {
       this.isSyncing = false;
     }
