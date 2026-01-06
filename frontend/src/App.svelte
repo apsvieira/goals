@@ -196,9 +196,11 @@
       if (existingId) {
         await deleteCompletion(existingId);
         completions = completions.filter(c => c.id !== existingId);
+        periodCompletions = periodCompletions.filter(c => c.id !== existingId);
       } else {
         const newCompletion = await createCompletion(goalId, date);
         completions = [...completions, newCompletion];
+        periodCompletions = [...periodCompletions, newCompletion];
       }
     } catch (e) {
       error = getUserFriendlyMessage(e);
