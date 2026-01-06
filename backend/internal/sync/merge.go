@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/models"
-	"github.com/google/uuid"
 )
 
 // MergeGoal merges a client goal change with a server goal using Last-Write-Wins strategy.
@@ -114,7 +113,7 @@ func CompletionToChange(completion *models.Completion) CompletionChange {
 	}
 }
 
-// generateCompletionID generates a UUID for a new completion
+// generateCompletionID generates a deterministic ID for a completion based on goal and date
 func generateCompletionID(goalID, date string) string {
-	return uuid.New().String()
+	return goalID + "-" + date
 }
