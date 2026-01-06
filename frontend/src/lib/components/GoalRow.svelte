@@ -12,6 +12,7 @@
   export let onDragOver: (e: DragEvent) => void;
   export let onDrop: (e: DragEvent) => void;
   export let isDragOver = false;
+  export let isFocused = false;
   export let currentDay: number = 0;
   export let periodCompletions: number = 0; // Completions in current period (week/month)
   export let month: string = ''; // YYYY-MM format for 7-day limit
@@ -22,11 +23,12 @@
 <div
   class="goal-row"
   class:drag-over={isDragOver}
+  class:keyboard-focused={isFocused}
   on:dragover={onDragOver}
   on:drop={onDrop}
   on:dragleave={() => isDragOver = false}
   role="listitem"
-  aria-label="Goal: {goal.name}"
+  aria-label="Goal: {goal.name}{isFocused ? ' (selected for keyboard navigation)' : ''}"
 >
   <div class="goal-info">
     <button
@@ -68,6 +70,12 @@
 
   .goal-row.drag-over {
     background-color: var(--bg-tertiary);
+  }
+
+  .goal-row.keyboard-focused {
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--accent);
+    padding-left: 2px;
   }
 
   .goal-info {

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+
   export let mode: 'add' | 'edit' = 'add';
   export let goal: { id: string; name: string; color: string; target_count?: number; target_period?: 'week' | 'month' } | null = null;
   export let previewColor: string = '#5B8C5A'; // Default to first palette color
@@ -8,6 +10,26 @@
 
   let name = goal?.name ?? '';
   let showDeleteConfirm = false;
+
+  // Handle Escape key to close editor
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      if (showDeleteConfirm) {
+        cancelDelete();
+      } else {
+        onCancel();
+      }
+      e.preventDefault();
+    }
+  }
+
+  onMount(() => {
+    window.addEventListener('keydown', handleKeyDown);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeyDown);
+  });
 
   // Target state
   type TargetType = 'daily' | 'weekly' | 'monthly';

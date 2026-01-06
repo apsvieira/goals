@@ -425,10 +425,132 @@
     window.location.href = `${apiBase}/auth/google`;
   }
 
+  // Keyboard navigation state
+  let focusedGoalIndex = -1;
+
+  function handleKeyDown(e: KeyboardEvent) {
+    // Ignore shortcuts when typing in input fields
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      // Only handle Escape in input fields
+      if (e.key === 'Escape') {
+        (target as HTMLInputElement).blur();
+      }
+      return;
+    }
+
+    // Don't handle shortcuts on non-main views
+    if (currentRoute !== 'home' || authState.type !== 'authenticated' && authState.type !== 'guest') {
+      return;
+    }
+
+    // Handle Escape to close modals/forms and profile
+    if (e.key === 'Escape') {
+      if (showProfile) {
+        showProfile = false;
+        e.preventDefault();
+        return;
+      }
+      if (editorState) {
+        editorState = null;
+        e.preventDefault();
+        return;
+      }
+      // Reset goal focus
+      focusedGoalIndex = -1;
+      return;
+    }
+
+    // Don't handle other shortcuts when in editor/profile
+    if (editorState || showProfile) {
+      return;
+    }
+
+    // Arrow keys for month navigation
+    if (e.key === 'ArrowLeft') {
+      prevMonth();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      nextMonth();
+      e.preventDefault();
+      return;
+    }
+
+    // 'N' to open new goal form
+    if (e.key === 'n' || e.key === 'N') {
+      editorState = { mode: 'add' };
+      e.preventDefault();
+      return;
+    }
+
+    // Arrow up/down for goal navigation
+    if (e.key === 'ArrowUp' && goals.length > 0) {
+      focusedGoalIndex = focusedGoalIndex <= 0 ? goals.length - 1 : focusedGoalIndex - 1;
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'ArrowDown' && goals.length > 0) {
+      focusedGoalIndex = focusedGoalIndex >= goals.length - 1 ? 0 : focusedGoalIndex + 1;
+      e.preventDefault();
+      return;
+    }
+
+    // Enter to edit focused goal
+    if (e.key === 'Enter' && focusedGoalIndex >= 0 && focusedGoalIndex < goals.length) {
+      handleEditGoal(goals[focusedGoalIndex]);
+      e.preventDefault();
+      return;
+    }
+
+    // Number keys 1-9 and 0 (for 10) plus Shift+1-9 for 11-19, etc. to toggle today's completion
+    // Simple approach: 1-9 maps to days 1-9, 0 maps to day 10
+    // For days 11-31, use combinations or just allow the basic 1-9, 0
+    if (focusedGoalIndex >= 0 && focusedGoalIndex < goals.length) {
+      const key = e.key;
+      let day: number | null = null;
+
+      // Check for number keys
+      if (key >= '1' && key <= '9') {
+        if (e.shiftKey) {
+          // Shift + 1-9 for days 21-29
+          day = 20 + parseInt(key);
+        } else if (e.altKey) {
+          // Alt + 1-9 for days 11-19 (but alt often has browser shortcuts, so check ctrlKey too)
+          day = 10 + parseInt(key);
+        } else if (e.ctrlKey) {
+          // Ctrl + 1 for 31
+          if (key === '1') day = 31;
+          else day = 30 + parseInt(key); // Won't really be used but for completeness
+        } else {
+          day = parseInt(key);
+        }
+      } else if (key === '0') {
+        if (e.shiftKey) {
+          day = 30;
+        } else if (e.altKey) {
+          day = 20;
+        } else {
+          day = 10;
+        }
+      }
+
+      if (day !== null && day >= 1 && day <= daysInMonth) {
+        // Check if day is in the past or today (not future)
+        if (currentDay === 0 || (currentDay > 0 && day <= currentDay)) {
+          handleToggle(goals[focusedGoalIndex].id, day);
+          e.preventDefault();
+        }
+      }
+    }
+  }
+
   onMount(async () => {
     // Initialize route from URL
     currentRoute = getRouteFromPath();
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
 
     await checkAuth();
     // Note: loadData() is called by the reactive statement when authState changes,
@@ -436,6 +558,7 @@
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   });
 
@@ -527,7 +650,7 @@
         </div>
       {:else}
         <div class="goals" role="list">
-          {#each goalsWithColors as goal (goal.id)}
+          {#each goalsWithColors as goal, index (goal.id)}
             <GoalRow
               {goal}
               {daysInMonth}
@@ -541,6 +664,7 @@
               onDragOver={(e) => handleDragOver(goal.id, e)}
               onDrop={(e) => handleDrop(goal.id, e)}
               isDragOver={dragOverGoalId === goal.id}
+              isFocused={focusedGoalIndex === index}
             />
           {/each}
         </div>
