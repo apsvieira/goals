@@ -11,7 +11,7 @@ import (
 // Goals
 
 func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goal, error) {
-	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
+	query := `SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
 	var args []any
 
 	// Filter by user_id
@@ -41,7 +41,9 @@ func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goa
 		var archivedAt, deletedAt sql.NullTime
 		var updatedAt sql.NullTime
 		var goalUserID sql.NullString
-		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
+		var targetCount sql.NullInt64
+		var targetPeriod sql.NullString
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
 			return nil, fmt.Errorf("scan goal: %w", err)
 		}
 		if archivedAt.Valid {
@@ -58,6 +60,13 @@ func (d *SQLiteDB) ListGoals(userID *string, includeArchived bool) ([]models.Goa
 		if goalUserID.Valid {
 			g.UserID = &goalUserID.String
 		}
+		if targetCount.Valid {
+			tc := int(targetCount.Int64)
+			g.TargetCount = &tc
+		}
+		if targetPeriod.Valid {
+			g.TargetPeriod = &targetPeriod.String
+		}
 		goals = append(goals, g)
 	}
 	return goals, rows.Err()
@@ -68,8 +77,10 @@ func (d *SQLiteDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	var archivedAt, deletedAt sql.NullTime
 	var updatedAt sql.NullTime
 	var goalUserID sql.NullString
+	var targetCount sql.NullInt64
+	var targetPeriod sql.NullString
 
-	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = ?`
+	query := `SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = ?`
 	args := []any{id}
 
 	// Add user_id filter
@@ -80,7 +91,7 @@ func (d *SQLiteDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 		args = append(args, *userID)
 	}
 
-	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
+	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -100,6 +111,13 @@ func (d *SQLiteDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	}
 	if goalUserID.Valid {
 		g.UserID = &goalUserID.String
+	}
+	if targetCount.Valid {
+		tc := int(targetCount.Int64)
+		g.TargetCount = &tc
+	}
+	if targetPeriod.Valid {
+		g.TargetPeriod = &targetPeriod.String
 	}
 	return &g, nil
 }
@@ -124,8 +142,8 @@ func (d *SQLiteDB) CreateGoal(g *models.Goal) error {
 	}
 
 	_, err := d.Exec(
-		`INSERT INTO goals (id, name, color, position, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		g.ID, g.Name, g.Color, g.Position, g.UserID, g.CreatedAt, g.UpdatedAt,
+		`INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		g.ID, g.Name, g.Color, g.Position, g.TargetCount, g.TargetPeriod, g.UserID, g.CreatedAt, g.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert goal: %w", err)
@@ -133,8 +151,8 @@ func (d *SQLiteDB) CreateGoal(g *models.Goal) error {
 	return nil
 }
 
-func (d *SQLiteDB) UpdateGoal(userID *string, id string, name, color *string) error {
-	if name == nil && color == nil {
+func (d *SQLiteDB) UpdateGoal(userID *string, id string, name, color *string, targetCount *int, targetPeriod *string) error {
+	if name == nil && color == nil && targetCount == nil && targetPeriod == nil {
 		return nil
 	}
 
@@ -149,6 +167,14 @@ func (d *SQLiteDB) UpdateGoal(userID *string, id string, name, color *string) er
 	if color != nil {
 		updates = append(updates, `color = ?`)
 		args = append(args, *color)
+	}
+	if targetCount != nil {
+		updates = append(updates, `target_count = ?`)
+		args = append(args, *targetCount)
+	}
+	if targetPeriod != nil {
+		updates = append(updates, `target_period = ?`)
+		args = append(args, *targetPeriod)
 	}
 
 	// Always update updated_at
@@ -556,7 +582,7 @@ func generateUUID() string {
 // Sync operations
 
 func (d *SQLiteDB) GetGoalChangesSince(userID *string, since *time.Time) ([]models.Goal, error) {
-	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
+	query := `SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
 	var args []any
 
 	// Filter by user_id
@@ -587,7 +613,9 @@ func (d *SQLiteDB) GetGoalChangesSince(userID *string, since *time.Time) ([]mode
 		var archivedAt, deletedAt sql.NullTime
 		var updatedAt sql.NullTime
 		var goalUserID sql.NullString
-		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
+		var targetCount sql.NullInt64
+		var targetPeriod sql.NullString
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
 			return nil, fmt.Errorf("scan goal: %w", err)
 		}
 		if archivedAt.Valid {
@@ -603,6 +631,13 @@ func (d *SQLiteDB) GetGoalChangesSince(userID *string, since *time.Time) ([]mode
 		}
 		if goalUserID.Valid {
 			g.UserID = &goalUserID.String
+		}
+		if targetCount.Valid {
+			tc := int(targetCount.Int64)
+			g.TargetCount = &tc
+		}
+		if targetPeriod.Valid {
+			g.TargetPeriod = &targetPeriod.String
 		}
 		goals = append(goals, g)
 	}
@@ -667,17 +702,19 @@ func (d *SQLiteDB) UpsertGoal(goal *models.Goal) error {
 	}
 
 	_, err := d.Exec(`
-		INSERT INTO goals (id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name = excluded.name,
 			color = excluded.color,
 			position = excluded.position,
+			target_count = excluded.target_count,
+			target_period = excluded.target_period,
 			updated_at = excluded.updated_at,
 			archived_at = excluded.archived_at,
 			deleted_at = excluded.deleted_at
 		WHERE excluded.updated_at > goals.updated_at
-	`, goal.ID, goal.Name, goal.Color, goal.Position, goal.UserID, goal.CreatedAt, goal.UpdatedAt, goal.ArchivedAt, goal.DeletedAt)
+	`, goal.ID, goal.Name, goal.Color, goal.Position, goal.TargetCount, goal.TargetPeriod, goal.UserID, goal.CreatedAt, goal.UpdatedAt, goal.ArchivedAt, goal.DeletedAt)
 
 	if err != nil {
 		return fmt.Errorf("upsert goal: %w", err)
@@ -743,11 +780,13 @@ func (d *SQLiteDB) GetGoalByID(id string) (*models.Goal, error) {
 	var archivedAt, deletedAt sql.NullTime
 	var updatedAt sql.NullTime
 	var goalUserID sql.NullString
+	var targetCount sql.NullInt64
+	var targetPeriod sql.NullString
 
 	err := d.QueryRow(
-		`SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = ?`,
+		`SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = ?`,
 		id,
-	).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
+	).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -767,6 +806,13 @@ func (d *SQLiteDB) GetGoalByID(id string) (*models.Goal, error) {
 	}
 	if goalUserID.Valid {
 		g.UserID = &goalUserID.String
+	}
+	if targetCount.Valid {
+		tc := int(targetCount.Int64)
+		g.TargetCount = &tc
+	}
+	if targetPeriod.Valid {
+		g.TargetPeriod = &targetPeriod.String
 	}
 	return &g, nil
 }

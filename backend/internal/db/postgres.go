@@ -98,7 +98,7 @@ func (d *PostgresDB) Migrate() error {
 // Goals
 
 func (d *PostgresDB) ListGoals(userID *string, includeArchived bool) ([]models.Goal, error) {
-	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
+	query := `SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
 	var args []any
 	paramNum := 1
 
@@ -130,7 +130,9 @@ func (d *PostgresDB) ListGoals(userID *string, includeArchived bool) ([]models.G
 		var archivedAt, deletedAt sql.NullTime
 		var updatedAt sql.NullTime
 		var goalUserID sql.NullString
-		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
+		var targetCount sql.NullInt64
+		var targetPeriod sql.NullString
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
 			return nil, fmt.Errorf("scan goal: %w", err)
 		}
 		if archivedAt.Valid {
@@ -147,6 +149,13 @@ func (d *PostgresDB) ListGoals(userID *string, includeArchived bool) ([]models.G
 		if goalUserID.Valid {
 			g.UserID = &goalUserID.String
 		}
+		if targetCount.Valid {
+			tc := int(targetCount.Int64)
+			g.TargetCount = &tc
+		}
+		if targetPeriod.Valid {
+			g.TargetPeriod = &targetPeriod.String
+		}
 		goals = append(goals, g)
 	}
 	return goals, rows.Err()
@@ -157,8 +166,10 @@ func (d *PostgresDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	var archivedAt, deletedAt sql.NullTime
 	var updatedAt sql.NullTime
 	var goalUserID sql.NullString
+	var targetCount sql.NullInt64
+	var targetPeriod sql.NullString
 
-	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = $1`
+	query := `SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = $1`
 	args := []any{id}
 
 	// Add user_id filter
@@ -169,7 +180,7 @@ func (d *PostgresDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 		args = append(args, *userID)
 	}
 
-	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
+	err := d.QueryRow(query, args...).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -189,6 +200,13 @@ func (d *PostgresDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 	}
 	if goalUserID.Valid {
 		g.UserID = &goalUserID.String
+	}
+	if targetCount.Valid {
+		tc := int(targetCount.Int64)
+		g.TargetCount = &tc
+	}
+	if targetPeriod.Valid {
+		g.TargetPeriod = &targetPeriod.String
 	}
 	return &g, nil
 }
@@ -213,8 +231,8 @@ func (d *PostgresDB) CreateGoal(g *models.Goal) error {
 	}
 
 	_, err := d.Exec(
-		`INSERT INTO goals (id, name, color, position, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		g.ID, g.Name, g.Color, g.Position, g.UserID, g.CreatedAt, g.UpdatedAt,
+		`INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		g.ID, g.Name, g.Color, g.Position, g.TargetCount, g.TargetPeriod, g.UserID, g.CreatedAt, g.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert goal: %w", err)
@@ -222,8 +240,8 @@ func (d *PostgresDB) CreateGoal(g *models.Goal) error {
 	return nil
 }
 
-func (d *PostgresDB) UpdateGoal(userID *string, id string, name, color *string) error {
-	if name == nil && color == nil {
+func (d *PostgresDB) UpdateGoal(userID *string, id string, name, color *string, targetCount *int, targetPeriod *string) error {
+	if name == nil && color == nil && targetCount == nil && targetPeriod == nil {
 		return nil
 	}
 
@@ -240,6 +258,16 @@ func (d *PostgresDB) UpdateGoal(userID *string, id string, name, color *string) 
 	if color != nil {
 		updates = append(updates, fmt.Sprintf(`color = $%d`, paramNum))
 		args = append(args, *color)
+		paramNum++
+	}
+	if targetCount != nil {
+		updates = append(updates, fmt.Sprintf(`target_count = $%d`, paramNum))
+		args = append(args, *targetCount)
+		paramNum++
+	}
+	if targetPeriod != nil {
+		updates = append(updates, fmt.Sprintf(`target_period = $%d`, paramNum))
+		args = append(args, *targetPeriod)
 		paramNum++
 	}
 
@@ -649,7 +677,7 @@ func generatePostgresUUID() string {
 // Sync operations
 
 func (d *PostgresDB) GetGoalChangesSince(userID *string, since *time.Time) ([]models.Goal, error) {
-	query := `SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
+	query := `SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE `
 	var args []any
 	paramNum := 1
 
@@ -683,7 +711,9 @@ func (d *PostgresDB) GetGoalChangesSince(userID *string, since *time.Time) ([]mo
 		var archivedAt, deletedAt sql.NullTime
 		var updatedAt sql.NullTime
 		var goalUserID sql.NullString
-		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
+		var targetCount sql.NullInt64
+		var targetPeriod sql.NullString
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt); err != nil {
 			return nil, fmt.Errorf("scan goal: %w", err)
 		}
 		if archivedAt.Valid {
@@ -699,6 +729,13 @@ func (d *PostgresDB) GetGoalChangesSince(userID *string, since *time.Time) ([]mo
 		}
 		if goalUserID.Valid {
 			g.UserID = &goalUserID.String
+		}
+		if targetCount.Valid {
+			tc := int(targetCount.Int64)
+			g.TargetCount = &tc
+		}
+		if targetPeriod.Valid {
+			g.TargetPeriod = &targetPeriod.String
 		}
 		goals = append(goals, g)
 	}
@@ -766,17 +803,19 @@ func (d *PostgresDB) UpsertGoal(goal *models.Goal) error {
 	}
 
 	_, err := d.Exec(`
-		INSERT INTO goals (id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT(id) DO UPDATE SET
 			name = EXCLUDED.name,
 			color = EXCLUDED.color,
 			position = EXCLUDED.position,
+			target_count = EXCLUDED.target_count,
+			target_period = EXCLUDED.target_period,
 			updated_at = EXCLUDED.updated_at,
 			archived_at = EXCLUDED.archived_at,
 			deleted_at = EXCLUDED.deleted_at
 		WHERE EXCLUDED.updated_at > goals.updated_at
-	`, goal.ID, goal.Name, goal.Color, goal.Position, goal.UserID, goal.CreatedAt, goal.UpdatedAt, goal.ArchivedAt, goal.DeletedAt)
+	`, goal.ID, goal.Name, goal.Color, goal.Position, goal.TargetCount, goal.TargetPeriod, goal.UserID, goal.CreatedAt, goal.UpdatedAt, goal.ArchivedAt, goal.DeletedAt)
 
 	if err != nil {
 		return fmt.Errorf("upsert goal: %w", err)
@@ -842,11 +881,13 @@ func (d *PostgresDB) GetGoalByID(id string) (*models.Goal, error) {
 	var archivedAt, deletedAt sql.NullTime
 	var updatedAt sql.NullTime
 	var goalUserID sql.NullString
+	var targetCount sql.NullInt64
+	var targetPeriod sql.NullString
 
 	err := d.QueryRow(
-		`SELECT id, name, color, position, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = $1`,
+		`SELECT id, name, color, position, target_count, target_period, user_id, created_at, updated_at, archived_at, deleted_at FROM goals WHERE id = $1`,
 		id,
-	).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
+	).Scan(&g.ID, &g.Name, &g.Color, &g.Position, &targetCount, &targetPeriod, &goalUserID, &g.CreatedAt, &updatedAt, &archivedAt, &deletedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -866,6 +907,13 @@ func (d *PostgresDB) GetGoalByID(id string) (*models.Goal, error) {
 	}
 	if goalUserID.Valid {
 		g.UserID = &goalUserID.String
+	}
+	if targetCount.Valid {
+		tc := int(targetCount.Int64)
+		g.TargetCount = &tc
+	}
+	if targetPeriod.Valid {
+		g.TargetPeriod = &targetPeriod.String
 	}
 	return &g, nil
 }

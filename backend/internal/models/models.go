@@ -3,15 +3,17 @@ package models
 import "time"
 
 type Goal struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Color      string     `json:"color"`
-	Position   int        `json:"position"`
-	UserID     *string    `json:"user_id,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
-	ArchivedAt *time.Time `json:"archived_at,omitempty"`
-	DeletedAt  *time.Time `json:"deleted_at,omitempty"`
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	Color        string     `json:"color"`
+	Position     int        `json:"position"`
+	TargetCount  *int       `json:"target_count,omitempty"`
+	TargetPeriod *string    `json:"target_period,omitempty"` // "week" or "month"
+	UserID       *string    `json:"user_id,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	ArchivedAt   *time.Time `json:"archived_at,omitempty"`
+	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
 }
 
 type Completion struct {
@@ -31,13 +33,17 @@ type CalendarResponse struct {
 // Request types
 
 type CreateGoalRequest struct {
-	Name  string `json:"name"`
-	Color string `json:"color"`
+	Name         string  `json:"name"`
+	Color        string  `json:"color"`
+	TargetCount  *int    `json:"target_count,omitempty"`
+	TargetPeriod *string `json:"target_period,omitempty"`
 }
 
 type UpdateGoalRequest struct {
-	Name  *string `json:"name,omitempty"`
-	Color *string `json:"color,omitempty"`
+	Name         *string `json:"name,omitempty"`
+	Color        *string `json:"color,omitempty"`
+	TargetCount  *int    `json:"target_count,omitempty"`
+	TargetPeriod *string `json:"target_period,omitempty"`
 }
 
 type CreateCompletionRequest struct {

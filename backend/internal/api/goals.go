@@ -90,11 +90,13 @@ func (s *Server) createGoal(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 
 	goal := &models.Goal{
-		ID:        uuid.New().String(),
-		Name:      req.Name,
-		Color:     req.Color,
-		UserID:    userID,
-		CreatedAt: time.Now().UTC(),
+		ID:           uuid.New().String(),
+		Name:         req.Name,
+		Color:        req.Color,
+		TargetCount:  req.TargetCount,
+		TargetPeriod: req.TargetPeriod,
+		UserID:       userID,
+		CreatedAt:    time.Now().UTC(),
 	}
 
 	if err := s.db.CreateGoal(goal); err != nil {
@@ -142,7 +144,7 @@ func (s *Server) updateGoal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.db.UpdateGoal(userID, id, req.Name, req.Color); err != nil {
+	if err := s.db.UpdateGoal(userID, id, req.Name, req.Color, req.TargetCount, req.TargetPeriod); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

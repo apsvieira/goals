@@ -14,7 +14,7 @@ type Database interface {
 	ListGoals(userID *string, includeArchived bool) ([]models.Goal, error)
 	GetGoal(userID *string, id string) (*models.Goal, error)
 	CreateGoal(goal *models.Goal) error
-	UpdateGoal(userID *string, id string, name, color *string) error
+	UpdateGoal(userID *string, id string, name, color *string, targetCount *int, targetPeriod *string) error
 	ArchiveGoal(userID *string, id string) error
 	ReorderGoals(userID *string, goalIDs []string) error
 
