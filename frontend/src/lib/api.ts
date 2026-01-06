@@ -238,3 +238,31 @@ export async function logout(): Promise<void> {
     credentials: 'include',
   });
 }
+
+// Get all completions (for statistics - no date filter)
+export async function getAllCompletions(): Promise<Completion[]> {
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    // Get all completions by passing a very wide date range
+    const goals = await getLocalGoals();
+    const allCompletions: Completion[] = [];
+    // Get completions for each month from 2020 to 2030
+    for (let year = 2020; year <= 2030; year++) {
+      for (let month = 1; month <= 12; month++) {
+        const monthStr = `${year}-${month.toString().padStart(2, '0')}`;
+        const monthCompletions = await getLocalCompletions(monthStr);
+        allCompletions.push(...monthCompletions);
+      }
+    }
+    // Deduplicate by id
+    const seen = new Set<string>();
+    return allCompletions.filter(c => {
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }
+  // For server mode, fetch all completions without date filter
+  // Using a very wide date range
+  return request<Completion[]>('/completions?from=2020-01-01&to=2099-12-31');
+}

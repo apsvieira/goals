@@ -5,6 +5,8 @@
   import GoalRow from './lib/components/GoalRow.svelte';
   import GoalEditor from './lib/components/GoalEditor.svelte';
   import AuthPage from './lib/components/AuthPage.svelte';
+  import UserDrawer from './lib/components/UserDrawer.svelte';
+  import ProfilePage from './lib/components/ProfilePage.svelte';
   import {
     getCalendar,
     createGoal,
@@ -14,6 +16,8 @@
     deleteCompletion,
     reorderGoals,
     getCurrentUser,
+    logout,
+    getAllCompletions,
     type Goal,
     type Completion,
   } from './lib/api';
@@ -34,6 +38,15 @@
   // Editor state: null = main view, { mode: 'add' } = add goal, { mode: 'edit', goal } = edit goal
   type EditorState = null | { mode: 'add' } | { mode: 'edit'; goal: Goal };
   let editorState: EditorState = null;
+
+  // Drawer and Profile state
+  let drawerOpen = false;
+  let showProfile = false;
+  let allCompletions: Completion[] = [];
+
+  // Derived user state
+  $: user = authState.type === 'authenticated' ? authState.user : null;
+  $: isGuest = authState.type === 'guest';
 
   // Drag & drop state
   let draggedGoalId: string | null = null;
@@ -241,6 +254,53 @@
     authStore.set({ type: 'guest' });
   }
 
+  function handleUserClick() {
+    drawerOpen = true;
+  }
+
+  function handleDrawerClose() {
+    drawerOpen = false;
+  }
+
+  async function handleLogout() {
+    drawerOpen = false;
+    try {
+      await logout();
+      setGuestMode(false);
+      authStore.set({ type: 'unauthenticated' });
+      goals = [];
+      completions = [];
+      allCompletions = [];
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to log out';
+    }
+  }
+
+  async function handleProfileClick() {
+    drawerOpen = false;
+    // Load all completions for statistics
+    try {
+      allCompletions = await getAllCompletions();
+    } catch (e) {
+      console.error('Failed to load completions for stats:', e);
+      // Fall back to current month completions
+      allCompletions = completions;
+    }
+    showProfile = true;
+  }
+
+  function handleProfileBack() {
+    showProfile = false;
+  }
+
+  function handleSignIn() {
+    // Redirect to Google OAuth
+    const apiBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+      ? '/api/v1'
+      : 'http://localhost:8080/api/v1';
+    window.location.href = `${apiBase}/auth/google`;
+  }
+
   onMount(async () => {
     await checkAuth();
     // Only load data if authenticated or guest
@@ -263,7 +323,15 @@
   <AuthPage onContinueAsGuest={handleContinueAsGuest} />
 {:else}
   <div class="app-container">
-    {#if editorState}
+    {#if showProfile}
+      <ProfilePage
+        {user}
+        {isGuest}
+        {goals}
+        completions={allCompletions}
+        onBack={handleProfileBack}
+      />
+    {:else if editorState}
       <GoalEditor
         mode={editorState.mode}
         goal={editorState.mode === 'edit' ? editorState.goal : null}
@@ -278,6 +346,9 @@
         onNext={nextMonth}
         showAddForm={false}
         onToggleAddForm={() => editorState = { mode: 'add' }}
+        {user}
+        {isGuest}
+        onUserClick={handleUserClick}
       />
 
       <main>
@@ -311,6 +382,16 @@
 
       <Footer />
     {/if}
+
+    <UserDrawer
+      open={drawerOpen}
+      {user}
+      {isGuest}
+      onClose={handleDrawerClose}
+      onLogout={handleLogout}
+      onProfileClick={handleProfileClick}
+      onSignIn={handleSignIn}
+    />
   </div>
 {/if}
 
