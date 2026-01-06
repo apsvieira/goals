@@ -18,9 +18,11 @@
     getCurrentUser,
     logout,
     getAllCompletions,
+    getCurrentPeriodCompletions,
     type Goal,
     type Completion,
   } from './lib/api';
+  import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, hasLocalData, setGuestMode, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
 
@@ -42,6 +44,7 @@
   let currentMonth = new Date().toISOString().slice(0, 7);
   let goals: Goal[] = [];
   let completions: Completion[] = [];
+  let periodCompletions: Completion[] = [];
   let loading = true;
   let error = '';
 
@@ -122,8 +125,7 @@
     color: GOAL_PALETTE[index % GOAL_PALETTE.length]
   }));
 
-  // Reactive map of period completions per goal (updates when completions change)
-  // Note: explicitly reference completions before reduce to ensure Svelte tracks it as a dependency
+  // Reactive map of period completions per goal (uses periodCompletions for accurate weekly/monthly counts)
   $: periodCompletionsMap = ((allCompletions) => (goals ?? []).reduce((acc, goal) => {
     if (!goal.target_period) {
       acc[goal.id] = 0;
@@ -153,7 +155,7 @@
       }).length;
     }
     return acc;
-  }, {} as Record<string, number>))(completions ?? []);
+  }, {} as Record<string, number>))(periodCompletions ?? []);
 
   async function loadData() {
     loading = true;
@@ -162,8 +164,10 @@
       const data = await getCalendar(currentMonth);
       goals = data.goals ?? [];
       completions = data.completions ?? [];
+      // Fetch completions for current period (weekly/monthly targets)
+      periodCompletions = await getCurrentPeriodCompletions();
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to load data';
+      error = getUserFriendlyMessage(e);
     } finally {
       loading = false;
     }
@@ -197,7 +201,7 @@
         completions = [...completions, newCompletion];
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to update';
+      error = getUserFriendlyMessage(e);
     }
   }
 
@@ -224,7 +228,7 @@
       }
       editorState = null;
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to save goal';
+      error = getUserFriendlyMessage(e);
     }
   }
 
@@ -236,7 +240,7 @@
       goals = goals.filter(g => g.id !== editorState!.goal.id);
       editorState = null;
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to delete goal';
+      error = getUserFriendlyMessage(e);
     }
   }
 
@@ -288,7 +292,7 @@
     try {
       await reorderGoals(goals.map(g => g.id));
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to reorder';
+      error = getUserFriendlyMessage(e);
       // Reload to restore correct order
       await loadData();
     }
@@ -341,7 +345,7 @@
       completions = [];
       allCompletions = [];
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to log out';
+      error = getUserFriendlyMessage(e);
     }
   }
 

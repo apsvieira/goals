@@ -208,6 +208,10 @@ func (s *Server) reorderGoals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if goals == nil {
+		goals = []models.Goal{}
+	}
+
 	writeJSON(w, http.StatusOK, goals)
 }
 

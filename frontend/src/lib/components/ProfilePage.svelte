@@ -4,8 +4,8 @@
 
   export let user: User | null;
   export let isGuest: boolean;
-  export let goals: Goal[];
-  export let completions: Completion[];
+  export let goals: Goal[] = [];
+  export let completions: Completion[] = [];
   export let onBack: () => void;
 
   function calculateStats(goal: Goal, completions: Completion[]) {
@@ -86,7 +86,7 @@
   }
 
   // Find the earliest goal creation date as a proxy for member since date for guests
-  $: memberSince = isGuest && goals.length > 0
+  $: memberSince = isGuest && goals?.length > 0
     ? goals.reduce((earliest, goal) => {
         const goalDate = new Date(goal.created_at);
         return goalDate < earliest ? goalDate : earliest;
@@ -133,11 +133,11 @@
     <div class="stats-section">
       <h2 class="stats-title">Goal Statistics</h2>
 
-      {#if goals.length === 0}
+      {#if !goals || goals.length === 0}
         <p class="no-goals">No goals yet. Create your first goal to start tracking!</p>
       {:else}
         <div class="goals-list">
-          {#each goals.filter(g => !g.archived_at) as goal (goal.id)}
+          {#each (goals ?? []).filter(g => !g.archived_at) as goal (goal.id)}
             {@const stats = calculateStats(goal, completions)}
             <div class="goal-stat">
               <div class="goal-info">

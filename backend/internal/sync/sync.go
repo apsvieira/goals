@@ -52,8 +52,9 @@ func (s *Service) ApplyChanges(userID string, req *SyncRequest) (*SyncResponse, 
 	serverTime := time.Now().UTC()
 
 	// Track what changes to send back to client (server updates that override client changes)
-	var serverGoalChanges []GoalChange
-	var serverCompletionChanges []CompletionChange
+	// Initialize as empty slices (not nil) to ensure JSON encodes as [] not null
+	serverGoalChanges := []GoalChange{}
+	serverCompletionChanges := []CompletionChange{}
 
 	// Process goal changes from client
 	for _, clientGoal := range req.Goals {

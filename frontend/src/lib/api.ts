@@ -278,3 +278,48 @@ export async function getAllCompletions(): Promise<Completion[]> {
   // Using a very wide date range
   return request<Completion[]>('/completions?from=2020-01-01&to=2099-12-31');
 }
+
+// Get completions for the current period (week and month) for progress bar calculations
+export async function getCurrentPeriodCompletions(): Promise<Completion[]> {
+  const now = new Date();
+  // Start of current week (Sunday)
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  // Start of current month
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Use earlier date to cover both weekly and monthly targets
+  const from = (monthStart < weekStart ? monthStart : weekStart).toISOString().slice(0, 10);
+  const to = now.toISOString().slice(0, 10);
+
+  if (isGuestMode()) {
+    await ensureStorageInitialized();
+    return getLocalCompletionsForRange(from, to);
+  }
+  return request<Completion[]>(`/completions?from=${from}&to=${to}`);
+}
+
+// Helper to get local completions for a date range (guest mode)
+async function getLocalCompletionsForRange(from: string, to: string): Promise<Completion[]> {
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+  const allCompletions: Completion[] = [];
+
+  // Fetch each month in the range
+  const current = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+  while (current <= toDate) {
+    const monthStr = current.toISOString().slice(0, 7);
+    const monthCompletions = await getLocalCompletions(monthStr);
+    allCompletions.push(...monthCompletions);
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  // Filter to exact date range and deduplicate
+  const seen = new Set<string>();
+  return allCompletions.filter(c => {
+    if (seen.has(c.id)) return false;
+    if (c.date < from || c.date > to) return false;
+    seen.add(c.id);
+    return true;
+  });
+}

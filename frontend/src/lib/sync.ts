@@ -167,7 +167,7 @@ class SyncManager {
 
   private async applyServerChanges(response: SyncResponse): Promise<void> {
     // Apply goal changes from server
-    for (const goalChange of response.goals) {
+    for (const goalChange of response.goals ?? []) {
       if (goalChange.deleted) {
         // For deleted goals, we mark them as archived locally
         const goal: Goal = {
@@ -192,7 +192,7 @@ class SyncManager {
     }
 
     // Apply completion changes from server
-    for (const compChange of response.completions) {
+    for (const compChange of response.completions ?? []) {
       if (compChange.completed) {
         // Create or update completion
         const completion: Completion = {
