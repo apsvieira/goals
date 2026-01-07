@@ -1,4 +1,5 @@
 import { get } from 'svelte/store';
+import { Capacitor } from '@capacitor/core';
 import { authStore, type User } from './stores';
 import {
   initStorage,
@@ -11,11 +12,21 @@ import {
   getLocalCompletionByGoalAndDate,
   getMaxPosition,
 } from './storage';
+import { getToken } from './token-storage';
 
-// Use relative URL in production, absolute in dev
-const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-  ? '/api/v1'
-  : 'http://localhost:8080/api/v1';
+const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
+
+// Use production URL for native platforms, relative URL in web production, absolute in dev
+function getApiBase(): string {
+  if (Capacitor.isNativePlatform()) {
+    return `${PRODUCTION_API_URL}/api/v1`;
+  }
+  return typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? '/api/v1'
+    : 'http://localhost:8080/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 export interface Goal {
   id: string;
@@ -61,13 +72,22 @@ function generateId(): string {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Build headers with optional Authorization token for mobile
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options?.headers as Record<string, string>,
+  };
+
+  // Add Authorization header if we have a token (mobile auth)
+  const token = await getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -230,8 +250,16 @@ export async function findCompletionByGoalAndDate(goalId: string, date: string):
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
+    // Build headers with optional Authorization token for mobile
+    const headers: Record<string, string> = {};
+    const token = await getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE}/auth/me`, {
       credentials: 'include',
+      headers,
     });
 
     if (!res.ok) {
@@ -245,9 +273,17 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function logout(): Promise<void> {
+  // Build headers with optional Authorization token for mobile
+  const headers: Record<string, string> = {};
+  const token = await getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   await fetch(`${API_BASE}/auth/logout`, {
     method: 'POST',
     credentials: 'include',
+    headers,
   });
 }
 

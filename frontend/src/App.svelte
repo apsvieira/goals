@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { App as CapApp } from '@capacitor/app';
+  import { Capacitor } from '@capacitor/core';
   import Header from './lib/components/Header.svelte';
   import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
@@ -26,6 +28,7 @@
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, hasLocalData, setGuestMode, isOnline, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
+  import { saveToken } from './lib/token-storage';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
   const GOAL_PALETTE = [
@@ -552,6 +555,28 @@
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
 
+    // Set up deep link handler for mobile OAuth callback
+    let appUrlOpenListener: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform()) {
+      appUrlOpenListener = await CapApp.addListener('appUrlOpen', async (event) => {
+        // Handle goaltracker://auth?token=xxx deep links
+        const url = event.url;
+        if (url.startsWith('goaltracker://auth')) {
+          try {
+            const urlObj = new URL(url);
+            const token = urlObj.searchParams.get('token');
+            if (token) {
+              await saveToken(token);
+              // Refresh auth state after saving token
+              await checkAuth();
+            }
+          } catch (e) {
+            console.error('Failed to handle auth deep link:', e);
+          }
+        }
+      });
+    }
+
     await checkAuth();
     // Note: loadData() is called by the reactive statement when authState changes,
     // so we don't need to call it here explicitly
@@ -559,6 +584,10 @@
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
+      // Clean up the deep link listener
+      if (appUrlOpenListener) {
+        appUrlOpenListener.remove();
+      }
     };
   });
 
