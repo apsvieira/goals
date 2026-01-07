@@ -29,6 +29,7 @@
   import { authStore, hasLocalData, setGuestMode, isOnline, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
   import { saveToken } from './lib/token-storage';
+  import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
   const GOAL_PALETTE = [
@@ -370,6 +371,8 @@
         // Now explicitly load data after sync completes
         initialAuthInProgress = false;
         await loadData();
+        // Initialize push notifications for mobile platforms
+        await initPushNotifications();
         return;
       }
     } catch (e) {
@@ -393,6 +396,8 @@
 
   async function handleLogout() {
     try {
+      // Unregister push notifications before logging out
+      await unregisterPushNotifications();
       await logout();
       setGuestMode(false);
       authStore.set({ type: 'unauthenticated' });
@@ -567,7 +572,7 @@
             const token = urlObj.searchParams.get('token');
             if (token) {
               await saveToken(token);
-              // Refresh auth state after saving token
+              // Refresh auth state after saving token (which will also init push notifications)
               await checkAuth();
             }
           } catch (e) {

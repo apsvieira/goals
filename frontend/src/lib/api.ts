@@ -359,3 +359,34 @@ async function getLocalCompletionsForRange(from: string, to: string): Promise<Co
     return true;
   });
 }
+
+// Device registration API (for push notifications)
+
+export interface Device {
+  id: string;
+  token: string;
+  platform: string;
+  created_at: string;
+}
+
+/**
+ * Register a device token for push notifications
+ * @param token - FCM/APNs token
+ * @param platform - 'ios' or 'android'
+ */
+export async function registerDevice(token: string, platform: string): Promise<Device> {
+  return request<Device>('/devices', {
+    method: 'POST',
+    body: JSON.stringify({ token, platform }),
+  });
+}
+
+/**
+ * Unregister a device from push notifications
+ * @param id - Device ID returned from registerDevice
+ */
+export async function unregisterDevice(id: string): Promise<void> {
+  return request<void>(`/devices/${id}`, {
+    method: 'DELETE',
+  });
+}
