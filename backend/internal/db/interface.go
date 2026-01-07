@@ -48,6 +48,12 @@ type Database interface {
 	SoftDeleteCompletion(goalID, date string) error
 	GetGoalByID(id string) (*models.Goal, error) // Get goal without user filter for sync
 
+	// Device Tokens (Push Notifications)
+	CreateDeviceToken(userID, token, platform string) (*models.DeviceToken, error)
+	GetDeviceTokensByUserID(userID string) ([]models.DeviceToken, error)
+	DeleteDeviceToken(tokenID string) error
+	UpdateDeviceTokenLastUsed(tokenID string) error
+
 	// Lifecycle
 	Migrate() error
 	Close() error

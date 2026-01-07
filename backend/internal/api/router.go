@@ -144,6 +144,10 @@ func (s *Server) setupRoutes() {
 
 			// Calendar convenience endpoint
 			r.Get("/calendar", s.getCalendar)
+
+			// Device tokens (push notifications) - requires authentication
+			r.Post("/devices", s.registerDevice)
+			r.Delete("/devices/{id}", s.unregisterDevice)
 		})
 	})
 

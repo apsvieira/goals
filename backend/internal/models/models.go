@@ -73,3 +73,19 @@ type Session struct {
 	ExpiresAt time.Time
 	CreatedAt time.Time
 }
+
+// Push notification types
+
+type DeviceToken struct {
+	ID         string     `json:"id"`
+	UserID     string     `json:"user_id"`
+	Token      string     `json:"token"`
+	Platform   string     `json:"platform"` // "android" or "ios"
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+}
+
+type RegisterDeviceRequest struct {
+	Token    string `json:"token"`
+	Platform string `json:"platform"` // "android" or "ios"
+}

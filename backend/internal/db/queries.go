@@ -853,3 +853,84 @@ func (d *SQLiteDB) GetGoalByID(id string) (*models.Goal, error) {
 	}
 	return &g, nil
 }
+
+// Device Tokens (Push Notifications)
+
+func (d *SQLiteDB) CreateDeviceToken(userID, token, platform string) (*models.DeviceToken, error) {
+	now := time.Now().UTC()
+	dt := &models.DeviceToken{
+		ID:        generateUUID(),
+		UserID:    userID,
+		Token:     token,
+		Platform:  platform,
+		CreatedAt: now,
+	}
+
+	_, err := d.Exec(
+		`INSERT INTO device_tokens (id, user_id, token, platform, created_at) VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(token) DO UPDATE SET user_id = excluded.user_id, platform = excluded.platform`,
+		dt.ID, dt.UserID, dt.Token, dt.Platform, dt.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("insert device token: %w", err)
+	}
+
+	// If token already existed, fetch the actual record
+	var existing models.DeviceToken
+	var lastUsedAt sql.NullTime
+	err = d.QueryRow(
+		`SELECT id, user_id, token, platform, created_at, last_used_at FROM device_tokens WHERE token = ?`,
+		token,
+	).Scan(&existing.ID, &existing.UserID, &existing.Token, &existing.Platform, &existing.CreatedAt, &lastUsedAt)
+	if err != nil {
+		return nil, fmt.Errorf("fetch device token: %w", err)
+	}
+	if lastUsedAt.Valid {
+		existing.LastUsedAt = &lastUsedAt.Time
+	}
+	return &existing, nil
+}
+
+func (d *SQLiteDB) GetDeviceTokensByUserID(userID string) ([]models.DeviceToken, error) {
+	rows, err := d.Query(
+		`SELECT id, user_id, token, platform, created_at, last_used_at FROM device_tokens WHERE user_id = ? ORDER BY created_at DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query device tokens: %w", err)
+	}
+	defer rows.Close()
+
+	var tokens []models.DeviceToken
+	for rows.Next() {
+		var dt models.DeviceToken
+		var lastUsedAt sql.NullTime
+		if err := rows.Scan(&dt.ID, &dt.UserID, &dt.Token, &dt.Platform, &dt.CreatedAt, &lastUsedAt); err != nil {
+			return nil, fmt.Errorf("scan device token: %w", err)
+		}
+		if lastUsedAt.Valid {
+			dt.LastUsedAt = &lastUsedAt.Time
+		}
+		tokens = append(tokens, dt)
+	}
+	return tokens, rows.Err()
+}
+
+func (d *SQLiteDB) DeleteDeviceToken(tokenID string) error {
+	_, err := d.Exec(`DELETE FROM device_tokens WHERE id = ?`, tokenID)
+	if err != nil {
+		return fmt.Errorf("delete device token: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) UpdateDeviceTokenLastUsed(tokenID string) error {
+	_, err := d.Exec(
+		`UPDATE device_tokens SET last_used_at = ? WHERE id = ?`,
+		time.Now().UTC(), tokenID,
+	)
+	if err != nil {
+		return fmt.Errorf("update device token last used: %w", err)
+	}
+	return nil
+}
