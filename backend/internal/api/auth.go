@@ -39,16 +39,31 @@ func (s *Server) startOAuth(w http.ResponseWriter, r *http.Request) {
 func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 
-	token, err := s.oauthHandler.HandleCallback(w, r, provider)
+	result, err := s.oauthHandler.HandleCallback(w, r, provider)
 	if err != nil {
+		// Check if this is a mobile request by looking at the error context
+		// For mobile, redirect to custom URL scheme with error
+		if r.URL.Query().Get("state") != "" {
+			// Try to determine if mobile from cookie (may not work if cookie cleared)
+			// Fall back to web redirect
+		}
 		// Redirect to frontend with error
 		redirectURL := s.frontendURL + "/?auth_error=" + err.Error()
 		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
 
-	// Set session cookie
-	auth.SetSessionCookie(w, r, token)
+	// Handle mobile OAuth callback - redirect to custom URL scheme
+	if result.IsMobile {
+		// Redirect to mobile app with token
+		// The mobile app will use this token with Bearer authentication
+		redirectURL := "goaltracker://auth?token=" + result.SessionToken
+		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Web flow: Set session cookie and redirect to frontend
+	auth.SetSessionCookie(w, r, result.SessionToken)
 
 	// Redirect to frontend (frontendURL is empty in prod, so "/" works)
 	redirectURL := s.frontendURL + "/"

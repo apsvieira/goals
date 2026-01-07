@@ -280,18 +280,29 @@ func corsMiddleware(next http.Handler) http.Handler {
 	// Set CORS_ORIGINS=* for development or specific origins for production
 	allowedOrigins := os.Getenv("CORS_ORIGINS")
 
+	// Mobile app origins that are always allowed (Capacitor/Cordova apps)
+	mobileOrigins := map[string]bool{
+		"capacitor://localhost": true,
+		"http://localhost":      true,
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
-		// If no CORS_ORIGINS configured, don't set CORS headers (same-origin only)
-		if allowedOrigins == "" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		// Check if origin is allowed
 		originAllowed := false
-		if allowedOrigins == "*" {
+
+		// Always allow mobile app origins for Capacitor/Cordova support
+		if mobileOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			originAllowed = true
+		} else if allowedOrigins == "" {
+			// If no CORS_ORIGINS configured, don't set CORS headers (same-origin only)
+			next.ServeHTTP(w, r)
+			return
+		} else if allowedOrigins == "*" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			originAllowed = true
 			// Note: Cannot use credentials with wildcard origin per CORS spec

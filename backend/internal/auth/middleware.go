@@ -20,31 +20,54 @@ const (
 )
 
 // Middleware creates an authentication middleware that extracts the session token
-// from the cookie and validates it. If valid, the user is stored in the request context.
+// from the Authorization header (Bearer token) or cookie and validates it.
+// If valid, the user is stored in the request context.
 // The request proceeds even without authentication (for guest mode support).
+//
+// Authentication methods (in order of priority):
+// 1. Authorization: Bearer <token> header (for mobile apps)
+// 2. Session cookie (for web apps)
 func Middleware(authManager *Manager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Try to get session cookie
-			cookie, err := r.Cookie(SessionCookieName)
-			if err != nil || cookie.Value == "" {
-				// No session cookie, proceed without user (guest mode)
+			var token string
+			var fromHeader bool
+
+			// First, check Authorization header (Bearer token)
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				token = strings.TrimPrefix(authHeader, "Bearer ")
+				fromHeader = true
+			}
+
+			// Fall back to session cookie if no Authorization header
+			if token == "" {
+				cookie, err := r.Cookie(SessionCookieName)
+				if err == nil && cookie.Value != "" {
+					token = cookie.Value
+				}
+			}
+
+			// No token found, proceed without user (guest mode)
+			if token == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			// Validate session
-			user, err := authManager.ValidateSession(cookie.Value)
+			user, err := authManager.ValidateSession(token)
 			if err != nil {
 				// Invalid session, proceed without user (guest mode)
-				// Optionally clear the invalid cookie
-				http.SetCookie(w, &http.Cookie{
-					Name:     SessionCookieName,
-					Value:    "",
-					Path:     "/",
-					MaxAge:   -1,
-					HttpOnly: true,
-				})
+				// Only clear cookie if it was used (not for header-based auth)
+				if !fromHeader {
+					http.SetCookie(w, &http.Cookie{
+						Name:     SessionCookieName,
+						Value:    "",
+						Path:     "/",
+						MaxAge:   -1,
+						HttpOnly: true,
+					})
+				}
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -69,7 +69,9 @@ func NewOAuthHandler(database db.Database, authManager *Manager, baseURL string)
 	return h
 }
 
-// StartOAuth initiates the OAuth flow for the specified provider
+// StartOAuth initiates the OAuth flow for the specified provider.
+// If the query parameter "mobile=true" is present, the flow will redirect
+// to a custom URL scheme on completion instead of setting a session cookie.
 func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provider string) error {
 	var config *oauth2.Config
 
@@ -84,12 +86,21 @@ func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provid
 		return fmt.Errorf("%s OAuth not configured", provider)
 	}
 
+	// Check if this is a mobile OAuth request
+	isMobile := r.URL.Query().Get("mobile") == "true"
+
 	// Generate random state
 	stateBytes := make([]byte, 16)
 	if _, err := rand.Read(stateBytes); err != nil {
 		return fmt.Errorf("generate state: %w", err)
 	}
 	state := base64.URLEncoding.EncodeToString(stateBytes)
+
+	// If mobile, append a mobile marker to the state
+	// Format: <random_state>|mobile
+	if isMobile {
+		state = state + "|mobile"
+	}
 
 	// Determine if we should use secure cookies
 	// Default to true in production, can be disabled with COOKIE_SECURE=false
@@ -115,30 +126,41 @@ func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provid
 	return nil
 }
 
-// HandleCallback handles the OAuth callback and creates/finds the user
-func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request, provider string) (string, error) {
+// OAuthCallbackResult contains the result of an OAuth callback
+type OAuthCallbackResult struct {
+	SessionToken string
+	IsMobile     bool
+}
+
+// HandleCallback handles the OAuth callback and creates/finds the user.
+// It returns the session token and a flag indicating if this is a mobile request.
+func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request, provider string) (*OAuthCallbackResult, error) {
 	var config *oauth2.Config
 
 	switch provider {
 	case ProviderGoogle:
 		config = h.googleConfig
 	default:
-		return "", ErrUnsupportedProvider
+		return nil, ErrUnsupportedProvider
 	}
 
 	if config == nil {
-		return "", fmt.Errorf("%s OAuth not configured", provider)
+		return nil, fmt.Errorf("%s OAuth not configured", provider)
 	}
 
 	// Verify state
 	stateCookie, err := r.Cookie("oauth_state")
 	if err != nil {
-		return "", ErrOAuthStateMismatch
+		return nil, ErrOAuthStateMismatch
 	}
-	state := r.URL.Query().Get("state")
-	if state != stateCookie.Value {
-		return "", ErrOAuthStateMismatch
+	storedState := stateCookie.Value
+	receivedState := r.URL.Query().Get("state")
+	if receivedState != storedState {
+		return nil, ErrOAuthStateMismatch
 	}
+
+	// Check if this is a mobile request (state ends with "|mobile")
+	isMobile := strings.HasSuffix(storedState, "|mobile")
 
 	// Clear state cookie
 	http.SetCookie(w, &http.Cookie{
@@ -153,13 +175,13 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request, pr
 	code := r.URL.Query().Get("code")
 	token, err := config.Exchange(context.Background(), code)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrOAuthExchange, err)
+		return nil, fmt.Errorf("%w: %v", ErrOAuthExchange, err)
 	}
 
 	// Get user info from Google
 	userInfo, err := h.getGoogleUserInfo(token)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	providerUserID := userInfo.ID
 	email := userInfo.Email
@@ -167,22 +189,25 @@ func (h *OAuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request, pr
 	avatarURL := userInfo.Picture
 
 	if email == "" {
-		return "", fmt.Errorf("%w: email not available", ErrGetUserInfo)
+		return nil, fmt.Errorf("%w: email not available", ErrGetUserInfo)
 	}
 
 	// Get or create user
 	user, err := h.db.GetOrCreateUserByProvider(provider, providerUserID, email, name, avatarURL)
 	if err != nil {
-		return "", fmt.Errorf("get or create user: %w", err)
+		return nil, fmt.Errorf("get or create user: %w", err)
 	}
 
 	// Create session
 	sessionToken, err := h.authManager.CreateSession(user.ID)
 	if err != nil {
-		return "", fmt.Errorf("create session: %w", err)
+		return nil, fmt.Errorf("create session: %w", err)
 	}
 
-	return sessionToken, nil
+	return &OAuthCallbackResult{
+		SessionToken: sessionToken,
+		IsMobile:     isMobile,
+	}, nil
 }
 
 // getGoogleUserInfo fetches user info from Google
