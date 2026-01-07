@@ -1,6 +1,4 @@
 <script lang="ts">
-  export let onContinueAsGuest: () => void;
-
   function handleGoogleLogin() {
     window.location.href = '/api/v1/auth/oauth/google';
   }
@@ -28,18 +26,6 @@
         Sign in with Google
       </button>
     </div>
-
-    <div class="divider">
-      <span>or</span>
-    </div>
-
-    <button class="guest-btn" on:click={onContinueAsGuest}>
-      Continue without account
-    </button>
-
-    <p class="guest-note">
-      Your data will be stored locally in your browser
-    </p>
 
     <nav class="legal-links">
       <a href="/privacy" on:click={(e) => handleLinkClick(e, '/privacy')}>Privacy Policy</a>
@@ -108,50 +94,6 @@
 
   .google-btn:hover {
     background: #f5f5f5;
-  }
-
-  .divider {
-    display: flex;
-    align-items: center;
-    margin: 1.5rem 0;
-    color: var(--text-muted);
-  }
-
-  .divider::before,
-  .divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .divider span {
-    padding: 0 1rem;
-    font-size: 0.875rem;
-  }
-
-  .guest-btn {
-    width: 100%;
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 500;
-    background: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
-  }
-
-  .guest-btn:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--text-muted);
-  }
-
-  .guest-note {
-    margin: 1rem 0 0;
-    font-size: 0.8125rem;
-    color: var(--text-muted);
   }
 
   .legal-links {
