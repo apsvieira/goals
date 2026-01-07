@@ -11,6 +11,9 @@ import {
   deleteLocalCompletion,
   getLocalCompletionByGoalAndDate,
   getMaxPosition,
+  getAllLocalCompletions,
+  type QueuedOperation,
+  saveQueuedOperation,
 } from './storage';
 import { getToken } from './token-storage';
 
@@ -51,13 +54,7 @@ export interface CalendarResponse {
   completions: Completion[];
 }
 
-// Check if we're in guest mode
-export function isGuestMode(): boolean {
-  const auth = get(authStore);
-  return auth.type === 'guest';
-}
-
-// Initialize storage for guest mode
+// Initialize storage
 let storageInitialized = false;
 async function ensureStorageInitialized(): Promise<void> {
   if (!storageInitialized) {
@@ -103,13 +100,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export async function getCalendar(month: string): Promise<CalendarResponse> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
+  await ensureStorageInitialized();
+
+  try {
+    return await request<CalendarResponse>(`/calendar?month=${month}`);
+  } catch (e) {
+    // Offline: return cached data
     const goals = await getLocalGoals();
     const completions = await getLocalCompletions(month);
     return { goals, completions };
   }
-  return request<CalendarResponse>(`/calendar?month=${month}`);
 }
 
 export async function createGoal(
@@ -118,132 +118,175 @@ export async function createGoal(
   targetCount?: number,
   targetPeriod?: 'week' | 'month'
 ): Promise<Goal> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    const maxPosition = await getMaxPosition();
-    const goal: Goal = {
-      id: generateId(),
-      name,
-      color,
-      position: maxPosition + 1,
-      target_count: targetCount,
-      target_period: targetPeriod,
-      created_at: new Date().toISOString(),
-    };
-    await saveLocalGoal(goal);
-    return goal;
-  }
-  return request<Goal>('/goals', {
-    method: 'POST',
-    body: JSON.stringify({ name, color, target_count: targetCount, target_period: targetPeriod }),
-  });
+  await ensureStorageInitialized();
+
+  // Generate ID for new goal
+  const maxPosition = await getMaxPosition();
+  const goal: Goal = {
+    id: generateId(),
+    name,
+    color,
+    position: maxPosition + 1,
+    target_count: targetCount,
+    target_period: targetPeriod,
+    created_at: new Date().toISOString(),
+  };
+
+  // Save to local cache immediately
+  await saveLocalGoal(goal);
+
+  // Queue operation for sync
+  const operation: QueuedOperation = {
+    id: generateId(),
+    type: 'create_goal',
+    entityId: goal.id,
+    payload: { name, color, target_count: targetCount, target_period: targetPeriod },
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+  await saveQueuedOperation(operation);
+
+  // Attempt immediate sync (will be handled by sync manager)
+  return goal;
 }
 
 export async function updateGoal(
   id: string,
   updates: { name?: string; color?: string; target_count?: number; target_period?: 'week' | 'month' }
 ): Promise<Goal> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    const goals = await getLocalGoals();
-    const existingGoal = goals.find(g => g.id === id);
-    if (!existingGoal) {
-      throw new Error('Goal not found');
-    }
-    const updatedGoal: Goal = {
-      ...existingGoal,
-      ...updates,
-    };
-    await saveLocalGoal(updatedGoal);
-    return updatedGoal;
+  await ensureStorageInitialized();
+
+  const goals = await getLocalGoals();
+  const existingGoal = goals.find(g => g.id === id);
+  if (!existingGoal) {
+    throw new Error('Goal not found');
   }
-  return request<Goal>(`/goals/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(updates),
-  });
+
+  const updatedGoal: Goal = { ...existingGoal, ...updates };
+  await saveLocalGoal(updatedGoal);
+
+  // Queue operation
+  const operation: QueuedOperation = {
+    id: generateId(),
+    type: 'update_goal',
+    entityId: id,
+    payload: updates,
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+  await saveQueuedOperation(operation);
+
+  return updatedGoal;
 }
 
 export async function archiveGoal(id: string): Promise<void> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    const goals = await getLocalGoals();
-    const existingGoal = goals.find(g => g.id === id);
-    if (!existingGoal) {
-      throw new Error('Goal not found');
-    }
-    const archivedGoal: Goal = {
-      ...existingGoal,
-      archived_at: new Date().toISOString(),
-    };
-    await saveLocalGoal(archivedGoal);
-    return;
+  await ensureStorageInitialized();
+
+  const goals = await getLocalGoals();
+  const existingGoal = goals.find(g => g.id === id);
+  if (!existingGoal) {
+    throw new Error('Goal not found');
   }
-  return request<void>(`/goals/${id}`, {
-    method: 'DELETE',
-  });
+
+  const archivedGoal: Goal = {
+    ...existingGoal,
+    archived_at: new Date().toISOString(),
+  };
+  await saveLocalGoal(archivedGoal);
+
+  // Queue operation
+  const operation: QueuedOperation = {
+    id: generateId(),
+    type: 'delete_goal',
+    entityId: id,
+    payload: {},
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+  await saveQueuedOperation(operation);
 }
 
 export async function createCompletion(goalId: string, date: string): Promise<Completion> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    const completion: Completion = {
-      id: generateId(),
-      goal_id: goalId,
-      date,
-      created_at: new Date().toISOString(),
-    };
-    await saveLocalCompletion(completion);
-    return completion;
-  }
-  return request<Completion>('/completions', {
-    method: 'POST',
-    body: JSON.stringify({ goal_id: goalId, date }),
-  });
+  await ensureStorageInitialized();
+
+  const completion: Completion = {
+    id: generateId(),
+    goal_id: goalId,
+    date,
+    created_at: new Date().toISOString(),
+  };
+  await saveLocalCompletion(completion);
+
+  // Queue operation
+  const operation: QueuedOperation = {
+    id: generateId(),
+    type: 'create_completion',
+    entityId: completion.id,
+    payload: { goal_id: goalId, date },
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+  await saveQueuedOperation(operation);
+
+  return completion;
 }
 
 export async function deleteCompletion(id: string): Promise<void> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    await deleteLocalCompletion(id);
-    return;
+  await ensureStorageInitialized();
+
+  // Get completion details before deleting (need for queue payload)
+  const allCompletions = await getAllLocalCompletions();
+  const completion = allCompletions.find(c => c.id === id);
+
+  await deleteLocalCompletion(id);
+
+  if (completion) {
+    // Queue operation
+    const operation: QueuedOperation = {
+      id: generateId(),
+      type: 'delete_completion',
+      entityId: id,
+      payload: { goal_id: completion.goal_id, date: completion.date },
+      timestamp: new Date().toISOString(),
+      retryCount: 0,
+    };
+    await saveQueuedOperation(operation);
   }
-  return request<void>(`/completions/${id}`, {
-    method: 'DELETE',
-  });
 }
 
 export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    const goals = await getLocalGoals();
-    const updatedGoals: Goal[] = [];
+  await ensureStorageInitialized();
 
-    for (let i = 0; i < goalIds.length; i++) {
-      const goal = goals.find(g => g.id === goalIds[i]);
-      if (goal) {
-        const updatedGoal = { ...goal, position: i + 1 };
-        await saveLocalGoal(updatedGoal);
-        updatedGoals.push(updatedGoal);
-      }
+  const goals = await getLocalGoals();
+  const updatedGoals: Goal[] = [];
+
+  for (let i = 0; i < goalIds.length; i++) {
+    const goal = goals.find(g => g.id === goalIds[i]);
+    if (goal) {
+      const updatedGoal = { ...goal, position: i + 1 };
+      await saveLocalGoal(updatedGoal);
+      updatedGoals.push(updatedGoal);
     }
-
-    return updatedGoals.sort((a, b) => a.position - b.position);
   }
-  return request<Goal[]>('/goals/reorder', {
-    method: 'PUT',
-    body: JSON.stringify({ goal_ids: goalIds }),
-  });
+
+  // Queue operation
+  const operation: QueuedOperation = {
+    id: generateId(),
+    type: 'reorder_goals',
+    entityId: 'reorder',
+    payload: { goal_ids: goalIds },
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+  await saveQueuedOperation(operation);
+
+  return updatedGoals.sort((a, b) => a.position - b.position);
 }
 
 // Helper function to find and delete completion by goal and date (for toggle functionality)
 export async function findCompletionByGoalAndDate(goalId: string, date: string): Promise<Completion | undefined> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    return getLocalCompletionByGoalAndDate(goalId, date);
-  }
-  // For server mode, this would need to be handled differently
-  // The App.svelte currently tracks completions in memory
-  return undefined;
+  await ensureStorageInitialized();
+  return getLocalCompletionByGoalAndDate(goalId, date);
 }
 
 // Auth API
@@ -289,34 +332,21 @@ export async function logout(): Promise<void> {
 
 // Get all completions (for statistics - no date filter)
 export async function getAllCompletions(): Promise<Completion[]> {
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
-    // Get all completions by passing a very wide date range
-    const goals = await getLocalGoals();
-    const allCompletions: Completion[] = [];
-    // Get completions for each month from 2020 to 2030
-    for (let year = 2020; year <= 2030; year++) {
-      for (let month = 1; month <= 12; month++) {
-        const monthStr = `${year}-${month.toString().padStart(2, '0')}`;
-        const monthCompletions = await getLocalCompletions(monthStr);
-        allCompletions.push(...monthCompletions);
-      }
-    }
-    // Deduplicate by id
-    const seen = new Set<string>();
-    return allCompletions.filter(c => {
-      if (seen.has(c.id)) return false;
-      seen.add(c.id);
-      return true;
-    });
+  await ensureStorageInitialized();
+
+  try {
+    // Try to fetch from server first
+    return await request<Completion[]>('/completions?from=2020-01-01&to=2099-12-31');
+  } catch (e) {
+    // Offline: use local cache
+    return getAllLocalCompletions();
   }
-  // For server mode, fetch all completions without date filter
-  // Using a very wide date range
-  return request<Completion[]>('/completions?from=2020-01-01&to=2099-12-31');
 }
 
 // Get completions for the current period (week and month) for progress bar calculations
 export async function getCurrentPeriodCompletions(): Promise<Completion[]> {
+  await ensureStorageInitialized();
+
   const now = new Date();
   // Start of current week (Sunday)
   const weekStart = new Date(now);
@@ -328,14 +358,15 @@ export async function getCurrentPeriodCompletions(): Promise<Completion[]> {
   const from = (monthStart < weekStart ? monthStart : weekStart).toISOString().slice(0, 10);
   const to = now.toISOString().slice(0, 10);
 
-  if (isGuestMode()) {
-    await ensureStorageInitialized();
+  try {
+    return await request<Completion[]>(`/completions?from=${from}&to=${to}`);
+  } catch (e) {
+    // Offline: use local cache
     return getLocalCompletionsForRange(from, to);
   }
-  return request<Completion[]>(`/completions?from=${from}&to=${to}`);
 }
 
-// Helper to get local completions for a date range (guest mode)
+// Helper to get local completions for a date range
 async function getLocalCompletionsForRange(from: string, to: string): Promise<Completion[]> {
   const fromDate = new Date(from);
   const toDate = new Date(to);
