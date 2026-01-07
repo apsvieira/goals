@@ -26,7 +26,7 @@
     type Completion,
   } from './lib/api';
   import { getUserFriendlyMessage } from './lib/errors';
-  import { authStore, hasLocalData, setGuestMode, isOnline, type AuthState } from './lib/stores';
+  import { authStore, isOnline, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
   import { saveToken } from './lib/token-storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
@@ -90,7 +90,6 @@
 
   // Derived user state
   $: user = authState.type === 'authenticated' ? authState.user : null;
-  $: isGuest = authState.type === 'guest';
 
   // Drag & drop state
   let draggedGoalId: string | null = null;
@@ -359,47 +358,37 @@
     try {
       const user = await getCurrentUser();
       if (user) {
-        // Set flag to prevent reactive from triggering loadData during sync
         initialAuthInProgress = true;
         authStore.set({ type: 'authenticated', user });
-        // Sync local data with server on successful auth
-        try {
-          await syncManager.sync();
-        } catch (syncError) {
-          console.error('Initial sync failed:', syncError);
-        }
-        // Now explicitly load data after sync completes
+
+        // Start automatic sync
+        syncManager.startAutoSync();
+
+        // Load initial data
         initialAuthInProgress = false;
         await loadData();
-        // Initialize push notifications for mobile platforms
+
+        // Initialize push notifications
         await initPushNotifications();
         return;
       }
     } catch (e) {
-      // Not authenticated
+      console.error('Auth check failed:', e);
     }
 
-    // Check if we have local data (guest mode)
-    if (hasLocalData()) {
-      authStore.set({ type: 'guest' });
-      return;
-    }
-
-    // Not authenticated and no local data
+    // Not authenticated
     authStore.set({ type: 'unauthenticated' });
-  }
-
-  function handleContinueAsGuest() {
-    setGuestMode(true);
-    authStore.set({ type: 'guest' });
   }
 
   async function handleLogout() {
     try {
-      // Unregister push notifications before logging out
+      // Stop automatic sync
+      syncManager.stopAutoSync();
+
+      // Unregister push notifications
       await unregisterPushNotifications();
+
       await logout();
-      setGuestMode(false);
       authStore.set({ type: 'unauthenticated' });
       goals = [];
       completions = [];
@@ -448,7 +437,7 @@
     }
 
     // Don't handle shortcuts on non-main views
-    if (currentRoute !== 'home' || authState.type !== 'authenticated' && authState.type !== 'guest') {
+    if (currentRoute !== 'home' || authState.type !== 'authenticated') {
       return;
     }
 
@@ -560,6 +549,16 @@
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
 
+    // Sync on online/offline events
+    window.addEventListener('online', () => {
+      console.log('Online, triggering sync');
+      syncManager.sync().catch(console.error);
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('Offline');
+    });
+
     // Set up deep link handler for mobile OAuth callback
     let appUrlOpenListener: { remove: () => Promise<void> } | null = null;
     if (Capacitor.isNativePlatform()) {
@@ -580,6 +579,12 @@
           }
         }
       });
+
+      // Add Capacitor app resume listener
+      CapApp.addListener('resume', () => {
+        console.log('App resumed, triggering sync');
+        syncManager.sync().catch(console.error);
+      });
     }
 
     await checkAuth();
@@ -589,6 +594,7 @@
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
+      syncManager.stopAutoSync();
       // Clean up the deep link listener
       if (appUrlOpenListener) {
         appUrlOpenListener.remove();
@@ -596,9 +602,9 @@
     };
   });
 
-  // Reload data when month changes, but only if authenticated/guest
+  // Reload data when month changes, but only if authenticated
   // Skip during initial auth to avoid race condition with sync
-  $: if ((authState.type === 'authenticated' || authState.type === 'guest') && !initialAuthInProgress) {
+  $: if (authState.type === 'authenticated' && !initialAuthInProgress) {
     currentMonth, loadData();
   }
 </script>
@@ -611,13 +617,12 @@
     <p class="loading-text">Loading your goals...</p>
   </div>
 {:else if authState.type === 'unauthenticated'}
-  <AuthPage onContinueAsGuest={handleContinueAsGuest} />
+  <AuthPage />
 {:else}
   <div class="app-container">
     {#if showProfile}
       <ProfilePage
         {user}
-        {isGuest}
         {goals}
         completions={allCompletions}
         onBack={handleProfileBack}
@@ -639,7 +644,6 @@
         showAddForm={false}
         onToggleAddForm={() => editorState = { mode: 'add' }}
         {user}
-        {isGuest}
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
         onSignIn={handleSignIn}

@@ -9,7 +9,6 @@
   export let showAddForm: boolean;
   export let onToggleAddForm: () => void;
   export let user: User | null = null;
-  export let isGuest: boolean = false;
   export let onLogout: () => void = () => {};
   export let onProfileClick: () => void = () => {};
   export let onSignIn: () => void = () => {};
@@ -18,9 +17,7 @@
 
   $: displayName = user?.name
     ? user.name.split(' ')[0]
-    : isGuest
-      ? 'Anonymous'
-      : '';
+    : '';
 
   function toggleDropdown() {
     dropdownOpen = !dropdownOpen;
@@ -93,7 +90,6 @@
       {#if dropdownOpen}
         <UserDropdown
           {user}
-          {isGuest}
           onClose={closeDropdown}
           onLogout={handleLogout}
           onProfileClick={handleProfileClick}

@@ -3,7 +3,6 @@
   import type { Goal, Completion } from '../api';
 
   export let user: User | null;
-  export let isGuest: boolean;
   export let goals: Goal[] = [];
   export let completions: Completion[] = [];
   export let onBack: () => void;
