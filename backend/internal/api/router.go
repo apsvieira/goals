@@ -112,6 +112,7 @@ func (s *Server) setupRoutes() {
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Auth routes with strict rate limiting (10/min - prevent brute force)
+		// These routes do NOT require authentication (public endpoints)
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(RateLimitMiddleware(s.authRateLimiter))
 			r.Get("/me", s.getCurrentUser)
@@ -120,34 +121,39 @@ func (s *Server) setupRoutes() {
 			r.Post("/logout", s.logout)
 		})
 
-		// Sync endpoint with moderate rate limiting (30/min - expensive operation)
-		r.Route("/sync", func(r chi.Router) {
-			r.Use(RateLimitMiddleware(s.syncRateLimiter))
-			r.Post("/", s.handleSync)
-		})
-
-		// Data endpoints with generous rate limiting (100/min - normal API use)
+		// All routes below require authentication
 		r.Group(func(r chi.Router) {
-			r.Use(RateLimitMiddleware(s.apiRateLimiter))
+			r.Use(auth.RequireAuth())
 
-			// Goals
-			r.Get("/goals", s.listGoals)
-			r.Post("/goals", s.createGoal)
-			r.Patch("/goals/{id}", s.updateGoal)
-			r.Delete("/goals/{id}", s.archiveGoal)
-			r.Put("/goals/reorder", s.reorderGoals)
+			// Sync endpoint with moderate rate limiting (30/min - expensive operation)
+			r.Route("/sync", func(r chi.Router) {
+				r.Use(RateLimitMiddleware(s.syncRateLimiter))
+				r.Post("/", s.handleSync)
+			})
 
-			// Completions
-			r.Get("/completions", s.listCompletions)
-			r.Post("/completions", s.createCompletion)
-			r.Delete("/completions/{id}", s.deleteCompletion)
+			// Data endpoints with generous rate limiting (100/min - normal API use)
+			r.Group(func(r chi.Router) {
+				r.Use(RateLimitMiddleware(s.apiRateLimiter))
 
-			// Calendar convenience endpoint
-			r.Get("/calendar", s.getCalendar)
+				// Goals
+				r.Get("/goals", s.listGoals)
+				r.Post("/goals", s.createGoal)
+				r.Patch("/goals/{id}", s.updateGoal)
+				r.Delete("/goals/{id}", s.archiveGoal)
+				r.Put("/goals/reorder", s.reorderGoals)
 
-			// Device tokens (push notifications) - requires authentication
-			r.Post("/devices", s.registerDevice)
-			r.Delete("/devices/{id}", s.unregisterDevice)
+				// Completions
+				r.Get("/completions", s.listCompletions)
+				r.Post("/completions", s.createCompletion)
+				r.Delete("/completions/{id}", s.deleteCompletion)
+
+				// Calendar convenience endpoint
+				r.Get("/calendar", s.getCalendar)
+
+				// Device tokens (push notifications) - requires authentication
+				r.Post("/devices", s.registerDevice)
+				r.Delete("/devices/{id}", s.unregisterDevice)
+			})
 		})
 	})
 

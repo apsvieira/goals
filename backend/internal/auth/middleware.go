@@ -124,3 +124,19 @@ func ClearSessionCookie(w http.ResponseWriter) {
 		HttpOnly: true,
 	})
 }
+
+// RequireAuth is a middleware that requires authentication.
+// Returns 401 Unauthorized if no valid session is present.
+// Must be used after the main Middleware which populates the user context.
+func RequireAuth() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := GetUserFromContext(r.Context())
+			if user == nil {
+				http.Error(w, "authentication required", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
