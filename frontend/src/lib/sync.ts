@@ -9,6 +9,9 @@ import {
   saveLocalCompletion,
   getAllLocalCompletions,
   deleteLocalCompletionByGoalAndDate,
+  getQueuedOperations,
+  deleteQueuedOperation,
+  type QueuedOperation,
 } from './storage';
 import type { Goal, Completion } from './api';
 
@@ -57,12 +60,35 @@ interface SyncResponse {
 class SyncManager {
   private lastSyncedAt: Date | null = null;
   private isSyncing = false;
+  private syncIntervalId: number | null = null;
+  private readonly SYNC_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
   async init(): Promise<void> {
     await initStorage();
     const lastSynced = await getLastSyncedAt();
     if (lastSynced) {
       this.lastSyncedAt = new Date(lastSynced);
+    }
+  }
+
+  startAutoSync(): void {
+    if (this.syncIntervalId !== null) {
+      return; // Already running
+    }
+
+    // Sync immediately
+    this.sync().catch(console.error);
+
+    // Then sync every 2 minutes
+    this.syncIntervalId = window.setInterval(() => {
+      this.sync().catch(console.error);
+    }, this.SYNC_INTERVAL_MS);
+  }
+
+  stopAutoSync(): void {
+    if (this.syncIntervalId !== null) {
+      clearInterval(this.syncIntervalId);
+      this.syncIntervalId = null;
     }
   }
 
@@ -82,42 +108,75 @@ class SyncManager {
       return;
     }
 
+    // Check if online
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      console.log('Offline, skipping sync');
+      return;
+    }
+
     this.isSyncing = true;
     syncStatus.set({ state: 'syncing', message: 'Syncing your data...' });
 
     try {
-      // Only upload local data during initial sync (migration from guest mode)
-      // After initial sync, the server is the source of truth
-      const isInitialSync = this.lastSyncedAt === null;
+      // Get queued operations
+      const operations = await getQueuedOperations();
 
-      let goalChanges: GoalChange[] = [];
-      let completionChanges: CompletionChange[] = [];
+      // Convert operations to sync format
+      const goalChanges: GoalChange[] = [];
+      const completionChanges: CompletionChange[] = [];
 
-      if (isInitialSync) {
-        // 1. Get pending local changes (all local goals and completions)
-        const localGoals = await getAllLocalGoals();
-        const localCompletions = await getAllLocalCompletions();
-
-        // Convert local goals to GoalChanges
-        goalChanges = localGoals.map(goal => ({
-          id: goal.id,
-          name: goal.name,
-          color: goal.color,
-          position: goal.position,
-          updated_at: goal.created_at, // Use created_at as updated_at for local-only goals
-          deleted: !!goal.archived_at,
-        }));
-
-        // Convert local completions to CompletionChanges
-        completionChanges = localCompletions.map(completion => ({
-          goal_id: completion.goal_id,
-          date: completion.date,
-          completed: true, // All completions in local storage are completed
-          updated_at: completion.created_at,
-        }));
+      for (const op of operations) {
+        if (op.type === 'create_goal' || op.type === 'update_goal') {
+          const goals = await getAllLocalGoals();
+          const goal = goals.find(g => g.id === op.entityId);
+          if (goal) {
+            goalChanges.push({
+              id: goal.id,
+              name: goal.name,
+              color: goal.color,
+              position: goal.position,
+              updated_at: op.timestamp,
+              deleted: !!goal.archived_at,
+            });
+          }
+        } else if (op.type === 'delete_goal') {
+          // Send as deleted
+          const goals = await getAllLocalGoals();
+          const goal = goals.find(g => g.id === op.entityId);
+          if (goal) {
+            goalChanges.push({
+              id: goal.id,
+              name: goal.name,
+              color: goal.color,
+              position: goal.position,
+              updated_at: op.timestamp,
+              deleted: true,
+            });
+          }
+        } else if (op.type === 'create_completion') {
+          const completions = await getAllLocalCompletions();
+          const completion = completions.find(c => c.id === op.entityId);
+          if (completion) {
+            completionChanges.push({
+              goal_id: completion.goal_id,
+              date: completion.date,
+              completed: true,
+              updated_at: op.timestamp,
+            });
+          }
+        } else if (op.type === 'delete_completion') {
+          // Parse goal_id and date from payload
+          const { goal_id, date } = op.payload;
+          completionChanges.push({
+            goal_id,
+            date,
+            completed: false,
+            updated_at: op.timestamp,
+          });
+        }
       }
 
-      // 2. POST to /api/v1/sync
+      // Send to server
       const req: SyncRequest = {
         last_synced_at: this.lastSyncedAt?.toISOString() ?? null,
         goals: goalChanges,
@@ -134,16 +193,20 @@ class SyncManager {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Sync failed: ${text || res.statusText}`);
+        throw new Error(`Sync failed: ${res.statusText}`);
       }
 
       const response: SyncResponse = await res.json();
 
-      // 3. Apply server changes to local storage
+      // Apply server changes
       await this.applyServerChanges(response);
 
-      // 4. Update lastSyncedAt
+      // Clear synced operations
+      for (const op of operations) {
+        await deleteQueuedOperation(op.id);
+      }
+
+      // Update lastSyncedAt
       this.lastSyncedAt = new Date(response.server_time);
       await setLastSyncedAt(response.server_time);
 
