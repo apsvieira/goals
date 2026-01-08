@@ -9,7 +9,7 @@ A simple, beautiful goal tracking application with offline support and automatic
 - Full offline support with automatic background sync
 - Cross-device synchronization
 - Push notifications for goal reminders
-- Mobile app support (iOS and Android via Capacitor)
+- Mobile app support (Android via Capacitor)
 
 ## Authentication
 
