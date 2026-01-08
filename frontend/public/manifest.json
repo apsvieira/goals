@@ -1,6 +1,6 @@
 {
-  "name": "Goal Tracker",
-  "short_name": "Goals",
+  "name": "tiny tracker",
+  "short_name": "tiny",
   "description": "Track daily completion of your goals with a hexagon calendar",
   "start_url": "/",
   "display": "standalone",

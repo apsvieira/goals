@@ -17,7 +17,7 @@
     <section>
       <h2>Introduction</h2>
       <p>
-        Goal Tracker ("we", "our", or "us") is committed to protecting your privacy.
+        tiny tracker ("we", "our", or "us") is committed to protecting your privacy.
         This Privacy Policy explains how we collect, use, and safeguard your information
         when you use our goal tracking application.
       </p>

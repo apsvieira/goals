@@ -1,4 +1,4 @@
-# Goal Tracker
+# tiny tracker
 
 A simple, beautiful goal tracking application with offline support and automatic sync.
 
@@ -13,7 +13,7 @@ A simple, beautiful goal tracking application with offline support and automatic
 
 ## Authentication
 
-Goal Tracker requires a Google account to use. Your data is synced across all your devices.
+tiny tracker requires a Google account to use. Your data is synced across all your devices.
 
 ### First Time Setup
 1. Open the app

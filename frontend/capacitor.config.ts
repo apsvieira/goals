@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.goaltracker.app',
-  appName: 'Goal Tracker',
+  appName: 'tiny tracker',
   webDir: 'dist',
   server: {
     // Enable this for development with live reload

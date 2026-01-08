@@ -2,7 +2,7 @@
 
 ## Overview
 
-Goal Tracker requires authentication via Google OAuth. All data is stored on the server and cached locally for offline access.
+tiny tracker requires authentication via Google OAuth. All data is stored on the server and cached locally for offline access.
 
 ## Authentication Flow
 

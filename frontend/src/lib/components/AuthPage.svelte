@@ -12,7 +12,7 @@
 
 <div class="auth-container">
   <div class="auth-card">
-    <h1>Goal Tracker</h1>
+    <h1>tiny tracker</h1>
     <p class="subtitle">Track your daily habits and achieve your goals</p>
 
     <div class="auth-buttons">
