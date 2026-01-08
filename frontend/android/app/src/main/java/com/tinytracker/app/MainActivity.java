@@ -1,4 +1,4 @@
-package com.goaltracker.app;
+package com.tinytracker.app;
 
 import com.getcapacitor.BridgeActivity;
 

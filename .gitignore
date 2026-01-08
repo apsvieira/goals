@@ -19,3 +19,4 @@ backend/cmd/server/dist/
 # bv (beads viewer) local config and caches
 .bv/
 goal-tracker-release.keystore
+tiny-tracker-release.keystore
