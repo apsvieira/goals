@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Goal, Completion } from './api';
 
 export interface QueuedOperation {
@@ -41,30 +41,73 @@ let db: IDBPDatabase<GoalTrackerDB> | null = null;
 export async function initStorage(): Promise<void> {
   if (db) return;
 
-  db = await openDB<GoalTrackerDB>(DB_NAME, DB_VERSION, {
-    upgrade(database, oldVersion) {
-      // Create stores only if they don't exist
-      if (oldVersion < 1) {
-        // Goals store
-        const goalsStore = database.createObjectStore('goals', { keyPath: 'id' });
-        goalsStore.createIndex('by-position', 'position');
+  try {
+    db = await openDB<GoalTrackerDB>(DB_NAME, DB_VERSION, {
+      upgrade(database, oldVersion) {
+        // Create stores only if they don't exist
+        if (oldVersion < 1) {
+          // Goals store
+          const goalsStore = database.createObjectStore('goals', { keyPath: 'id' });
+          goalsStore.createIndex('by-position', 'position');
 
-        // Completions store
-        const completionsStore = database.createObjectStore('completions', { keyPath: 'id' });
-        completionsStore.createIndex('by-goal', 'goal_id');
-        completionsStore.createIndex('by-date', 'date');
+          // Completions store
+          const completionsStore = database.createObjectStore('completions', { keyPath: 'id' });
+          completionsStore.createIndex('by-goal', 'goal_id');
+          completionsStore.createIndex('by-date', 'date');
 
-        // Meta store for sync info
-        database.createObjectStore('meta', { keyPath: 'key' });
-      }
+          // Meta store for sync info
+          database.createObjectStore('meta', { keyPath: 'key' });
+        }
 
-      // Add operations store in version 2
-      if (oldVersion < 2) {
-        const operationsStore = database.createObjectStore('operations', { keyPath: 'id' });
-        operationsStore.createIndex('by-timestamp', 'timestamp');
-      }
-    },
-  });
+        // Add operations store in version 2
+        if (oldVersion < 2) {
+          const operationsStore = database.createObjectStore('operations', { keyPath: 'id' });
+          operationsStore.createIndex('by-timestamp', 'timestamp');
+        }
+      },
+    });
+  } catch (error) {
+    // Handle version mismatch error
+    if (error instanceof DOMException &&
+        (error.name === 'VersionError' ||
+         error.message.includes('higher version'))) {
+      console.warn('IndexedDB version mismatch detected. Deleting old database and recreating...');
+
+      // Delete the old database
+      await deleteDB(DB_NAME);
+
+      // Retry opening with current version
+      db = await openDB<GoalTrackerDB>(DB_NAME, DB_VERSION, {
+        upgrade(database, oldVersion) {
+          // Create stores only if they don't exist
+          if (oldVersion < 1) {
+            // Goals store
+            const goalsStore = database.createObjectStore('goals', { keyPath: 'id' });
+            goalsStore.createIndex('by-position', 'position');
+
+            // Completions store
+            const completionsStore = database.createObjectStore('completions', { keyPath: 'id' });
+            completionsStore.createIndex('by-goal', 'goal_id');
+            completionsStore.createIndex('by-date', 'date');
+
+            // Meta store for sync info
+            database.createObjectStore('meta', { keyPath: 'key' });
+          }
+
+          // Add operations store in version 2
+          if (oldVersion < 2) {
+            const operationsStore = database.createObjectStore('operations', { keyPath: 'id' });
+            operationsStore.createIndex('by-timestamp', 'timestamp');
+          }
+        },
+      });
+
+      console.log('IndexedDB recreated successfully. Data will be resynced from server.');
+    } else {
+      // Re-throw other errors
+      throw error;
+    }
+  }
 }
 
 function getDB(): IDBPDatabase<GoalTrackerDB> {
