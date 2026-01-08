@@ -62,7 +62,7 @@
 <style>
   .goal-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     padding: 0.375rem 0;
     margin: 0 0.3125rem;
@@ -85,6 +85,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    justify-content: center;
+    align-self: stretch;
   }
 
   .goal-name {
