@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "test:e2e:auth": "tsx e2e/manual-auth.ts"
+    "test:e2e:auth": "npx tsx e2e/manual-auth.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
@@ -26,6 +26,7 @@
     "jsdom": "^27.0.1",
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.4",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vitest": "^3.2.4"
