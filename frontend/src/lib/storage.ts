@@ -38,6 +38,11 @@ const DB_VERSION = 2;
 
 let db: IDBPDatabase<GoalTrackerDB> | null = null;
 
+// For testing: reset the database connection
+export function resetDB(): void {
+  db = null;
+}
+
 export async function initStorage(): Promise<void> {
   if (db) return;
 
