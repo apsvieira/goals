@@ -62,12 +62,27 @@ class SyncManager {
   private isSyncing = false;
   private syncIntervalId: number | null = null;
   private readonly SYNC_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+  private storageInitialized = false;
 
   async init(): Promise<void> {
-    await initStorage();
-    const lastSynced = await getLastSyncedAt();
-    if (lastSynced) {
-      this.lastSyncedAt = new Date(lastSynced);
+    try {
+      await initStorage();
+      this.storageInitialized = true;
+
+      const lastSynced = await getLastSyncedAt();
+      if (lastSynced) {
+        this.lastSyncedAt = new Date(lastSynced);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('SyncManager: Failed to initialize storage:', errorMessage);
+      console.error('SyncManager: Sync functionality will be disabled. Error details:', error);
+
+      // Mark storage as not initialized, which will disable sync
+      this.storageInitialized = false;
+
+      // Don't throw - allow app to continue in degraded mode
+      // Sync will be skipped when storage is not initialized
     }
   }
 
@@ -100,6 +115,11 @@ class SyncManager {
   async sync(): Promise<void> {
     if (this.isSyncing) {
       console.log('Sync already in progress, skipping');
+      return;
+    }
+
+    if (!this.storageInitialized) {
+      console.log('Storage not initialized, skipping sync');
       return;
     }
 

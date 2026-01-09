@@ -56,10 +56,28 @@ export interface CalendarResponse {
 
 // Initialize storage
 let storageInitialized = false;
+let storageInitError: Error | null = null;
+
 async function ensureStorageInitialized(): Promise<void> {
   if (!storageInitialized) {
-    await initStorage();
-    storageInitialized = true;
+    try {
+      await initStorage();
+      storageInitialized = true;
+      storageInitError = null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      storageInitError = error instanceof Error ? error : new Error(errorMessage);
+      console.error('Failed to initialize storage:', errorMessage);
+      console.error('Storage operations will not work. Error details:', error);
+
+      // Allow retry on next call by not setting storageInitialized = true
+      throw new Error(`Storage initialization failed: ${errorMessage}. The app may not function correctly.`);
+    }
+  }
+
+  // If previous initialization failed, throw the cached error
+  if (storageInitError) {
+    throw storageInitError;
   }
 }
 
