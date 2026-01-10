@@ -8,7 +8,9 @@
 import { chromium } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const authFile = path.join(__dirname, '..', '.auth', 'user.json');
 
 async function authenticate() {
@@ -45,7 +47,7 @@ async function authenticate() {
     });
 
     // Wait for authenticated UI
-    await page.waitForSelector('header', { timeout: 30000 });
+    await page.waitForSelector('header', { timeout: 60000 });
 
     // Save auth state
     const authDir = path.dirname(authFile);

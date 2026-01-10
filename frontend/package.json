@@ -12,12 +12,13 @@
     "cap:android": "npx cap open android",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:debug": "npx playwright test --debug",
     "test:e2e:auth": "npx tsx e2e/manual-auth.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@tsconfig/svelte": "^5.0.6",
     "@types/node": "^24.10.1",

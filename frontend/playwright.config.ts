@@ -113,7 +113,7 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      command: 'cd ../backend && go run cmd/server/main.go',
+      command: 'cd ../backend && go run ./cmd/server',
       url: 'http://localhost:8080',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
