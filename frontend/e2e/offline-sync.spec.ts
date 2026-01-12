@@ -67,7 +67,7 @@ test.describe('Offline Sync', () => {
 
     // Verify completion is marked locally
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator('button').filter({ hasText: today.toString() }).first();
+    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
     await expect(dayButton).toBeVisible();
 
     // Go back online
@@ -82,7 +82,7 @@ test.describe('Offline Sync', () => {
 
     // Verify completion persists after sync
     const goalRowAfterSync = await homePage.getGoalRow(goalName);
-    const dayButtonAfterSync = goalRowAfterSync.locator('button').filter({ hasText: today.toString() }).first();
+    const dayButtonAfterSync = goalRowAfterSync.locator(`button[aria-label="Day ${today}"]`);
     await expect(dayButtonAfterSync).toBeVisible();
 
     // Clean up

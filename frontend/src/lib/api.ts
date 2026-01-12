@@ -19,14 +19,13 @@ import { getToken } from './token-storage';
 
 const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
 
-// Use production URL for native platforms, relative URL in web production, absolute in dev
+// Use production URL for native platforms, relative URL for web (Vite proxy handles localhost)
 function getApiBase(): string {
   if (Capacitor.isNativePlatform()) {
     return `${PRODUCTION_API_URL}/api/v1`;
   }
-  return typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-    ? '/api/v1'
-    : 'http://localhost:8080/api/v1';
+  // Always use relative path - Vite proxy handles localhost in development
+  return '/api/v1';
 }
 
 const API_BASE = getApiBase();

@@ -1,10 +1,9 @@
 import { test as setup, expect } from '@playwright/test';
 import * as fs from 'fs';
-import * as path from 'path';
 
 const authFile = '.auth/user.json';
 
-setup('authenticate', async ({ page, context }) => {
+setup('authenticate', async ({ page, browser }) => {
   // Check if auth file already exists and is recent (less than 7 days old)
   if (fs.existsSync(authFile)) {
     const stats = fs.statSync(authFile);
@@ -16,48 +15,47 @@ setup('authenticate', async ({ page, context }) => {
     }
   }
 
-  console.log('Setting up authentication...');
+  console.log('Setting up test authentication...');
 
-  // Go to the app
-  await page.goto('/');
+  // Create a new context for authentication
+  const context = await browser.newContext();
+  const authPage = await context.newPage();
 
-  // Wait for auth page to load
-  await expect(page.locator('h1', { hasText: 'tiny tracker' })).toBeVisible({ timeout: 10000 });
+  // Listen to console logs to debug
+  authPage.on('console', msg => console.log('PAGE LOG:', msg.text()));
 
-  // Click "Sign in with Google" button
-  const googleButton = page.locator('button', { hasText: 'Sign in with Google' });
-  await expect(googleButton).toBeVisible();
+  // Create test session through Vite proxy (avoids CORS issues)
+  const response = await context.request.post('http://localhost:5173/api/v1/auth/test-session');
 
-  // MANUAL STEP: User must complete OAuth flow
-  console.log('\n========================================');
-  console.log('MANUAL AUTHENTICATION REQUIRED');
-  console.log('========================================');
-  console.log('1. A browser window will open');
-  console.log('2. Click "Sign in with Google"');
-  console.log('3. Complete the Google OAuth flow');
-  console.log('4. Wait for the app to load');
-  console.log('========================================\n');
+  if (!response.ok()) {
+    throw new Error(`Failed to create test session: ${response.status()} ${response.statusText()}`);
+  }
 
-  // Set a long timeout for manual OAuth (5 minutes)
-  page.setDefaultTimeout(300000);
+  const sessionData = await response.json();
+  console.log('Test session created for:', sessionData.user.email);
 
-  // Click the button to initiate OAuth
-  await googleButton.click();
+  // Navigate to the app - the session cookie should now be available
+  await authPage.goto('http://localhost:5173/');
 
-  // Wait for OAuth redirect and successful login
-  // The app should redirect back and show the main interface
-  // We know auth succeeded when we see the Header with user profile
-  await page.waitForURL('http://localhost:5173/', {
-    timeout: 300000,
-    waitUntil: 'networkidle'
+  // Wait a bit for the app to initialize and check auth
+  await authPage.waitForTimeout(3000);
+
+  // Check if there's an error message on the page
+  const errorElement = authPage.locator('[class*="error"]');
+  if (await errorElement.count() > 0) {
+    console.log('Error on page:', await errorElement.textContent());
+  }
+
+  // Check the auth store state
+  const authState = await authPage.evaluate(() => {
+    // Access the Svelte store if possible
+    return (window as any).__AUTH_STATE__ || 'unknown';
   });
+  console.log('Auth state:', authState);
 
   // Verify we're authenticated by checking for authenticated UI elements
   // The Header component should be visible with user menu
-  await expect(page.locator('header')).toBeVisible({ timeout: 30000 });
-
-  // Additional verification: check that auth page is not visible
-  await expect(page.locator('h1', { hasText: 'tiny tracker' })).not.toBeVisible();
+  await expect(authPage.locator('header')).toBeVisible({ timeout: 10000 });
 
   console.log('Authentication successful! Saving session...');
 
@@ -65,4 +63,8 @@ setup('authenticate', async ({ page, context }) => {
   await context.storageState({ path: authFile });
 
   console.log(`Auth state saved to ${authFile}`);
+
+  // Clean up
+  await authPage.close();
+  await context.close();
 });

@@ -39,36 +39,22 @@ export class HomePage {
       await this.page.selectOption('select', targetPeriod);
     }
 
-    await this.page.click('button:has-text("Save")');
+    await this.page.click('button:has-text("Add Goal")');
 
-    // Wait for goal to appear in list
-    await this.page.waitForSelector(`text=${name}`, { timeout: 5000 });
+    // Wait for editor to close (input should disappear)
+    await this.page.waitForSelector('input[placeholder="Goal name"]', { state: 'hidden', timeout: 5000 });
+
+    // Wait for goal to appear in goal row on main page
+    await this.page.waitForSelector(`.goal-row:has-text("${name}")`, { timeout: 5000 });
   }
 
   async toggleCompletion(goalName: string, day: number) {
     // Find the goal row
     const goalRow = this.page.locator('.goal-row').filter({ hasText: goalName });
 
-    // Find the day button within the goal row
-    // The button might have data-day attribute or be the Nth button in the row
-    const dayButtons = goalRow.locator('button').filter({ hasText: day.toString() });
-
-    if (await dayButtons.count() > 0) {
-      await dayButtons.first().click();
-    } else {
-      // Fallback: click by position (day buttons are after the goal name)
-      const allButtons = goalRow.locator('button');
-      const count = await allButtons.count();
-      // Try to find button with text matching the day
-      for (let i = 0; i < count; i++) {
-        const button = allButtons.nth(i);
-        const text = await button.textContent();
-        if (text?.trim() === day.toString()) {
-          await button.click();
-          return;
-        }
-      }
-    }
+    // Find the day button using aria-label for exact matching
+    const dayButton = goalRow.locator(`button[aria-label="Day ${day}"]`);
+    await dayButton.click();
   }
 
   async navigateToMonth(direction: 'prev' | 'next') {

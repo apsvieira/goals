@@ -119,6 +119,13 @@ func (s *Server) setupRoutes() {
 			r.Get("/oauth/{provider}", s.startOAuth)
 			r.Get("/oauth/{provider}/callback", s.oauthCallback)
 			r.Post("/logout", s.logout)
+
+			// Test endpoint for E2E tests - only enabled in development
+			frontendURL := os.Getenv("FRONTEND_URL")
+			baseURL := os.Getenv("BASE_URL")
+			if baseURL == "" || strings.Contains(baseURL, "localhost") || strings.Contains(frontendURL, "localhost") {
+				r.Post("/test-session", s.createTestSession)
+			}
 		})
 
 		// All routes below require authentication

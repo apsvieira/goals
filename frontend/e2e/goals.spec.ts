@@ -33,11 +33,9 @@ test.describe('Goal Management', () => {
     const goalRow = await homePage.getGoalRow(goalName);
     await expect(goalRow).toBeVisible();
 
-    // Check for progress indicator (progress bar or count)
-    // The UI might show "0/3" or have a progress bar
-    const progressIndicator = goalRow.locator('.progress-bar, .progress-text, text=/\\/3/');
-    const count = await progressIndicator.count();
-    expect(count).toBeGreaterThan(0);
+    // Check for progress bar
+    const progressBar = goalRow.locator('.progress-bar, .progress-track');
+    await expect(progressBar.first()).toBeVisible();
   });
 
   test('should create goal with monthly target', async ({ page }) => {

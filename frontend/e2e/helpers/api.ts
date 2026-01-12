@@ -6,7 +6,8 @@ export class GoalTrackerAPI {
 
   constructor(request: APIRequestContext) {
     this.request = request;
-    this.baseURL = 'http://localhost:8080/api/v1';
+    // Use Vite proxy URL to avoid CORS issues
+    this.baseURL = 'http://localhost:5173/api/v1';
   }
 
   async createGoal(name: string, color: string, targetCount?: number, targetPeriod?: 'week' | 'month') {

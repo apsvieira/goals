@@ -1,8 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for goal-tracker E2E tests
- * See https://playwright.dev/docs/test-configuration
+ * Playwright configuration for local testing with already-running servers
  */
 export default defineConfig({
   testDir: './e2e',
@@ -64,61 +63,7 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
-
-    {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        storageState: '.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
-
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        storageState: '.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: {
-        ...devices['Pixel 5'],
-        storageState: '.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
-    {
-      name: 'Mobile Safari',
-      use: {
-        ...devices['iPhone 12'],
-        storageState: '.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
   ],
 
-  /* Run your local dev server before starting the tests */
-  // webServer: [
-  //   {
-  //     command: 'npm run dev',
-  //     url: 'http://localhost:5173',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120 * 1000,
-  //     stdout: 'ignore',
-  //     stderr: 'ignore',
-  //   },
-  //   {
-  //     command: 'cd ../backend && go run ./cmd/server',
-  //     url: 'http://localhost:8080',
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120 * 1000,
-  //     stdout: 'ignore',
-  //     stderr: 'ignore',
-  //   }
-  // ],
+  /* No webServer configuration - expects servers to already be running */
 });

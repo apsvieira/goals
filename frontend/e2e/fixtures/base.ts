@@ -29,10 +29,13 @@ export const test = base.extend<GoalTrackerFixtures>({
 
     await page.click('button:has-text("New Goal")');
     await page.fill('input[placeholder="Goal name"]', goalName);
-    await page.click('button:has-text("Save")');
+    await page.click('button:has-text("Add Goal")');
 
-    // Wait for goal to appear
-    await page.waitForSelector(`text=${goalName}`, { timeout: 5000 });
+    // Wait for editor to close
+    await page.waitForSelector('input[placeholder="Goal name"]', { state: 'hidden', timeout: 5000 });
+
+    // Wait for goal to appear in goal row
+    await page.waitForSelector(`.goal-row:has-text("${goalName}")`, { timeout: 5000 });
 
     await use({ name: goalName, id: goalId });
 
@@ -41,7 +44,7 @@ export const test = base.extend<GoalTrackerFixtures>({
       const goalElement = page.locator(`text=${goalName}`).first();
       if (await goalElement.isVisible()) {
         await goalElement.click();
-        const archiveButton = page.locator('button:has-text("Archive")');
+        const archiveButton = page.locator('button:has-text("Delete")');
         if (await archiveButton.isVisible()) {
           await archiveButton.click();
         }

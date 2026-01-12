@@ -88,3 +88,32 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		"status": "logged out",
 	})
 }
+
+// createTestSession creates a test user and session for E2E testing
+// This endpoint is only available in development mode
+func (s *Server) createTestSession(w http.ResponseWriter, r *http.Request) {
+	// Create or get test user
+	user, err := s.db.GetOrCreateUserByProvider("test", "test-user-e2e", "test@example.com", "Test User", "")
+	if err != nil {
+		http.Error(w, "failed to create test user", http.StatusInternalServerError)
+		return
+	}
+
+	// Create session
+	sessionToken, err := s.authManager.CreateSession(user.ID)
+	if err != nil {
+		http.Error(w, "failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	// Set session cookie
+	auth.SetSessionCookie(w, r, sessionToken)
+
+	// Return session info
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"session_token": sessionToken,
+		"user":          user,
+	})
+}

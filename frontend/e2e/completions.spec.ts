@@ -25,7 +25,7 @@ test.describe('Completion Tracking', () => {
 
     // Verify completion is marked (button should have different styling)
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator('button').filter({ hasText: today.toString() }).first();
+    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
 
     // Button should exist and be visible
     await expect(dayButton).toBeVisible();
@@ -51,8 +51,8 @@ test.describe('Completion Tracking', () => {
 
       // Both should be marked
       const goalRow = await homePage.getGoalRow(goalName);
-      await expect(goalRow.locator('button').filter({ hasText: today.toString() })).toBeVisible();
-      await expect(goalRow.locator('button').filter({ hasText: (today - 1).toString() })).toBeVisible();
+      await expect(goalRow.locator(`button[aria-label="Day ${today}"]`)).toBeVisible();
+      await expect(goalRow.locator(`button[aria-label="Day ${today - 1}"]`)).toBeVisible();
     } else {
       // Just mark today
       await homePage.toggleCompletion(goalName, today);
@@ -80,7 +80,7 @@ test.describe('Completion Tracking', () => {
 
     // Verify completion persists
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator('button').filter({ hasText: today.toString() }).first();
+    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
     await expect(dayButton).toBeVisible();
 
     // Clean up
@@ -102,10 +102,9 @@ test.describe('Completion Tracking', () => {
     // Check progress indicator shows 1/3 or similar
     const goalRow = await homePage.getGoalRow(goalName);
 
-    // Look for progress text or bar
-    const progressIndicators = goalRow.locator('.progress-text, .progress-bar, text=/1/');
-    const count = await progressIndicators.count();
-    expect(count).toBeGreaterThan(0);
+    // Look for progress bar element
+    const progressBar = goalRow.locator('.progress-bar, .progress-track');
+    await expect(progressBar.first()).toBeVisible();
 
     // Clean up
     await page.locator(`text=${goalName}`).click();
