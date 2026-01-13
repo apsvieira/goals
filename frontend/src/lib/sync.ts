@@ -211,7 +211,8 @@ class SyncManager {
       });
 
       if (!res.ok) {
-        throw new Error(`Sync failed: ${res.statusText}`);
+        const errorText = await res.text().catch(() => 'Unable to read error response');
+        throw new Error(`Sync failed (${res.status}): ${errorText}`);
       }
 
       const response: SyncResponse = await res.json();
@@ -231,8 +232,13 @@ class SyncManager {
       console.log('Sync completed successfully');
       syncStatus.set({ state: 'idle' });
     } catch (error) {
-      console.error('Sync failed:', error);
-      syncStatus.set({ state: 'idle' });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Sync failed:', errorMessage);
+      syncStatus.set({
+        state: 'error',
+        message: `Sync failed: ${errorMessage}`,
+        canRetry: true
+      });
     } finally {
       this.isSyncing = false;
     }
