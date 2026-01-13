@@ -3,7 +3,8 @@ import { HomePage } from './pages/HomePage';
 import { GoalEditorPage } from './pages/GoalEditorPage';
 import { generateTestGoalName, getTodayDayNumber } from './helpers/test-data';
 
-test.describe('Offline Sync', () => {
+// Run offline tests serially to avoid session/auth issues with parallel execution
+test.describe.serial('Offline Sync', () => {
   let homePage: HomePage;
   let editorPage: GoalEditorPage;
   const today = getTodayDayNumber();
@@ -40,7 +41,7 @@ test.describe('Offline Sync', () => {
 
     // Refresh page to verify sync worked
     await page.reload();
-    await homePage.goto();
+    await homePage.header.waitFor({ state: 'visible', timeout: 10000 });
 
     // Verify goal persists after sync
     await expect(page.locator(`text=${goalName}`)).toBeVisible();
@@ -78,7 +79,7 @@ test.describe('Offline Sync', () => {
 
     // Refresh page to verify sync worked
     await page.reload();
-    await homePage.goto();
+    await homePage.header.waitFor({ state: 'visible', timeout: 10000 });
 
     // Verify completion persists after sync
     const goalRowAfterSync = await homePage.getGoalRow(goalName);
@@ -150,7 +151,7 @@ test.describe('Offline Sync', () => {
 
     // Refresh to verify sync
     await page.reload();
-    await homePage.goto();
+    await homePage.header.waitFor({ state: 'visible', timeout: 10000 });
 
     // Both goals should persist
     await expect(page.locator(`text=${goal1}`)).toBeVisible();
