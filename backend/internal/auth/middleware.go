@@ -96,12 +96,7 @@ func IsAuthenticated(ctx context.Context) bool {
 
 // SetSessionCookie sets the session cookie on the response
 func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
-	// Determine if we should use secure cookies
-	// Default to true in production, can be disabled with COOKIE_SECURE=false
-	secure := true
-	if secureEnv := os.Getenv("COOKIE_SECURE"); strings.ToLower(secureEnv) == "false" {
-		secure = false
-	}
+	secure := shouldUseSecureCookie(r)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
@@ -112,6 +107,29 @@ func SetSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+// shouldUseSecureCookie determines if the Secure flag should be set on cookies.
+// It returns false for localhost/development environments to support HTTP-only testing.
+// Priority:
+// 1. COOKIE_SECURE env var (explicit override)
+// 2. Auto-detect localhost (127.0.0.1, localhost) -> false
+// 3. Default to true for production safety
+func shouldUseSecureCookie(r *http.Request) bool {
+	// Allow explicit override via environment variable
+	if secureEnv := os.Getenv("COOKIE_SECURE"); secureEnv != "" {
+		return strings.ToLower(secureEnv) != "false"
+	}
+
+	// Auto-detect localhost - WebKit enforces Secure cookies strictly,
+	// so we need to disable Secure for localhost HTTP testing
+	host := r.Host
+	if strings.HasPrefix(host, "localhost") || strings.HasPrefix(host, "127.0.0.1") {
+		return false
+	}
+
+	// Default to secure for production
+	return true
 }
 
 // ClearSessionCookie clears the session cookie

@@ -103,11 +103,7 @@ func (h *OAuthHandler) StartOAuth(w http.ResponseWriter, r *http.Request, provid
 	}
 
 	// Determine if we should use secure cookies
-	// Default to true in production, can be disabled with COOKIE_SECURE=false
-	secure := true
-	if secureEnv := os.Getenv("COOKIE_SECURE"); strings.ToLower(secureEnv) == "false" {
-		secure = false
-	}
+	secure := shouldUseSecureCookie(r)
 
 	// Store state in cookie
 	http.SetCookie(w, &http.Cookie{
