@@ -250,6 +250,9 @@
         completions = [...completions, newCompletion];
         periodCompletions = [...periodCompletions, newCompletion];
       }
+
+      // Trigger sync after completion changes
+      syncManager.sync().catch(console.error);
     } catch (e) {
       error = getUserFriendlyMessage(e);
     }
@@ -277,6 +280,9 @@
         goals = goals.map(g => g.id === updated.id ? updated : g);
       }
       editorState = null;
+
+      // Trigger sync after goal changes to persist to server
+      syncManager.sync().catch(console.error);
     } catch (e) {
       error = getUserFriendlyMessage(e);
     }
@@ -289,6 +295,9 @@
       await archiveGoal(editorState.goal.id);
       goals = goals.filter(g => g.id !== editorState!.goal.id);
       editorState = null;
+
+      // Trigger sync after goal deletion
+      syncManager.sync().catch(console.error);
     } catch (e) {
       error = getUserFriendlyMessage(e);
     }

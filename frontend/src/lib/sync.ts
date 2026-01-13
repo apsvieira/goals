@@ -24,10 +24,8 @@ export type SyncStatus =
 
 export const syncStatus = writable<SyncStatus>({ state: 'idle' });
 
-// Use relative URL in production, absolute in dev
-const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-  ? '/api/v1'
-  : 'http://localhost:8080/api/v1';
+// Always use relative URL - Vite proxy handles localhost in development
+const API_BASE = '/api/v1';
 
 interface GoalChange {
   id: string;

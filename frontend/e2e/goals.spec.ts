@@ -94,15 +94,26 @@ test.describe('Goal Management', () => {
   test('should persist goals across page reloads', async ({ page }) => {
     const goalName = generateTestGoalName('Persistent');
 
-    // Create goal
+    // Create goal and wait for sync API to complete
+    const syncPromise = page.waitForResponse(
+      response => response.url().includes('/sync') && response.status() === 200,
+      { timeout: 10000 }
+    ).catch(() => null); // Don't fail if sync doesn't happen
+
     await homePage.createGoal(goalName);
+
+    // Wait for sync to complete (goal persisted to server)
+    await syncPromise;
+
+    // Additional wait for any async operations
+    await page.waitForTimeout(500);
 
     // Reload page
     await page.reload();
     await homePage.goto();
 
     // Verify goal still exists
-    await expect(page.locator(`text=${goalName}`)).toBeVisible();
+    await expect(page.locator(`text=${goalName}`)).toBeVisible({ timeout: 10000 });
 
     // Clean up
     await page.locator(`text=${goalName}`).click();
