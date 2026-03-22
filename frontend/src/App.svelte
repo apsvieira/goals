@@ -159,14 +159,14 @@
         weekStart.setHours(0, 0, 0, 0);
 
         acc[goal.id] = goalCompletions.filter(c => {
-          const completionDate = new Date(c.date + 'T00:00:00');
+          const completionDate = new Date(c.date.slice(0, 10) + 'T00:00:00');
           return completionDate >= weekStart && completionDate <= now;
         }).length;
       } else {
         // Current month
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         acc[goal.id] = goalCompletions.filter(c => {
-          const completionDate = new Date(c.date + 'T00:00:00');
+          const completionDate = new Date(c.date.slice(0, 10) + 'T00:00:00');
           return completionDate >= monthStart && completionDate <= now;
         }).length;
       }

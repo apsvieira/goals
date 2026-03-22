@@ -30,8 +30,10 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
     await homePage.toggleCompletion(goalName, today);
     await expect(dayButton).not.toHaveClass(/filled/);
 
-    // Wait for sync to propagate, then reload
+    // Wait for sync to complete before reload
     await page.waitForTimeout(3000);
+
+    // Reload and verify it's still unchecked
     await page.reload();
     await page.waitForSelector('.goal-row', { timeout: 10000 });
     const rowAfterReload = await homePage.getGoalRow(goalName);
@@ -54,17 +56,21 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
     // Mark today complete
     await homePage.toggleCompletion(goalName, today);
 
-    // Wait for sync
-    await page.waitForTimeout(2000);
+    // Wait for sync to complete
+    await page.waitForTimeout(3000);
 
     // Reload
     await page.reload();
     await page.waitForSelector('.goal-row', { timeout: 10000 });
 
-    // Verify progress bar shows 1/3, not 0/3
+    // Verify the completion is shown in the calendar
     const goalRow = await homePage.getGoalRow(goalName);
+    const dayBtn = goalRow.locator(`button[aria-label="Day ${today}"]`);
+    await expect(dayBtn).toHaveClass(/filled/, { timeout: 10000 });
+
+    // Verify progress bar shows 1/3, not 0/3
     const progressText = goalRow.locator('.progress-text');
-    await expect(progressText).toContainText('1');
+    await expect(progressText).toContainText('1', { timeout: 10000 });
 
     // Clean up
     await page.locator(`text=${goalName}`).click();
