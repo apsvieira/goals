@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/apsv/goal-tracker/backend/internal/auth"
 	"github.com/go-chi/chi/v5"
@@ -89,29 +90,41 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// createTestSession creates a test user and session for E2E testing
-// This endpoint is only available in development mode
-func (s *Server) createTestSession(w http.ResponseWriter, r *http.Request) {
-	// Create or get test user
-	user, err := s.db.GetOrCreateUserByProvider("test", "test-user-e2e", "test@example.com", "Test User", "")
+// devLogin creates a session for a given email without OAuth.
+// This endpoint is only available in development mode.
+func (s *Server) devLogin(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+	if body.Email == "" {
+		body.Email = "dev@localhost"
+	}
+
+	// Derive display name from email prefix
+	name := body.Email
+	if at := strings.Index(body.Email, "@"); at > 0 {
+		name = body.Email[:at]
+	}
+
+	// Use email as providerUserID so the same email always resolves to the same user
+	user, err := s.db.GetOrCreateUserByProvider("dev", body.Email, body.Email, name, "")
 	if err != nil {
-		http.Error(w, "failed to create test user", http.StatusInternalServerError)
+		http.Error(w, "failed to create dev user", http.StatusInternalServerError)
 		return
 	}
 
-	// Create session
 	sessionToken, err := s.authManager.CreateSession(user.ID)
 	if err != nil {
 		http.Error(w, "failed to create session", http.StatusInternalServerError)
 		return
 	}
 
-	// Set session cookie
 	auth.SetSessionCookie(w, r, sessionToken)
 
-	// Return session info
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"session_token": sessionToken,
 		"user":          user,

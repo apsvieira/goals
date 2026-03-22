@@ -120,11 +120,11 @@ func (s *Server) setupRoutes() {
 			r.Get("/oauth/{provider}/callback", s.oauthCallback)
 			r.Post("/logout", s.logout)
 
-			// Test endpoint for E2E tests - only enabled in development
+			// Dev login - only enabled in development (localhost or unset BASE_URL)
 			frontendURL := os.Getenv("FRONTEND_URL")
 			baseURL := os.Getenv("BASE_URL")
 			if baseURL == "" || strings.Contains(baseURL, "localhost") || strings.Contains(frontendURL, "localhost") {
-				r.Post("/test-session", s.createTestSession)
+				r.Post("/dev/login", s.devLogin)
 			}
 		})
 
