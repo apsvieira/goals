@@ -23,7 +23,7 @@ tiny tracker requires authentication via Google OAuth. All data is stored on the
 2. Get queued operations from IndexedDB
 3. Send to `/api/v1/sync` endpoint
 4. Receive server changes since last sync
-5. Apply CRDT merge (server wins conflicts)
+5. Apply Last-Write-Wins merge
 6. Clear successfully synced operations
 7. Update `lastSyncedAt` timestamp
 
@@ -34,9 +34,10 @@ tiny tracker requires authentication via Google OAuth. All data is stored on the
 - After user actions (opportunistic)
 
 ### Conflict Resolution
-- Last-Write-Wins strategy
-- Server timestamp used for comparison
-- Server wins on ties
+- Last-Write-Wins (LWW) strategy
+- Timestamps used for comparison — newer write wins
+- For goals: on timestamp tie, server version is kept (no update applied)
+- For completions: on timestamp tie, ADD wins over DELETE (bias toward user completion)
 - Silent resolution (no user prompt)
 
 ## Offline Behavior
@@ -69,7 +70,7 @@ Background Sync (2 min interval)
     ↓
 Server API Call
     ↓
-CRDT Merge
+LWW Merge
     ↓
 Apply Server Changes
     ↓

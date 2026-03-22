@@ -36,7 +36,7 @@ The app works fully offline. Changes are automatically synced when you reconnect
 - Go
 - PostgreSQL
 - Google OAuth 2.0
-- CRDT-based sync
+- Last-Write-Wins sync
 
 ## Documentation
 
