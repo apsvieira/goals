@@ -424,11 +424,7 @@
   }
 
   function handleSignIn() {
-    // Redirect to Google OAuth
-    const apiBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-      ? '/api/v1'
-      : 'http://localhost:8080/api/v1';
-    window.location.href = `${apiBase}/auth/google`;
+    window.location.href = '/api/v1/auth/oauth/google';
   }
 
   // Keyboard navigation state

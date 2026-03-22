@@ -14,7 +14,7 @@ export async function startMobileOAuth(): Promise<void> {
     return;
   }
 
-  const oauthUrl = `${PRODUCTION_API_URL}/api/v1/auth/google?mobile=true`;
+  const oauthUrl = `${PRODUCTION_API_URL}/api/v1/auth/oauth/google?mobile=true`;
 
   await Browser.open({ url: oauthUrl });
 }
