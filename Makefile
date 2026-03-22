@@ -44,4 +44,4 @@ test-backend:
 	cd backend && go test -v ./...
 
 test-frontend:
-	cd frontend && npm run check
+	cd frontend && npm run check && npm run test -- --run
