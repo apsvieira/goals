@@ -46,11 +46,38 @@ func setupTestServer(t *testing.T) (*api.Server, func()) {
 	return server, cleanup
 }
 
+// authenticateTestUser calls the dev login endpoint and returns the session cookie.
+// All subsequent requests must include this cookie to be authenticated.
+func authenticateTestUser(t *testing.T, server *api.Server, email string) *http.Cookie {
+	t.Helper()
+
+	body := bytes.NewBufferString(`{"email":"` + email + `"}`)
+	req := httptest.NewRequest("POST", "/api/v1/auth/dev/login", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("failed to authenticate as %s: %d %s", email, w.Code, w.Body.String())
+	}
+
+	for _, cookie := range w.Result().Cookies() {
+		if cookie.Name == "session" {
+			return cookie
+		}
+	}
+	t.Fatal("no session cookie in dev login response")
+	return nil
+}
+
 func TestListGoals_Empty(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	req := httptest.NewRequest("GET", "/api/v1/goals", nil)
+	req.AddCookie(cookie)
 	w := httptest.NewRecorder()
 
 	server.ServeHTTP(w, req)
@@ -73,9 +100,12 @@ func TestCreateGoal(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	body := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	req := httptest.NewRequest("POST", "/api/v1/goals", body)
 	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
 	w := httptest.NewRecorder()
 
 	server.ServeHTTP(w, req)
@@ -104,9 +134,12 @@ func TestCreateGoal_MissingName(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	body := bytes.NewBufferString(`{"color": "#4CAF50"}`)
 	req := httptest.NewRequest("POST", "/api/v1/goals", body)
 	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
 	w := httptest.NewRecorder()
 
 	server.ServeHTTP(w, req)
@@ -120,10 +153,13 @@ func TestUpdateGoal(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal first
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -134,6 +170,7 @@ func TestUpdateGoal(t *testing.T) {
 	updateBody := bytes.NewBufferString(`{"name": "Running", "color": "#2196F3"}`)
 	updateReq := httptest.NewRequest("PATCH", "/api/v1/goals/"+createdGoal.ID, updateBody)
 	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.AddCookie(cookie)
 	updateW := httptest.NewRecorder()
 	server.ServeHTTP(updateW, updateReq)
 
@@ -156,10 +193,13 @@ func TestArchiveGoal(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal first
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -168,6 +208,7 @@ func TestArchiveGoal(t *testing.T) {
 
 	// Archive the goal
 	archiveReq := httptest.NewRequest("DELETE", "/api/v1/goals/"+createdGoal.ID, nil)
+	archiveReq.AddCookie(cookie)
 	archiveW := httptest.NewRecorder()
 	server.ServeHTTP(archiveW, archiveReq)
 
@@ -177,6 +218,7 @@ func TestArchiveGoal(t *testing.T) {
 
 	// Verify goal is not in default list
 	listReq := httptest.NewRequest("GET", "/api/v1/goals", nil)
+	listReq.AddCookie(cookie)
 	listW := httptest.NewRecorder()
 	server.ServeHTTP(listW, listReq)
 
@@ -189,6 +231,7 @@ func TestArchiveGoal(t *testing.T) {
 
 	// Verify goal is in archived list
 	listArchivedReq := httptest.NewRequest("GET", "/api/v1/goals?archived=true", nil)
+	listArchivedReq.AddCookie(cookie)
 	listArchivedW := httptest.NewRecorder()
 	server.ServeHTTP(listArchivedW, listArchivedReq)
 
@@ -204,10 +247,13 @@ func TestCreateCompletion(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal first
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -218,6 +264,7 @@ func TestCreateCompletion(t *testing.T) {
 	completionBody := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "2026-01-05"}`)
 	completionReq := httptest.NewRequest("POST", "/api/v1/completions", completionBody)
 	completionReq.Header.Set("Content-Type", "application/json")
+	completionReq.AddCookie(cookie)
 	completionW := httptest.NewRecorder()
 	server.ServeHTTP(completionW, completionReq)
 
@@ -240,10 +287,13 @@ func TestCreateCompletion_Idempotent(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal first
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -255,6 +305,7 @@ func TestCreateCompletion_Idempotent(t *testing.T) {
 
 	req1 := httptest.NewRequest("POST", "/api/v1/completions", bytes.NewBufferString(completionBody))
 	req1.Header.Set("Content-Type", "application/json")
+	req1.AddCookie(cookie)
 	w1 := httptest.NewRecorder()
 	server.ServeHTTP(w1, req1)
 
@@ -263,6 +314,7 @@ func TestCreateCompletion_Idempotent(t *testing.T) {
 
 	req2 := httptest.NewRequest("POST", "/api/v1/completions", bytes.NewBufferString(completionBody))
 	req2.Header.Set("Content-Type", "application/json")
+	req2.AddCookie(cookie)
 	w2 := httptest.NewRecorder()
 	server.ServeHTTP(w2, req2)
 
@@ -279,10 +331,13 @@ func TestListCompletions(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -295,12 +350,14 @@ func TestListCompletions(t *testing.T) {
 		body := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "` + date + `"}`)
 		req := httptest.NewRequest("POST", "/api/v1/completions", body)
 		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(cookie)
 		w := httptest.NewRecorder()
 		server.ServeHTTP(w, req)
 	}
 
 	// List completions for December 2025
 	listReq := httptest.NewRequest("GET", "/api/v1/completions?from=2025-12-01&to=2025-12-31", nil)
+	listReq.AddCookie(cookie)
 	listW := httptest.NewRecorder()
 	server.ServeHTTP(listW, listReq)
 
@@ -320,10 +377,13 @@ func TestDeleteCompletion(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -334,6 +394,7 @@ func TestDeleteCompletion(t *testing.T) {
 	completionBody := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "2026-01-05"}`)
 	completionReq := httptest.NewRequest("POST", "/api/v1/completions", completionBody)
 	completionReq.Header.Set("Content-Type", "application/json")
+	completionReq.AddCookie(cookie)
 	completionW := httptest.NewRecorder()
 	server.ServeHTTP(completionW, completionReq)
 
@@ -342,6 +403,7 @@ func TestDeleteCompletion(t *testing.T) {
 
 	// Delete the completion
 	deleteReq := httptest.NewRequest("DELETE", "/api/v1/completions/"+completion.ID, nil)
+	deleteReq.AddCookie(cookie)
 	deleteW := httptest.NewRecorder()
 	server.ServeHTTP(deleteW, deleteReq)
 
@@ -351,6 +413,7 @@ func TestDeleteCompletion(t *testing.T) {
 
 	// Verify completion is deleted
 	listReq := httptest.NewRequest("GET", "/api/v1/completions?from=2026-01-01&to=2026-01-31", nil)
+	listReq.AddCookie(cookie)
 	listW := httptest.NewRecorder()
 	server.ServeHTTP(listW, listReq)
 
@@ -366,10 +429,13 @@ func TestCreateCompletion_FutureDateRejected(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal first
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -381,6 +447,7 @@ func TestCreateCompletion_FutureDateRejected(t *testing.T) {
 	completionBody := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "` + futureDate + `"}`)
 	completionReq := httptest.NewRequest("POST", "/api/v1/completions", completionBody)
 	completionReq.Header.Set("Content-Type", "application/json")
+	completionReq.AddCookie(cookie)
 	completionW := httptest.NewRecorder()
 	server.ServeHTTP(completionW, completionReq)
 
@@ -398,10 +465,13 @@ func TestGetCalendar(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
 	// Create a goal
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -412,10 +482,12 @@ func TestGetCalendar(t *testing.T) {
 	completionBody := bytes.NewBufferString(`{"goal_id": "` + createdGoal.ID + `", "date": "2026-01-05"}`)
 	completionReq := httptest.NewRequest("POST", "/api/v1/completions", completionBody)
 	completionReq.Header.Set("Content-Type", "application/json")
+	completionReq.AddCookie(cookie)
 	server.ServeHTTP(httptest.NewRecorder(), completionReq)
 
 	// Get calendar
 	calendarReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-01", nil)
+	calendarReq.AddCookie(cookie)
 	calendarW := httptest.NewRecorder()
 	server.ServeHTTP(calendarW, calendarReq)
 

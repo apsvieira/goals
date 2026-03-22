@@ -20,11 +20,14 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
 
+	cookie := authenticateTestUser(t, server, "e2e@localhost")
+
 	// Step 1: Create a goal "Exercise"
 	t.Log("Step 1: Creating goal 'Exercise'")
 	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
 	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
 	createW := httptest.NewRecorder()
 	server.ServeHTTP(createW, createReq)
 
@@ -45,6 +48,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 		body := bytes.NewBufferString(`{"goal_id": "` + goal.ID + `", "date": "` + date + `"}`)
 		req := httptest.NewRequest("POST", "/api/v1/completions", body)
 		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(cookie)
 		w := httptest.NewRecorder()
 		server.ServeHTTP(w, req)
 
@@ -61,6 +65,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	// Step 3: Get December 2025 calendar
 	t.Log("Step 3: Fetching calendar for December 2025")
 	calendarReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2025-12", nil)
+	calendarReq.AddCookie(cookie)
 	calendarW := httptest.NewRecorder()
 	server.ServeHTTP(calendarW, calendarReq)
 
@@ -82,6 +87,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	// Step 4: Navigate to January 2026 (should be empty of completions since we used December)
 	t.Log("Step 4: Checking January 2026 is empty")
 	febReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2026-01", nil)
+	febReq.AddCookie(cookie)
 	febW := httptest.NewRecorder()
 	server.ServeHTTP(febW, febReq)
 
@@ -99,6 +105,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	// Step 5: Untoggle one completion (delete day 5)
 	t.Log("Step 5: Untoggling completion for day 5")
 	deleteReq := httptest.NewRequest("DELETE", "/api/v1/completions/"+completionIDs[1], nil)
+	deleteReq.AddCookie(cookie)
 	deleteW := httptest.NewRecorder()
 	server.ServeHTTP(deleteW, deleteReq)
 
@@ -108,6 +115,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 
 	// Verify only 2 completions remain
 	verifyReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2025-12", nil)
+	verifyReq.AddCookie(cookie)
 	verifyW := httptest.NewRecorder()
 	server.ServeHTTP(verifyW, verifyReq)
 
@@ -124,6 +132,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	updateBody := bytes.NewBufferString(`{"name": "Running", "color": "#2196F3"}`)
 	updateReq := httptest.NewRequest("PATCH", "/api/v1/goals/"+goal.ID, updateBody)
 	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.AddCookie(cookie)
 	updateW := httptest.NewRecorder()
 	server.ServeHTTP(updateW, updateReq)
 
@@ -147,6 +156,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	secondBody := bytes.NewBufferString(`{"name": "No Smoking", "color": "#E91E63"}`)
 	secondReq := httptest.NewRequest("POST", "/api/v1/goals", secondBody)
 	secondReq.Header.Set("Content-Type", "application/json")
+	secondReq.AddCookie(cookie)
 	secondW := httptest.NewRecorder()
 	server.ServeHTTP(secondW, secondReq)
 
@@ -156,6 +166,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 
 	// Verify 2 goals in calendar
 	finalReq := httptest.NewRequest("GET", "/api/v1/calendar?month=2025-12", nil)
+	finalReq.AddCookie(cookie)
 	finalW := httptest.NewRecorder()
 	server.ServeHTTP(finalW, finalReq)
 
@@ -170,6 +181,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 	// Step 8: Archive the first goal
 	t.Log("Step 8: Archiving 'Running' goal")
 	archiveReq := httptest.NewRequest("DELETE", "/api/v1/goals/"+goal.ID, nil)
+	archiveReq.AddCookie(cookie)
 	archiveW := httptest.NewRecorder()
 	server.ServeHTTP(archiveW, archiveReq)
 
@@ -179,6 +191,7 @@ func TestE2E_FullUserFlow(t *testing.T) {
 
 	// Verify only 1 active goal remains
 	activeReq := httptest.NewRequest("GET", "/api/v1/goals", nil)
+	activeReq.AddCookie(cookie)
 	activeW := httptest.NewRecorder()
 	server.ServeHTTP(activeW, activeReq)
 
