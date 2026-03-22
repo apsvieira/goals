@@ -293,10 +293,11 @@
 
   async function handleEditorDelete() {
     if (!editorState || editorState.mode !== 'edit') return;
+    const goalId = editorState.goal.id;
 
     try {
-      await archiveGoal(editorState.goal.id);
-      goals = goals.filter(g => g.id !== editorState!.goal.id);
+      await archiveGoal(goalId);
+      goals = goals.filter(g => g.id !== goalId);
       editorState = null;
 
       // Trigger sync after goal deletion
@@ -551,7 +552,7 @@
     }
   }
 
-  onMount(async () => {
+  onMount(() => {
     // Initialize route from URL
     currentRoute = getRouteFromPath();
     window.addEventListener('popstate', handlePopState);
@@ -569,41 +570,40 @@
 
     // Set up deep link handler for mobile OAuth callback
     let appUrlOpenListener: { remove: () => Promise<void> } | null = null;
-    if (Capacitor.isNativePlatform()) {
-      appUrlOpenListener = await CapApp.addListener('appUrlOpen', async (event) => {
-        // Handle goaltracker://auth?token=xxx deep links
-        const url = event.url;
-        if (url.startsWith('goaltracker://auth')) {
-          try {
-            const urlObj = new URL(url);
-            const token = urlObj.searchParams.get('token');
-            if (token) {
-              await saveToken(token);
-              // Refresh auth state after saving token (which will also init push notifications)
-              await checkAuth();
+
+    // Async initialization (fire-and-forget)
+    (async () => {
+      if (Capacitor.isNativePlatform()) {
+        appUrlOpenListener = await CapApp.addListener('appUrlOpen', async (event) => {
+          const url = event.url;
+          if (url.startsWith('goaltracker://auth')) {
+            try {
+              const urlObj = new URL(url);
+              const token = urlObj.searchParams.get('token');
+              if (token) {
+                await saveToken(token);
+                await checkAuth();
+              }
+            } catch (e) {
+              console.error('Failed to handle auth deep link:', e);
             }
-          } catch (e) {
-            console.error('Failed to handle auth deep link:', e);
           }
-        }
-      });
+        });
 
-      // Add Capacitor app resume listener
-      CapApp.addListener('resume', () => {
-        console.log('App resumed, triggering sync');
-        syncManager.sync().catch(console.error);
-      });
-    }
+        CapApp.addListener('resume', () => {
+          console.log('App resumed, triggering sync');
+          syncManager.sync().catch(console.error);
+        });
+      }
 
-    await checkAuth();
-    // Note: loadData() is called by the reactive statement when authState changes,
-    // so we don't need to call it here explicitly
+      await checkAuth();
+    })();
 
+    // Synchronous cleanup return
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
       syncManager.stopAutoSync();
-      // Clean up the deep link listener
       if (appUrlOpenListener) {
         appUrlOpenListener.remove();
       }
@@ -636,9 +636,10 @@
         onBack={handleProfileBack}
       />
     {:else if editorState}
+      {@const editGoalId = editorState.mode === 'edit' ? editorState.goal.id : null}
       <GoalEditor
         mode={editorState.mode}
-        goal={editorState.mode === 'edit' ? goalsWithColors.find(g => g.id === editorState.goal.id) ?? null : null}
+        goal={editGoalId ? goalsWithColors.find(g => g.id === editGoalId) ?? null : null}
         previewColor={GOAL_PALETTE[goals.length % GOAL_PALETTE.length]}
         onSave={handleEditorSave}
         onCancel={() => editorState = null}
