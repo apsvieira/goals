@@ -13,7 +13,7 @@ import (
 )
 
 // getUserID extracts the user ID from the request context.
-// Returns nil for guest mode (no authenticated user).
+// Returns nil if called outside an authenticated route (all data routes require auth).
 func getUserID(r *http.Request) *string {
 	user := auth.GetUserFromContext(r.Context())
 	if user == nil {

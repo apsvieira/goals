@@ -10,7 +10,7 @@ import (
 // Both SQLite and PostgreSQL implementations must satisfy this interface.
 type Database interface {
 	// Goals
-	// userID: nil for guest mode (filters by user_id IS NULL), non-nil for authenticated users
+	// userID: filters goals by owner; nil filters by user_id IS NULL
 	ListGoals(userID *string, includeArchived bool) ([]models.Goal, error)
 	GetGoal(userID *string, id string) (*models.Goal, error)
 	CreateGoal(goal *models.Goal) error
@@ -19,7 +19,7 @@ type Database interface {
 	ReorderGoals(userID *string, goalIDs []string) error
 
 	// Completions
-	// userID: nil for guest mode (filters by user_id IS NULL), non-nil for authenticated users
+	// userID: filters completions by goal owner; nil filters by user_id IS NULL
 	ListCompletions(userID *string, from, to string, goalID *string) ([]models.Completion, error)
 	GetCompletionByID(id string) (*models.Completion, error)
 	GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error)

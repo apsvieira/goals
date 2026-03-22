@@ -22,7 +22,7 @@ const (
 // Middleware creates an authentication middleware that extracts the session token
 // from the Authorization header (Bearer token) or cookie and validates it.
 // If valid, the user is stored in the request context.
-// The request proceeds even without authentication (for guest mode support).
+// The request proceeds even without authentication (public routes like /auth/me).
 //
 // Authentication methods (in order of priority):
 // 1. Authorization: Bearer <token> header (for mobile apps)
@@ -48,7 +48,7 @@ func Middleware(authManager *Manager) func(http.Handler) http.Handler {
 				}
 			}
 
-			// No token found, proceed without user (guest mode)
+			// No token found, proceed without user (public route)
 			if token == "" {
 				next.ServeHTTP(w, r)
 				return
@@ -57,7 +57,7 @@ func Middleware(authManager *Manager) func(http.Handler) http.Handler {
 			// Validate session
 			user, err := authManager.ValidateSession(token)
 			if err != nil {
-				// Invalid session, proceed without user (guest mode)
+				// Invalid session, proceed without user (public route)
 				// Only clear cookie if it was used (not for header-based auth)
 				if !fromHeader {
 					http.SetCookie(w, &http.Cookie{
@@ -80,7 +80,7 @@ func Middleware(authManager *Manager) func(http.Handler) http.Handler {
 }
 
 // GetUserFromContext retrieves the authenticated user from the request context.
-// Returns nil if no user is authenticated (guest mode).
+// Returns nil if no user is authenticated.
 func GetUserFromContext(ctx context.Context) *models.User {
 	user, ok := ctx.Value(UserContextKey).(*models.User)
 	if !ok {
