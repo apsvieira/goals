@@ -40,6 +40,9 @@ let db: IDBPDatabase<GoalTrackerDB> | null = null;
 
 // For testing: reset the database connection
 export function resetDB(): void {
+  if (db) {
+    db.close();
+  }
   db = null;
 }
 
