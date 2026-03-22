@@ -14,12 +14,14 @@ func MergeGoal(clientChange GoalChange, serverGoal *models.Goal) (*models.Goal, 
 	if serverGoal == nil {
 		now := time.Now().UTC()
 		goal := &models.Goal{
-			ID:        clientChange.ID,
-			Name:      clientChange.Name,
-			Color:     clientChange.Color,
-			Position:  clientChange.Position,
-			UpdatedAt: clientChange.UpdatedAt,
-			CreatedAt: now,
+			ID:           clientChange.ID,
+			Name:         clientChange.Name,
+			Color:        clientChange.Color,
+			Position:     clientChange.Position,
+			TargetCount:  clientChange.TargetCount,
+			TargetPeriod: clientChange.TargetPeriod,
+			UpdatedAt:    clientChange.UpdatedAt,
+			CreatedAt:    now,
 		}
 		if clientChange.Deleted {
 			goal.DeletedAt = &clientChange.UpdatedAt
@@ -32,6 +34,8 @@ func MergeGoal(clientChange GoalChange, serverGoal *models.Goal) (*models.Goal, 
 		serverGoal.Name = clientChange.Name
 		serverGoal.Color = clientChange.Color
 		serverGoal.Position = clientChange.Position
+		serverGoal.TargetCount = clientChange.TargetCount
+		serverGoal.TargetPeriod = clientChange.TargetPeriod
 		serverGoal.UpdatedAt = clientChange.UpdatedAt
 		if clientChange.Deleted {
 			serverGoal.DeletedAt = &clientChange.UpdatedAt
@@ -95,12 +99,14 @@ func MergeCompletion(clientChange CompletionChange, serverCompletion *models.Com
 // GoalToChange converts a models.Goal to a GoalChange
 func GoalToChange(goal *models.Goal) GoalChange {
 	return GoalChange{
-		ID:        goal.ID,
-		Name:      goal.Name,
-		Color:     goal.Color,
-		Position:  goal.Position,
-		UpdatedAt: goal.UpdatedAt,
-		Deleted:   goal.DeletedAt != nil,
+		ID:           goal.ID,
+		Name:         goal.Name,
+		Color:        goal.Color,
+		Position:     goal.Position,
+		TargetCount:  goal.TargetCount,
+		TargetPeriod: goal.TargetPeriod,
+		UpdatedAt:    goal.UpdatedAt,
+		Deleted:      goal.DeletedAt != nil,
 	}
 }
 

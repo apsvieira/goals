@@ -32,6 +32,8 @@ interface GoalChange {
   name: string;
   color: string;
   position: number;
+  target_count?: number;
+  target_period?: 'week' | 'month';
   updated_at: string;
   deleted: boolean;
 }
@@ -153,6 +155,8 @@ class SyncManager {
               name: goal.name,
               color: goal.color,
               position: goal.position,
+              target_count: goal.target_count,
+              target_period: goal.target_period,
               updated_at: op.timestamp,
               deleted: !!goal.archived_at,
             });
@@ -167,6 +171,8 @@ class SyncManager {
               name: goal.name,
               color: goal.color,
               position: goal.position,
+              target_count: goal.target_count,
+              target_period: goal.target_period,
               updated_at: op.timestamp,
               deleted: true,
             });
@@ -254,6 +260,8 @@ class SyncManager {
           name: goalChange.name,
           color: goalChange.color,
           position: goalChange.position,
+          target_count: goalChange.target_count,
+          target_period: goalChange.target_period,
           created_at: goalChange.updated_at,
           archived_at: goalChange.updated_at,
         };
@@ -264,6 +272,8 @@ class SyncManager {
           name: goalChange.name,
           color: goalChange.color,
           position: goalChange.position,
+          target_count: goalChange.target_count,
+          target_period: goalChange.target_period,
           created_at: goalChange.updated_at,
         };
         await saveLocalGoal(goal);

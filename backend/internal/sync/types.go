@@ -18,12 +18,14 @@ type SyncResponse struct {
 
 // GoalChange represents a goal change for sync
 type GoalChange struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Color     string    `json:"color"`
-	Position  int       `json:"position"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Deleted   bool      `json:"deleted"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Color        string    `json:"color"`
+	Position     int       `json:"position"`
+	TargetCount  *int      `json:"target_count,omitempty"`
+	TargetPeriod *string   `json:"target_period,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Deleted      bool      `json:"deleted"`
 }
 
 // CompletionChange represents a completion change for sync
