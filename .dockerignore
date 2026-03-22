@@ -1,5 +1,4 @@
 .git
-.beads
 *.db
 node_modules
 frontend/dist
