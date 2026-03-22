@@ -25,7 +25,9 @@ setup('authenticate', async ({ page, browser }) => {
   authPage.on('console', msg => console.log('PAGE LOG:', msg.text()));
 
   // Create test session through Vite proxy (avoids CORS issues)
-  const response = await context.request.post('http://localhost:5173/api/v1/auth/test-session');
+  const response = await context.request.post('http://localhost:5173/api/v1/auth/dev/login', {
+    data: { email: 'e2e-test@localhost' }
+  });
 
   if (!response.ok()) {
     throw new Error(`Failed to create test session: ${response.status()} ${response.statusText()}`);

@@ -1,6 +1,6 @@
 export const TEST_USERS = {
   tester: {
-    email: process.env.TEST_USER_EMAIL || 'test@example.com',
+    email: process.env.TEST_USER_EMAIL || 'e2e-test@localhost',
   }
 };
 
