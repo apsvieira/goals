@@ -213,14 +213,6 @@
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
-  // Find the earliest goal creation date as a proxy for member since date for guests
-  $: memberSince = isGuest && goals?.length > 0
-    ? goals.reduce((earliest, goal) => {
-        const goalDate = new Date(goal.created_at);
-        return goalDate < earliest ? goalDate : earliest;
-      }, new Date(goals[0].created_at)).toISOString()
-    : null;
-
   function exportData() {
     const exportObj = {
       exportedAt: new Date().toISOString(),
@@ -261,26 +253,21 @@
     </button>
 
     <div class="profile-header">
-      <div class="avatar" class:guest={isGuest}>
-        {#if isGuest}
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-        {:else if user?.avatar_url}
+      <div class="avatar">
+        {#if user?.avatar_url}
           <img src={user.avatar_url} alt="User avatar" />
         {:else}
           <span class="avatar-initial">{user?.name?.[0] || user?.email?.[0] || '?'}</span>
         {/if}
       </div>
 
-      <h1 class="user-name">{isGuest ? 'Anonymous' : (user?.name || user?.email?.split('@')[0] || 'User')}</h1>
+      <h1 class="user-name">{user?.name || user?.email?.split('@')[0] || 'User'}</h1>
 
-      {#if !isGuest && user?.email}
+      {#if user?.email}
         <p class="user-email">{user.email}</p>
       {/if}
 
-      {#if !isGuest && user?.created_at}
+      {#if user?.created_at}
         <p class="member-since">Member since {formatMemberSince(user.created_at)}</p>
       {/if}
     </div>
@@ -433,11 +420,6 @@
     overflow: hidden;
     margin-bottom: 1rem;
     border: 2px solid var(--border);
-  }
-
-  .avatar.guest {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
   }
 
   .avatar img {
@@ -641,11 +623,6 @@
     .avatar {
       width: 4rem;
       height: 4rem;
-    }
-
-    .avatar.guest svg {
-      width: 2rem;
-      height: 2rem;
     }
 
     .avatar-initial {
