@@ -50,7 +50,10 @@
   isOnline.subscribe(value => online = value);
 
   // Current month in YYYY-MM format
-  let currentMonth = new Date().toISOString().slice(0, 7);
+  let currentMonth = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  })();
   let goals: Goal[] = [];
   let completions: Completion[] = [];
   let periodCompletions: Completion[] = [];
