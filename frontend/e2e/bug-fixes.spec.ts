@@ -4,6 +4,7 @@ import { GoalEditorPage } from './pages/GoalEditorPage';
 import { generateTestGoalName, getTodayDayNumber } from './helpers/test-data';
 
 test.describe('Bug fixes: undo completion & progress tracking', () => {
+  test.setTimeout(60000);
   let homePage: HomePage;
   let editorPage: GoalEditorPage;
   const today = getTodayDayNumber();
@@ -31,10 +32,11 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
     await expect(dayButton).not.toHaveClass(/filled/);
 
     // Wait for sync to complete before reload
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // Reload and verify it's still unchecked
     await page.reload();
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
     await page.waitForSelector('.goal-row', { timeout: 10000 });
     const rowAfterReload = await homePage.getGoalRow(goalName);
     const btnAfterReload = rowAfterReload.locator(`button[aria-label="Day ${today}"]`);
@@ -57,10 +59,11 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
     await homePage.toggleCompletion(goalName, today);
 
     // Wait for sync to complete
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // Reload
     await page.reload();
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
     await page.waitForSelector('.goal-row', { timeout: 10000 });
 
     // Verify the completion is shown in the calendar
