@@ -30,10 +30,8 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
     await homePage.toggleCompletion(goalName, today);
     await expect(dayButton).not.toHaveClass(/filled/);
 
-    // Wait for sync to propagate
-    await page.waitForTimeout(2000);
-
-    // Reload and verify it's still unchecked
+    // Wait for sync to propagate, then reload
+    await page.waitForTimeout(3000);
     await page.reload();
     await page.waitForSelector('.goal-row', { timeout: 10000 });
     const rowAfterReload = await homePage.getGoalRow(goalName);

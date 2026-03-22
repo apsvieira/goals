@@ -242,7 +242,7 @@
 
     try {
       if (existingId) {
-        await deleteCompletion(existingId);
+        await deleteCompletion(existingId, goalId, date);
         completions = completions.filter(c => c.id !== existingId);
         periodCompletions = periodCompletions.filter(c => c.id !== existingId);
       } else {

@@ -9,6 +9,7 @@ import {
   getLocalCompletions,
   saveLocalCompletion,
   deleteLocalCompletion,
+  deleteLocalCompletionByGoalAndDate,
   getLocalCompletionByGoalAndDate,
   getMaxPosition,
   getAllLocalCompletions,
@@ -248,27 +249,25 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
   return completion;
 }
 
-export async function deleteCompletion(id: string): Promise<void> {
+export async function deleteCompletion(id: string, goalId: string, date: string): Promise<void> {
   await ensureStorageInitialized();
 
-  // Get completion details before deleting (need for queue payload)
-  const allCompletions = await getAllLocalCompletions();
-  const completion = allCompletions.find(c => c.id === id);
-
+  // Delete by ID (covers local-created completions)
   await deleteLocalCompletion(id);
 
-  if (completion) {
-    // Queue operation
-    const operation: QueuedOperation = {
-      id: generateId(),
-      type: 'delete_completion',
-      entityId: id,
-      payload: { goal_id: completion.goal_id, date: completion.date },
-      timestamp: new Date().toISOString(),
-      retryCount: 0,
-    };
-    await saveQueuedOperation(operation);
-  }
+  // Also delete by goal_id + date (covers sync-created and server-ID mismatches)
+  await deleteLocalCompletionByGoalAndDate(goalId, date);
+
+  // Always queue the sync operation using goal_id + date (reliable payload)
+  const operation: QueuedOperation = {
+    id: generateId(),
+    type: 'delete_completion',
+    entityId: id,
+    payload: { goal_id: goalId, date },
+    timestamp: new Date().toISOString(),
+    retryCount: 0,
+  };
+  await saveQueuedOperation(operation);
 }
 
 export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
