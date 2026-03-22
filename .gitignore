@@ -20,7 +20,5 @@ backend/cmd/server/dist/
 .vscode/
 *.swp
 
-# bv (beads viewer) local config and caches
-.bv/
 goal-tracker-release.keystore
 tiny-tracker-release.keystore
