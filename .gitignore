@@ -22,4 +22,13 @@ backend/cmd/server/dist/
 
 goal-tracker-release.keystore
 tiny-tracker-release.keystore
+tiny-tracker-upload.keystore
+keystore.properties
+play-publisher-key.json
+
+# Terraform
+infra/.terraform/
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+
 .worktrees/
