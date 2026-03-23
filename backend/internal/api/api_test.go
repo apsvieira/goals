@@ -3,11 +3,13 @@ package api_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/api"
 	"github.com/apsv/goal-tracker/backend/internal/db"
@@ -580,5 +582,36 @@ func TestSecurityHeaders_HSTS(t *testing.T) {
 
 	if w2.Header().Get("Strict-Transport-Security") != "" {
 		t.Error("HSTS should not be set when COOKIE_SECURE is 'false'")
+	}
+}
+
+func TestSync_RejectsOversizedPayload(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Build a sync request with too many goals (over 500)
+	goals := make([]map[string]interface{}, 501)
+	for i := range goals {
+		goals[i] = map[string]interface{}{
+			"id": fmt.Sprintf("goal-%d", i), "name": "g", "color": "#000000",
+			"position": i, "updated_at": time.Now().UTC(), "deleted": false,
+		}
+	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"last_synced_at": nil,
+		"goals":          goals,
+		"completions":    []interface{}{},
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/sync/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for oversized sync, got %d: %s", w.Code, w.Body.String())
 	}
 }
