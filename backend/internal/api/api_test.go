@@ -619,6 +619,37 @@ func TestSync_RejectsOversizedPayload(t *testing.T) {
 	}
 }
 
+func TestSync_RejectsOversizedCompletions(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Build a sync request with too many completions (over 5000)
+	completions := make([]map[string]interface{}, 5001)
+	for i := range completions {
+		completions[i] = map[string]interface{}{
+			"id": fmt.Sprintf("comp-%d", i), "goal_id": "goal-1",
+			"date": "2026-01-01", "updated_at": time.Now().UTC(), "deleted": false,
+		}
+	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"last_synced_at": nil,
+		"goals":          []interface{}{},
+		"completions":    completions,
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/sync/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for oversized completions sync, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestDeleteCompletion_IsSoftDelete(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()

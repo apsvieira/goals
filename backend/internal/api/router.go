@@ -409,11 +409,12 @@ func (s *Server) StartSessionCleanup(ctx context.Context, cleanupInterval time.D
 func (s *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
 	// Ping the database to check connectivity
 	if err := s.db.Ping(); err != nil {
+		Logger.Error("health check failed", "error", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		json.NewEncoder(w).Encode(map[string]string{
 			"status": "unhealthy",
-			"error":  err.Error(),
+			"error":  "database unavailable",
 		})
 		return
 	}
