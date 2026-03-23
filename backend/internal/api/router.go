@@ -107,6 +107,13 @@ func (s *Server) setupRoutes() {
 	r.Use(middleware.RealIP)
 	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
+	// Limit request body size to 1MB to prevent memory exhaustion
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Use(securityHeaders)
 	r.Use(requestTimeout(30 * time.Second))
 	r.Use(corsMiddleware)

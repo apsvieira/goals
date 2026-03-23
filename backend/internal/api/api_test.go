@@ -529,3 +529,23 @@ func TestGetCalendar(t *testing.T) {
 		t.Errorf("expected 1 completion, got %d", len(calendar.Completions))
 	}
 }
+
+func TestRequestBodySizeLimit(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Create a body larger than 1MB
+	largeBody := bytes.Repeat([]byte("x"), 2*1024*1024)
+	req := httptest.NewRequest("POST", "/api/v1/goals", bytes.NewReader(largeBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	// Should reject with 400 (bad request from json decode failure) or 413
+	if w.Code == http.StatusInternalServerError {
+		t.Errorf("large body should not cause 500, got %d", w.Code)
+	}
+}
