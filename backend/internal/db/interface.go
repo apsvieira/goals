@@ -46,7 +46,7 @@ type Database interface {
 	UpsertGoal(goal *models.Goal) error
 	UpsertCompletion(c *models.Completion) error
 	SoftDeleteGoal(userID *string, id string) error
-	SoftDeleteCompletion(goalID, date string) error
+	SoftDeleteCompletion(userID *string, goalID, date string) error
 	GetGoalByID(id string) (*models.Goal, error) // Get goal without user filter for sync
 
 	// Device Tokens (Push Notifications)

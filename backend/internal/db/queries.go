@@ -828,12 +828,21 @@ func (d *SQLiteDB) SoftDeleteGoal(userID *string, id string) error {
 	return nil
 }
 
-func (d *SQLiteDB) SoftDeleteCompletion(goalID, date string) error {
+func (d *SQLiteDB) SoftDeleteCompletion(userID *string, goalID, date string) error {
 	now := time.Now().UTC()
-	_, err := d.Exec(
-		`UPDATE completions SET deleted_at = ?, updated_at = ? WHERE goal_id = ? AND date = ?`,
-		now, now, goalID, date,
-	)
+	query := `UPDATE completions SET deleted_at = ?, updated_at = ?
+		WHERE goal_id = ? AND date = ?
+		AND goal_id IN (SELECT id FROM goals WHERE `
+	args := []any{now, now, goalID, date}
+
+	if userID == nil {
+		query += `user_id IS NULL)`
+	} else {
+		query += `user_id = ?)`
+		args = append(args, *userID)
+	}
+
+	_, err := d.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("soft delete completion: %w", err)
 	}

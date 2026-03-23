@@ -932,12 +932,21 @@ func (d *PostgresDB) SoftDeleteGoal(userID *string, id string) error {
 	return nil
 }
 
-func (d *PostgresDB) SoftDeleteCompletion(goalID, date string) error {
+func (d *PostgresDB) SoftDeleteCompletion(userID *string, goalID, date string) error {
 	now := time.Now().UTC()
-	_, err := d.Exec(
-		`UPDATE completions SET deleted_at = $1, updated_at = $2 WHERE goal_id = $3 AND date = $4`,
-		now, now, goalID, date,
-	)
+	query := `UPDATE completions SET deleted_at = $1, updated_at = $2
+		WHERE goal_id = $3 AND date = $4
+		AND goal_id IN (SELECT id FROM goals WHERE `
+	args := []any{now, now, goalID, date}
+
+	if userID == nil {
+		query += `user_id IS NULL)`
+	} else {
+		query += fmt.Sprintf(`user_id = $%d)`, len(args)+1)
+		args = append(args, *userID)
+	}
+
+	_, err := d.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("soft delete completion: %w", err)
 	}
