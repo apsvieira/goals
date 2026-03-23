@@ -158,9 +158,5 @@ func (s *Service) ApplyChanges(userID string, req *SyncRequest) (*SyncResponse, 
 
 // getCompletionIncludingDeleted gets a completion by goal and date, including soft-deleted ones
 func (s *Service) getCompletionIncludingDeleted(goalID, date string) (*models.Completion, error) {
-	// This is a workaround - ideally we'd have a separate DB method
-	// For now, we'll use the regular method which excludes deleted
-	// This means soft-deleted completions will be re-created, which is acceptable
-	// as the client is explicitly marking them as completed
-	return s.db.GetCompletionByGoalAndDate(goalID, date)
+	return s.db.GetCompletionByGoalAndDateIncludingDeleted(goalID, date)
 }

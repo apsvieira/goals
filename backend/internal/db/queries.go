@@ -328,6 +328,29 @@ func (d *SQLiteDB) GetCompletionByGoalAndDate(goalID, date string) (*models.Comp
 	return &c, nil
 }
 
+func (d *SQLiteDB) GetCompletionByGoalAndDateIncludingDeleted(goalID, date string) (*models.Completion, error) {
+	var c models.Completion
+	var deletedAt sql.NullTime
+	var updatedAt sql.NullTime
+	err := d.QueryRow(
+		`SELECT id, goal_id, date, created_at, updated_at, deleted_at FROM completions WHERE goal_id = ? AND date = ?`,
+		goalID, date,
+	).Scan(&c.ID, &c.GoalID, &c.Date, &c.CreatedAt, &updatedAt, &deletedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query completion including deleted: %w", err)
+	}
+	if updatedAt.Valid {
+		c.UpdatedAt = updatedAt.Time
+	}
+	if deletedAt.Valid {
+		c.DeletedAt = &deletedAt.Time
+	}
+	return &c, nil
+}
+
 func (d *SQLiteDB) CreateCompletion(c *models.Completion) error {
 	if c.UpdatedAt.IsZero() {
 		c.UpdatedAt = time.Now().UTC()

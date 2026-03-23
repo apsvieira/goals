@@ -23,6 +23,7 @@ type Database interface {
 	ListCompletions(userID *string, from, to string, goalID *string) ([]models.Completion, error)
 	GetCompletionByID(id string) (*models.Completion, error)
 	GetCompletionByGoalAndDate(goalID, date string) (*models.Completion, error)
+	GetCompletionByGoalAndDateIncludingDeleted(goalID, date string) (*models.Completion, error)
 	CreateCompletion(c *models.Completion) error
 	DeleteCompletion(id string) error
 
