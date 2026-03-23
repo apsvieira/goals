@@ -31,7 +31,8 @@ func (s *Server) startOAuth(w http.ResponseWriter, r *http.Request) {
 
 	err := s.oauthHandler.StartOAuth(w, r, provider)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		Logger.Error("oauth start failed", "error", err, "provider", provider)
+		http.Error(w, "failed to start authentication", http.StatusBadRequest)
 		return
 	}
 }
@@ -49,7 +50,8 @@ func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 			// Fall back to web redirect
 		}
 		// Redirect to frontend with error
-		redirectURL := s.frontendURL + "/?auth_error=" + err.Error()
+		Logger.Error("oauth callback failed", "error", err, "provider", provider)
+		redirectURL := s.frontendURL + "/?auth_error=authentication_failed"
 		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		return
 	}

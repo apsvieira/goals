@@ -3,11 +3,13 @@ package api_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/api"
 	"github.com/apsv/goal-tracker/backend/internal/db"
@@ -71,6 +73,30 @@ func authenticateTestUser(t *testing.T, server *api.Server, email string) *http.
 	}
 	t.Fatal("no session cookie in dev login response")
 	return nil
+}
+
+func TestInternalErrors_DontLeakDetails(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Request a goal that doesn't exist — the 404 message should NOT contain DB internals
+	req := httptest.NewRequest("PATCH", "/api/v1/goals/nonexistent-id", bytes.NewBufferString(`{"name":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	// Response should not contain Go error strings like "sql:" or "query"
+	if bytes.Contains(w.Body.Bytes(), []byte("sql:")) || bytes.Contains(w.Body.Bytes(), []byte("query")) {
+		t.Errorf("error response leaks internal details: %s", body)
+	}
 }
 
 func TestListGoals_Empty(t *testing.T) {
@@ -506,5 +532,89 @@ func TestGetCalendar(t *testing.T) {
 	}
 	if len(calendar.Completions) != 1 {
 		t.Errorf("expected 1 completion, got %d", len(calendar.Completions))
+	}
+}
+
+func TestRequestBodySizeLimit(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Create a body larger than 1MB
+	largeBody := bytes.Repeat([]byte("x"), 2*1024*1024)
+	req := httptest.NewRequest("POST", "/api/v1/goals", bytes.NewReader(largeBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	// Should reject with 400 (bad request from json decode failure) or 413
+	if w.Code == http.StatusInternalServerError {
+		t.Errorf("large body should not cause 500, got %d", w.Code)
+	}
+}
+
+func TestSecurityHeaders_HSTS(t *testing.T) {
+	// Test with COOKIE_SECURE unset (simulating production)
+	orig := os.Getenv("COOKIE_SECURE")
+	os.Unsetenv("COOKIE_SECURE")
+	defer os.Setenv("COOKIE_SECURE", orig)
+
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Error("expected X-Content-Type-Options header")
+	}
+
+	hsts := w.Header().Get("Strict-Transport-Security")
+	if hsts == "" {
+		t.Error("expected Strict-Transport-Security header when COOKIE_SECURE is not 'false'")
+	}
+
+	// Test with COOKIE_SECURE=false (dev mode) — HSTS should be absent
+	os.Setenv("COOKIE_SECURE", "false")
+	req2 := httptest.NewRequest("GET", "/health", nil)
+	w2 := httptest.NewRecorder()
+	server.ServeHTTP(w2, req2)
+
+	if w2.Header().Get("Strict-Transport-Security") != "" {
+		t.Error("HSTS should not be set when COOKIE_SECURE is 'false'")
+	}
+}
+
+func TestSync_RejectsOversizedPayload(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Build a sync request with too many goals (over 500)
+	goals := make([]map[string]interface{}, 501)
+	for i := range goals {
+		goals[i] = map[string]interface{}{
+			"id": fmt.Sprintf("goal-%d", i), "name": "g", "color": "#000000",
+			"position": i, "updated_at": time.Now().UTC(), "deleted": false,
+		}
+	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"last_synced_at": nil,
+		"goals":          goals,
+		"completions":    []interface{}{},
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/sync/", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for oversized sync, got %d: %s", w.Code, w.Body.String())
 	}
 }

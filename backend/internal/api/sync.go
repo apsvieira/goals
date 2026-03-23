@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/apsv/goal-tracker/backend/internal/auth"
@@ -28,6 +29,27 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
 			"error": "invalid request body",
+		})
+		return
+	}
+
+	// Validate sync request size to prevent abuse
+	const maxSyncGoals = 500
+	const maxSyncCompletions = 5000
+
+	if len(req.Goals) > maxSyncGoals {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("too many goals in sync request (max %d)", maxSyncGoals),
+		})
+		return
+	}
+	if len(req.Completions) > maxSyncCompletions {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("too many completions in sync request (max %d)", maxSyncCompletions),
 		})
 		return
 	}

@@ -20,6 +20,12 @@ import (
 // Logger is the structured logger for the application
 var Logger *slog.Logger
 
+// serverError logs the real error and sends a generic message to the client.
+func serverError(w http.ResponseWriter, err error) {
+	Logger.Error("internal error", "error", err)
+	http.Error(w, "internal server error", http.StatusInternalServerError)
+}
+
 func init() {
 	initLogger()
 }
@@ -101,6 +107,13 @@ func (s *Server) setupRoutes() {
 	r.Use(middleware.RealIP)
 	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
+	// Limit request body size to 1MB to prevent memory exhaustion
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Use(securityHeaders)
 	r.Use(requestTimeout(30 * time.Second))
 	r.Use(corsMiddleware)
@@ -282,6 +295,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Content-Security-Policy", csp)
+		// HSTS: only set when running in production (HTTPS)
+		// COOKIE_SECURE is "false" only in local dev
+		if os.Getenv("COOKIE_SECURE") != "false" {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

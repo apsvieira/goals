@@ -35,7 +35,7 @@ func (s *Server) listCompletions(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 	completions, err := s.db.ListCompletions(userID, from, to, goalID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (s *Server) createCompletion(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 	goal, err := s.db.GetGoal(userID, req.GoalID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	if goal == nil {
@@ -93,7 +93,7 @@ func (s *Server) createCompletion(w http.ResponseWriter, r *http.Request) {
 	// Check for existing completion (idempotent)
 	existing, err := s.db.GetCompletionByGoalAndDate(req.GoalID, req.Date)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	if existing != nil {
@@ -109,7 +109,7 @@ func (s *Server) createCompletion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateCompletion(completion); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -123,7 +123,7 @@ func (s *Server) deleteCompletion(w http.ResponseWriter, r *http.Request) {
 	// Get the completion to verify it exists
 	completion, err := s.db.GetCompletionByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	if completion == nil {
@@ -134,7 +134,7 @@ func (s *Server) deleteCompletion(w http.ResponseWriter, r *http.Request) {
 	// Verify the completion's goal belongs to the current user
 	goal, err := s.db.GetGoal(userID, completion.GoalID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	if goal == nil {
@@ -143,7 +143,7 @@ func (s *Server) deleteCompletion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.DeleteCompletion(id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -171,13 +171,13 @@ func (s *Server) getCalendar(w http.ResponseWriter, r *http.Request) {
 
 	goals, err := s.db.ListGoals(userID, false)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
 	completions, err := s.db.ListCompletions(userID, from, to, nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
