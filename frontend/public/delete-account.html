@@ -63,7 +63,7 @@
 
   <div id="not-logged-in" style="display:none;">
     <p>You need to sign in before you can delete your account.</p>
-    <button class="btn-secondary" onclick="window.location.href='/'">Sign in</button>
+    <button id="sign-in-btn" class="btn-secondary">Sign in</button>
   </div>
 
   <div id="logged-in" style="display:none;">
@@ -80,67 +80,15 @@
       Data stored locally on your device will not be affected.
     </div>
 
-    <button id="delete-btn" class="btn-danger" onclick="confirmDelete()">
+    <button id="delete-btn" class="btn-danger">
       Delete my account
     </button>
 
-    <button class="btn-secondary" onclick="window.location.href='/'">Cancel</button>
+    <button id="cancel-btn" class="btn-secondary">Cancel</button>
   </div>
 
   <div id="status"></div>
 
-  <script>
-    async function checkAuth() {
-      try {
-        const res = await fetch('/api/v1/auth/me', { credentials: 'include' });
-        document.getElementById('loading').style.display = 'none';
-        if (res.ok) {
-          const data = await res.json();
-          document.getElementById('user-email').textContent = data.email;
-          document.getElementById('logged-in').style.display = 'block';
-        } else {
-          document.getElementById('not-logged-in').style.display = 'block';
-        }
-      } catch {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('not-logged-in').style.display = 'block';
-      }
-    }
-
-    async function confirmDelete() {
-      if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
-
-      const btn = document.getElementById('delete-btn');
-      const status = document.getElementById('status');
-      btn.disabled = true;
-      btn.textContent = 'Deleting...';
-
-      try {
-        const res = await fetch('/api/v1/account', {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-
-        if (res.ok) {
-          document.getElementById('logged-in').style.display = 'none';
-          status.textContent = 'Your account has been deleted. You can close this page.';
-          status.className = 'status-success';
-        } else {
-          const data = await res.text();
-          status.textContent = 'Failed to delete account: ' + data;
-          status.className = 'status-error';
-          btn.disabled = false;
-          btn.textContent = 'Delete my account';
-        }
-      } catch (err) {
-        status.textContent = 'Network error. Please try again.';
-        status.className = 'status-error';
-        btn.disabled = false;
-        btn.textContent = 'Delete my account';
-      }
-    }
-
-    checkAuth();
-  </script>
+  <script src="/delete-account.js"></script>
 </body>
 </html>
