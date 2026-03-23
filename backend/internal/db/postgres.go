@@ -214,10 +214,14 @@ func (d *PostgresDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 func (d *PostgresDB) CreateGoal(g *models.Goal) error {
 	// Get next position for this user's goals
 	var maxPos sql.NullInt64
+	var err error
 	if g.UserID == nil {
-		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id IS NULL AND deleted_at IS NULL`).Scan(&maxPos)
+		err = d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id IS NULL AND deleted_at IS NULL`).Scan(&maxPos)
 	} else {
-		d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id = $1 AND deleted_at IS NULL`, *g.UserID).Scan(&maxPos)
+		err = d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id = $1 AND deleted_at IS NULL`, *g.UserID).Scan(&maxPos)
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("get max position: %w", err)
 	}
 	nextPos := 0
 	if maxPos.Valid {
@@ -230,7 +234,7 @@ func (d *PostgresDB) CreateGoal(g *models.Goal) error {
 		g.UpdatedAt = now
 	}
 
-	_, err := d.Exec(
+	_, err = d.Exec(
 		`INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		g.ID, g.Name, g.Color, g.Position, g.TargetCount, g.TargetPeriod, g.UserID, g.CreatedAt, g.UpdatedAt,
 	)
