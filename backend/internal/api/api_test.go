@@ -70,6 +70,30 @@ func authenticateTestUser(t *testing.T, server *api.Server, email string) *http.
 	return nil
 }
 
+func TestInternalErrors_DontLeakDetails(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Request a goal that doesn't exist — the 404 message should NOT contain DB internals
+	req := httptest.NewRequest("PATCH", "/api/v1/goals/nonexistent-id", bytes.NewBufferString(`{"name":"x"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	// Response should not contain Go error strings like "sql:" or "query"
+	if bytes.Contains(w.Body.Bytes(), []byte("sql:")) || bytes.Contains(w.Body.Bytes(), []byte("query")) {
+		t.Errorf("error response leaks internal details: %s", body)
+	}
+}
+
 func TestListGoals_Empty(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()

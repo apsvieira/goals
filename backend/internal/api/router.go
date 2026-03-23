@@ -20,6 +20,12 @@ import (
 // Logger is the structured logger for the application
 var Logger *slog.Logger
 
+// serverError logs the real error and sends a generic message to the client.
+func serverError(w http.ResponseWriter, err error) {
+	Logger.Error("internal error", "error", err)
+	http.Error(w, "internal server error", http.StatusInternalServerError)
+}
+
 func init() {
 	initLogger()
 }

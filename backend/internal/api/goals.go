@@ -53,7 +53,7 @@ func (s *Server) listGoals(w http.ResponseWriter, r *http.Request) {
 
 	goals, err := s.db.ListGoals(userID, includeArchived)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (s *Server) createGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateGoal(goal); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (s *Server) updateGoal(w http.ResponseWriter, r *http.Request) {
 	// Check goal exists and belongs to user
 	goal, err := s.db.GetGoal(userID, id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	if goal == nil {
@@ -145,14 +145,14 @@ func (s *Server) updateGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.UpdateGoal(userID, id, req.Name, req.Color, req.TargetCount, req.TargetPeriod); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
 	// Fetch updated goal
 	goal, err = s.db.GetGoal(userID, id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (s *Server) archiveGoal(w http.ResponseWriter, r *http.Request) {
 	// Check goal exists and belongs to user
 	goal, err := s.db.GetGoal(userID, id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 	if goal == nil {
@@ -175,7 +175,7 @@ func (s *Server) archiveGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.ArchiveGoal(userID, id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
@@ -197,14 +197,14 @@ func (s *Server) reorderGoals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.ReorderGoals(userID, req.GoalIDs); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
 	// Return updated list
 	goals, err := s.db.ListGoals(userID, false)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, err)
 		return
 	}
 
