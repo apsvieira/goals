@@ -1,0 +1,16 @@
+tiny tracker helps you build consistent habits by tracking daily goal completion with a unique hexagon calendar view.
+
+Features:
+- Create personal goals and track daily completion
+- Beautiful hexagon calendar shows your progress at a glance
+- Works completely offline — your data is always available
+- Syncs across devices when you sign in with Google
+- Clean, minimal interface that stays out of your way
+- Free, no ads, no tracking
+
+How it works:
+1. Add your goals (exercise, reading, meditation, etc.)
+2. Tap to mark each day as complete
+3. Watch your hexagon calendar fill up over time
+
+Your data is stored locally on your device and optionally synced to our servers when signed in. We never sell or share your data.
