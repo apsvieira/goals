@@ -151,6 +151,9 @@ func (s *Server) setupRoutes() {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireAuth())
 
+			// Account deletion
+			r.Delete("/account", s.deleteAccount)
+
 			// Sync endpoint with moderate rate limiting (30/min - expensive operation)
 			r.Route("/sync", func(r chi.Router) {
 				r.Use(RateLimitMiddleware(s.syncRateLimiter))

@@ -975,3 +975,34 @@ func (d *SQLiteDB) UpdateDeviceTokenLastUsed(tokenID string) error {
 	}
 	return nil
 }
+
+func (d *SQLiteDB) DeleteAccount(userID string) error {
+	tx, err := d.Begin()
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete completions for all goals owned by this user
+	if _, err := tx.Exec(`DELETE FROM completions WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?)`, userID); err != nil {
+		return fmt.Errorf("delete completions: %w", err)
+	}
+	// Delete goals
+	if _, err := tx.Exec(`DELETE FROM goals WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("delete goals: %w", err)
+	}
+	// Delete device tokens
+	if _, err := tx.Exec(`DELETE FROM device_tokens WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("delete device tokens: %w", err)
+	}
+	// Delete sessions
+	if _, err := tx.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
+	}
+	// Delete user
+	if _, err := tx.Exec(`DELETE FROM users WHERE id = ?`, userID); err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+
+	return tx.Commit()
+}

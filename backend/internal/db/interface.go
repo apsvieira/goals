@@ -55,6 +55,9 @@ type Database interface {
 	DeleteDeviceToken(tokenID string) error
 	UpdateDeviceTokenLastUsed(tokenID string) error
 
+	// Account
+	DeleteAccount(userID string) error
+
 	// Lifecycle
 	Migrate() error
 	Close() error

@@ -92,6 +92,32 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// deleteAccount permanently deletes the authenticated user's account and all associated data.
+func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := s.db.DeleteAccount(user.ID); err != nil {
+		Logger.Error("failed to delete account", "error", err, "user_id", user.ID)
+		http.Error(w, "failed to delete account", http.StatusInternalServerError)
+		return
+	}
+
+	Logger.Info("account deleted", "user_id", user.ID, "email", user.Email)
+
+	// Clear the session cookie
+	auth.ClearSessionCookie(w)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "account deleted",
+	})
+}
+
 // devLogin creates a session for a given email without OAuth.
 // This endpoint is only available in development mode.
 func (s *Server) devLogin(w http.ResponseWriter, r *http.Request) {
