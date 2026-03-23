@@ -1,6 +1,37 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
+  let devLoginEnabled = false;
+
+  onMount(async () => {
+    try {
+      const res = await fetch('/api/v1/auth/config');
+      if (res.ok) {
+        const config = await res.json();
+        devLoginEnabled = config.devLogin;
+      }
+    } catch {
+      // Config endpoint unavailable — no dev login
+    }
+  });
+
   function handleGoogleLogin() {
     window.location.href = '/api/v1/auth/oauth/google';
+  }
+
+  async function handleDevLogin() {
+    try {
+      const res = await fetch('/api/v1/auth/dev/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'dev@localhost' }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error('Dev login failed:', e);
+    }
   }
 
   function handleLinkClick(e: MouseEvent, path: string) {
@@ -25,6 +56,11 @@
         </svg>
         Sign in with Google
       </button>
+      {#if devLoginEnabled}
+        <button class="auth-btn dev-btn" on:click={handleDevLogin}>
+          Dev Login
+        </button>
+      {/if}
     </div>
 
     <nav class="legal-links">
@@ -94,6 +130,16 @@
 
   .google-btn:hover {
     background: #f5f5f5;
+  }
+
+  .dev-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+
+  .dev-btn:hover {
+    background: var(--border);
   }
 
   .legal-links {
