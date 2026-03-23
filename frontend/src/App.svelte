@@ -245,17 +245,28 @@
 
     try {
       if (existingId) {
-        await deleteCompletion(existingId, goalId, date);
+        // Optimistic UI update — remove immediately, persist in background
+        const prevCompletions = completions;
+        const prevPeriod = periodCompletions;
         completions = completions.filter(c => c.id !== existingId);
         periodCompletions = periodCompletions.filter(c => c.id !== existingId);
+
+        deleteCompletion(existingId, goalId, date)
+          .then(() => syncManager.sync().catch(console.error))
+          .catch((e) => {
+            // Revert on failure
+            completions = prevCompletions;
+            periodCompletions = prevPeriod;
+            error = getUserFriendlyMessage(e);
+          });
       } else {
         const newCompletion = await createCompletion(goalId, date);
         completions = [...completions, newCompletion];
         periodCompletions = [...periodCompletions, newCompletion];
-      }
 
-      // Trigger sync after completion changes
-      syncManager.sync().catch(console.error);
+        // Trigger sync after completion changes
+        syncManager.sync().catch(console.error);
+      }
     } catch (e) {
       error = getUserFriendlyMessage(e);
     }
