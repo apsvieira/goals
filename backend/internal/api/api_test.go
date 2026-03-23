@@ -36,6 +36,9 @@ func setupTestServer(t *testing.T) (*api.Server, func()) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
+	// Enable dev login for tests (dev login endpoint is gated behind this env var)
+	t.Setenv("DEV_LOGIN", "true")
+
 	server := api.NewServer(database, nil)
 
 	cleanup := func() {

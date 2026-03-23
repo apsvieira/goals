@@ -120,12 +120,18 @@ func (s *Server) setupRoutes() {
 			r.Get("/oauth/{provider}/callback", s.oauthCallback)
 			r.Post("/logout", s.logout)
 
-			// Dev login - only enabled in development (localhost or unset BASE_URL)
-			frontendURL := os.Getenv("FRONTEND_URL")
-			baseURL := os.Getenv("BASE_URL")
-			if baseURL == "" || strings.Contains(baseURL, "localhost") || strings.Contains(frontendURL, "localhost") {
+			// Dev login - only enabled when DEV_LOGIN=true
+			if os.Getenv("DEV_LOGIN") == "true" {
 				r.Post("/dev/login", s.devLogin)
 			}
+
+			// Auth config - tells the frontend what auth methods are available
+			r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"devLogin": os.Getenv("DEV_LOGIN") == "true",
+				})
+			})
 		})
 
 		// All routes below require authentication
