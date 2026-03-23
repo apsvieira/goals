@@ -664,6 +664,7 @@
         showAddForm={false}
         onToggleAddForm={() => editorState = { mode: 'add' }}
         {user}
+        syncing={currentSyncStatus.state === 'syncing'}
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
         onSignIn={handleSignIn}
@@ -672,13 +673,6 @@
       <main on:touchstart={handleTouchStart} on:touchend={handleTouchEnd}>
         {#if error}
           <div class="error" role="alert" aria-live="assertive">{error}</div>
-        {/if}
-
-        {#if currentSyncStatus.state === 'syncing'}
-          <div class="sync-banner sync-syncing" role="status" aria-live="polite">
-            <span class="sync-spinner" aria-hidden="true"></span>
-            <span>{currentSyncStatus.message}</span>
-          </div>
         {/if}
 
         {#if !online}
@@ -825,36 +819,6 @@
     display: flex;
     justify-content: center;
     padding: 3rem 0;
-  }
-
-  /* Sync status banner */
-  .sync-banner {
-    padding: 0.75rem 1rem;
-    margin: 0 var(--space-lg) var(--space-md);
-    border-radius: 0.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.875rem;
-  }
-
-  .sync-syncing {
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-  }
-
-  .sync-spinner {
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
   }
 
   /* Offline indicator banner */

@@ -9,6 +9,7 @@
   export let showAddForm: boolean;
   export let onToggleAddForm: () => void;
   export let user: User | null = null;
+  export let syncing: boolean = false;
   export let onLogout: () => void = () => {};
   export let onProfileClick: () => void = () => {};
   export let onSignIn: () => void = () => {};
@@ -71,6 +72,16 @@
       <span class="btn-text">{showAddForm ? 'Cancel' : 'New Goal'}</span>
     </button>
     <MonthNav {month} {onPrev} {onNext} />
+    {#if syncing}
+      <span class="sync-cloud" title="Syncing...">
+        <svg viewBox="0 0 24 20" width="18" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M6 14a4 4 0 0 1-.68-7.95A5.5 5.5 0 0 1 16.5 5h.5a4 4 0 0 1 1 7.87"/>
+          <line class="drop drop-1" x1="10" y1="14" x2="10" y2="18"/>
+          <line class="drop drop-2" x1="14" y1="13" x2="14" y2="17"/>
+          <line class="drop drop-3" x1="8" y1="16" x2="8" y2="19"/>
+        </svg>
+      </span>
+    {/if}
     <div class="user-menu">
       <button class="user-indicator" on:click|stopPropagation={toggleDropdown} aria-expanded={dropdownOpen}>
         {#if user?.avatar_url}
@@ -190,6 +201,33 @@
     display: none;
   }
 
+  .sync-cloud {
+    position: absolute;
+    right: 7rem;
+    opacity: 0.45;
+    animation: fade-in 0.3s ease;
+  }
+
+  .sync-cloud .drop {
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    animation: rain 0.8s ease-in infinite;
+  }
+
+  .sync-cloud .drop-2 { animation-delay: 0.25s; }
+  .sync-cloud .drop-3 { animation-delay: 0.5s; }
+
+  @keyframes rain {
+    0%   { opacity: 0; transform: translateY(-2px); }
+    30%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(3px); }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 0.45; }
+  }
+
   @media (max-width: 480px) {
     .user-indicator {
       padding: 0.25rem;
@@ -198,7 +236,8 @@
     }
 
     .user-name,
-    .chevron {
+    .chevron,
+    .sync-cloud {
       display: none;
     }
 
