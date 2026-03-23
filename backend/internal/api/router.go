@@ -289,6 +289,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Content-Security-Policy", csp)
+		// HSTS: only set when running in production (HTTPS)
+		// COOKIE_SECURE is "false" only in local dev
+		if os.Getenv("COOKIE_SECURE") != "false" {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

@@ -549,3 +549,36 @@ func TestRequestBodySizeLimit(t *testing.T) {
 		t.Errorf("large body should not cause 500, got %d", w.Code)
 	}
 }
+
+func TestSecurityHeaders_HSTS(t *testing.T) {
+	// Test with COOKIE_SECURE unset (simulating production)
+	orig := os.Getenv("COOKIE_SECURE")
+	os.Unsetenv("COOKIE_SECURE")
+	defer os.Setenv("COOKIE_SECURE", orig)
+
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Error("expected X-Content-Type-Options header")
+	}
+
+	hsts := w.Header().Get("Strict-Transport-Security")
+	if hsts == "" {
+		t.Error("expected Strict-Transport-Security header when COOKIE_SECURE is not 'false'")
+	}
+
+	// Test with COOKIE_SECURE=false (dev mode) — HSTS should be absent
+	os.Setenv("COOKIE_SECURE", "false")
+	req2 := httptest.NewRequest("GET", "/health", nil)
+	w2 := httptest.NewRecorder()
+	server.ServeHTTP(w2, req2)
+
+	if w2.Header().Get("Strict-Transport-Security") != "" {
+		t.Error("HSTS should not be set when COOKIE_SECURE is 'false'")
+	}
+}
