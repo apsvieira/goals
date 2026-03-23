@@ -618,3 +618,69 @@ func TestSync_RejectsOversizedPayload(t *testing.T) {
 		t.Errorf("expected 400 for oversized sync, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+func TestDeleteCompletion_IsSoftDelete(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Create a goal
+	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
+	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
+	createW := httptest.NewRecorder()
+	server.ServeHTTP(createW, createReq)
+
+	var goal models.Goal
+	json.NewDecoder(createW.Body).Decode(&goal)
+
+	// Create a completion
+	compBody := bytes.NewBufferString(`{"goal_id": "` + goal.ID + `", "date": "2026-01-05"}`)
+	compReq := httptest.NewRequest("POST", "/api/v1/completions", compBody)
+	compReq.Header.Set("Content-Type", "application/json")
+	compReq.AddCookie(cookie)
+	compW := httptest.NewRecorder()
+	server.ServeHTTP(compW, compReq)
+
+	var completion models.Completion
+	json.NewDecoder(compW.Body).Decode(&completion)
+
+	// Delete the completion
+	deleteReq := httptest.NewRequest("DELETE", "/api/v1/completions/"+completion.ID, nil)
+	deleteReq.AddCookie(cookie)
+	deleteW := httptest.NewRecorder()
+	server.ServeHTTP(deleteW, deleteReq)
+
+	if deleteW.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", deleteW.Code)
+	}
+
+	// The completion should NOT appear in the list (filtered by deleted_at IS NULL)
+	listReq := httptest.NewRequest("GET", "/api/v1/completions?from=2026-01-01&to=2026-01-31", nil)
+	listReq.AddCookie(cookie)
+	listW := httptest.NewRecorder()
+	server.ServeHTTP(listW, listReq)
+
+	var completions []models.Completion
+	json.NewDecoder(listW.Body).Decode(&completions)
+
+	if len(completions) != 0 {
+		t.Errorf("expected 0 visible completions, got %d", len(completions))
+	}
+
+	// But re-creating the same completion should succeed (idempotent-ish)
+	// This verifies the soft-deleted record doesn't block a new one
+	compBody2 := bytes.NewBufferString(`{"goal_id": "` + goal.ID + `", "date": "2026-01-05"}`)
+	compReq2 := httptest.NewRequest("POST", "/api/v1/completions", compBody2)
+	compReq2.Header.Set("Content-Type", "application/json")
+	compReq2.AddCookie(cookie)
+	compW2 := httptest.NewRecorder()
+	server.ServeHTTP(compW2, compReq2)
+
+	// Should succeed — either 200 (found existing) or 201 (created new)
+	if compW2.Code != http.StatusOK && compW2.Code != http.StatusCreated {
+		t.Errorf("expected 200 or 201 after re-creating deleted completion, got %d: %s", compW2.Code, compW2.Body.String())
+	}
+}

@@ -454,13 +454,14 @@ func (d *PostgresDB) GetCompletionByGoalAndDate(goalID, date string) (*models.Co
 }
 
 func (d *PostgresDB) CreateCompletion(c *models.Completion) error {
-	now := time.Now().UTC()
 	if c.UpdatedAt.IsZero() {
-		c.UpdatedAt = now
+		c.UpdatedAt = time.Now().UTC()
 	}
 
 	_, err := d.Exec(
-		`INSERT INTO completions (id, goal_id, date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+		`INSERT INTO completions (id, goal_id, date, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5)
+		 ON CONFLICT (goal_id, date) DO UPDATE SET deleted_at = NULL, updated_at = $5`,
 		c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
@@ -470,9 +471,13 @@ func (d *PostgresDB) CreateCompletion(c *models.Completion) error {
 }
 
 func (d *PostgresDB) DeleteCompletion(id string) error {
-	_, err := d.Exec(`DELETE FROM completions WHERE id = $1`, id)
+	now := time.Now().UTC()
+	_, err := d.Exec(
+		`UPDATE completions SET deleted_at = $1, updated_at = $2 WHERE id = $3`,
+		now, now, id,
+	)
 	if err != nil {
-		return fmt.Errorf("delete completion: %w", err)
+		return fmt.Errorf("soft delete completion: %w", err)
 	}
 	return nil
 }

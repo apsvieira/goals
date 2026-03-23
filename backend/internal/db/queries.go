@@ -329,13 +329,14 @@ func (d *SQLiteDB) GetCompletionByGoalAndDate(goalID, date string) (*models.Comp
 }
 
 func (d *SQLiteDB) CreateCompletion(c *models.Completion) error {
-	now := time.Now().UTC()
 	if c.UpdatedAt.IsZero() {
-		c.UpdatedAt = now
+		c.UpdatedAt = time.Now().UTC()
 	}
 
 	_, err := d.Exec(
-		`INSERT INTO completions (id, goal_id, date, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO completions (id, goal_id, date, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT (goal_id, date) DO UPDATE SET deleted_at = NULL, updated_at = excluded.updated_at`,
 		c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
@@ -345,9 +346,13 @@ func (d *SQLiteDB) CreateCompletion(c *models.Completion) error {
 }
 
 func (d *SQLiteDB) DeleteCompletion(id string) error {
-	_, err := d.Exec(`DELETE FROM completions WHERE id = ?`, id)
+	now := time.Now().UTC()
+	_, err := d.Exec(
+		`UPDATE completions SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+		now, now, id,
+	)
 	if err != nil {
-		return fmt.Errorf("delete completion: %w", err)
+		return fmt.Errorf("soft delete completion: %w", err)
 	}
 	return nil
 }
