@@ -99,6 +99,62 @@ func TestInternalErrors_DontLeakDetails(t *testing.T) {
 	}
 }
 
+func TestOAuthStart_DoesNotLeakInternalErrors(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Hit the OAuth start endpoint with an invalid provider.
+	// The handler should return a generic error, not leak internal details
+	// (e.g., no "unknown provider", no Go error strings).
+	req := httptest.NewRequest("GET", "/api/v1/auth/oauth/invalid-provider", nil)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	// Should get 400, not 500
+	if w.Code == http.StatusInternalServerError {
+		t.Errorf("OAuth start should not return 500 for invalid provider, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	// Response must not contain internal error details
+	forbiddenSubstrings := []string{"sql:", "query", "panic", "runtime", "goroutine", "nil pointer"}
+	for _, s := range forbiddenSubstrings {
+		if bytes.Contains(w.Body.Bytes(), []byte(s)) {
+			t.Errorf("OAuth error response leaks internal details (contains %q): %s", s, body)
+		}
+	}
+
+	// Should use the generic message
+	if w.Code == http.StatusBadRequest && !bytes.Contains(w.Body.Bytes(), []byte("failed to start authentication")) {
+		t.Errorf("expected generic error message, got: %s", body)
+	}
+}
+
+func TestOAuthCallback_DoesNotLeakInternalErrors(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Hit the OAuth callback with no valid state/code — should fail gracefully
+	req := httptest.NewRequest("GET", "/api/v1/auth/oauth/google/callback?code=fake&state=fake", nil)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	// Should redirect (307) with generic auth_error, not leak details
+	if w.Code == http.StatusInternalServerError {
+		t.Errorf("OAuth callback should not return 500, got %d", w.Code)
+	}
+
+	// If it redirects, the Location should contain "auth_error=authentication_failed" (generic)
+	location := w.Header().Get("Location")
+	if w.Code == http.StatusTemporaryRedirect && location != "" {
+		if bytes.Contains([]byte(location), []byte("err.Error")) ||
+			bytes.Contains([]byte(location), []byte("sql:")) ||
+			bytes.Contains([]byte(location), []byte("panic")) {
+			t.Errorf("OAuth callback redirect leaks internal error in URL: %s", location)
+		}
+	}
+}
+
 func TestListGoals_Empty(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -713,5 +769,168 @@ func TestDeleteCompletion_IsSoftDelete(t *testing.T) {
 	// Should succeed — either 200 (found existing) or 201 (created new)
 	if compW2.Code != http.StatusOK && compW2.Code != http.StatusCreated {
 		t.Errorf("expected 200 or 201 after re-creating deleted completion, got %d: %s", compW2.Code, compW2.Body.String())
+	}
+}
+
+func TestDeleteAccount_Success(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "delete-me@test.com")
+
+	// Create a goal so there's data to delete
+	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
+	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
+	createW := httptest.NewRecorder()
+	server.ServeHTTP(createW, createReq)
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("setup: failed to create goal: %d %s", createW.Code, createW.Body.String())
+	}
+
+	// Delete the account
+	req := httptest.NewRequest("DELETE", "/api/v1/account", nil)
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]string
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp["status"] != "account deleted" {
+		t.Errorf("expected status 'account deleted', got %q", resp["status"])
+	}
+
+	// Verify session is invalidated — goals request should fail
+	listReq := httptest.NewRequest("GET", "/api/v1/goals", nil)
+	listReq.AddCookie(cookie)
+	listW := httptest.NewRecorder()
+	server.ServeHTTP(listW, listReq)
+
+	if listW.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 after account deletion, got %d", listW.Code)
+	}
+}
+
+func TestDeleteAccount_Unauthenticated(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("DELETE", "/api/v1/account", nil)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSync_RoundTrip_GoalsAndCompletions(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "sync@test.com")
+
+	now := time.Now().UTC()
+
+	// Send goals and completions via sync
+	syncBody, _ := json.Marshal(map[string]interface{}{
+		"last_synced_at": nil,
+		"goals": []map[string]interface{}{
+			{
+				"id": "sync-goal-1", "name": "Read", "color": "#FF0000",
+				"position": 1, "updated_at": now.Format(time.RFC3339Nano), "deleted": false,
+			},
+			{
+				"id": "sync-goal-2", "name": "Write", "color": "#00FF00",
+				"position": 2, "updated_at": now.Format(time.RFC3339Nano), "deleted": false,
+			},
+		},
+		"completions": []map[string]interface{}{
+			{
+				"goal_id": "sync-goal-1", "date": "2026-03-28",
+				"completed": true, "updated_at": now.Format(time.RFC3339Nano),
+			},
+		},
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/sync/", bytes.NewReader(syncBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("sync request failed: %d %s", w.Code, w.Body.String())
+	}
+
+	var syncResp map[string]interface{}
+	json.NewDecoder(w.Body).Decode(&syncResp)
+
+	// Verify server_time is present
+	if _, ok := syncResp["server_time"]; !ok {
+		t.Error("response missing server_time")
+	}
+
+	// Verify goals are now accessible via REST API
+	listReq := httptest.NewRequest("GET", "/api/v1/goals", nil)
+	listReq.AddCookie(cookie)
+	listW := httptest.NewRecorder()
+	server.ServeHTTP(listW, listReq)
+
+	if listW.Code != http.StatusOK {
+		t.Fatalf("list goals failed: %d %s", listW.Code, listW.Body.String())
+	}
+
+	var goals []models.Goal
+	json.NewDecoder(listW.Body).Decode(&goals)
+	if len(goals) != 2 {
+		t.Fatalf("expected 2 goals, got %d", len(goals))
+	}
+
+	// Verify second sync with last_synced_at returns changes from other devices
+	serverTime := syncResp["server_time"].(string)
+
+	// Simulate a change from "another device" — create a goal via REST
+	createBody := bytes.NewBufferString(`{"name": "Meditate", "color": "#0000FF"}`)
+	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
+	createW := httptest.NewRecorder()
+	server.ServeHTTP(createW, createReq)
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("create goal failed: %d %s", createW.Code, createW.Body.String())
+	}
+
+	// Sync again with last_synced_at — should receive the new goal
+	syncBody2, _ := json.Marshal(map[string]interface{}{
+		"last_synced_at": serverTime,
+		"goals":          []interface{}{},
+		"completions":    []interface{}{},
+	})
+
+	req2 := httptest.NewRequest("POST", "/api/v1/sync/", bytes.NewReader(syncBody2))
+	req2.Header.Set("Content-Type", "application/json")
+	req2.AddCookie(cookie)
+	w2 := httptest.NewRecorder()
+	server.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusOK {
+		t.Fatalf("second sync failed: %d %s", w2.Code, w2.Body.String())
+	}
+
+	var syncResp2 map[string]interface{}
+	json.NewDecoder(w2.Body).Decode(&syncResp2)
+
+	serverGoals, ok := syncResp2["goals"].([]interface{})
+	if !ok {
+		t.Fatal("response missing goals array")
+	}
+	if len(serverGoals) != 1 {
+		t.Errorf("expected 1 server change (the new goal), got %d", len(serverGoals))
 	}
 }
