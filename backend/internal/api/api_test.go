@@ -873,7 +873,7 @@ func TestSync_RoundTrip_GoalsAndCompletions(t *testing.T) {
 
 	// Verify server_time is present
 	if _, ok := syncResp["server_time"]; !ok {
-		t.Error("response missing server_time")
+		t.Fatal("response missing server_time")
 	}
 
 	// Verify goals are now accessible via REST API
