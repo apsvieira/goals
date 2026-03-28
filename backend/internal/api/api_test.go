@@ -935,6 +935,74 @@ func TestSync_RoundTrip_GoalsAndCompletions(t *testing.T) {
 	}
 }
 
+func TestCreateGoal_RejectsInvalidTargetPeriod(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	body := bytes.NewBufferString(`{"name": "Exercise", "target_count": 3, "target_period": "year"}`)
+	req := httptest.NewRequest("POST", "/api/v1/goals", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid target_period, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUpdateGoal_RejectsInvalidTargetPeriod(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Create a goal first
+	createBody := bytes.NewBufferString(`{"name": "Exercise"}`)
+	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
+	createW := httptest.NewRecorder()
+	server.ServeHTTP(createW, createReq)
+
+	var goal models.Goal
+	json.NewDecoder(createW.Body).Decode(&goal)
+
+	// Try to update with invalid target_period
+	body := bytes.NewBufferString(`{"target_period": "century"}`)
+	req := httptest.NewRequest("PATCH", "/api/v1/goals/"+goal.ID, body)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid target_period, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreateGoal_AcceptsValidTargetPeriod(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	for _, period := range []string{"week", "month"} {
+		body := bytes.NewBufferString(fmt.Sprintf(`{"name": "Goal %s", "target_count": 3, "target_period": "%s"}`, period, period))
+		req := httptest.NewRequest("POST", "/api/v1/goals", body)
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(cookie)
+		w := httptest.NewRecorder()
+		server.ServeHTTP(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("expected 201 for target_period=%q, got %d: %s", period, w.Code, w.Body.String())
+		}
+	}
+}
+
 func TestUpdateGoal_RejectsEmptyName(t *testing.T) {
 	server, cleanup := setupTestServer(t)
 	defer cleanup()

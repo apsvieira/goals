@@ -47,6 +47,14 @@ func validateColor(color string) (bool, string) {
 	return true, ""
 }
 
+// validateTargetPeriod checks if the target period is "week" or "month"
+func validateTargetPeriod(period string) (bool, string) {
+	if period != "week" && period != "month" {
+		return false, "target_period must be \"week\" or \"month\""
+	}
+	return true, ""
+}
+
 func (s *Server) listGoals(w http.ResponseWriter, r *http.Request) {
 	includeArchived := r.URL.Query().Get("archived") == "true"
 	userID := getUserID(r)
@@ -81,6 +89,14 @@ func (s *Server) createGoal(w http.ResponseWriter, r *http.Request) {
 	if valid, errMsg := validateColor(req.Color); !valid {
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
+	}
+
+	// Validate target_period if provided
+	if req.TargetPeriod != nil {
+		if valid, errMsg := validateTargetPeriod(*req.TargetPeriod); !valid {
+			http.Error(w, errMsg, http.StatusBadRequest)
+			return
+		}
 	}
 
 	if req.Color == "" {
@@ -129,6 +145,14 @@ func (s *Server) updateGoal(w http.ResponseWriter, r *http.Request) {
 	if req.Color != nil && *req.Color != "" {
 		if !colorRegex.MatchString(*req.Color) {
 			http.Error(w, "color must be in #RRGGBB format (e.g., #4CAF50)", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Validate target_period if provided
+	if req.TargetPeriod != nil {
+		if valid, errMsg := validateTargetPeriod(*req.TargetPeriod); !valid {
+			http.Error(w, errMsg, http.StatusBadRequest)
 			return
 		}
 	}

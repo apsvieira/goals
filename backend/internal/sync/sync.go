@@ -58,6 +58,11 @@ func (s *Service) ApplyChanges(userID string, req *SyncRequest) (*SyncResponse, 
 
 	// Process goal changes from client
 	for _, clientGoal := range req.Goals {
+		// Validate target_period if provided
+		if clientGoal.TargetPeriod != nil && *clientGoal.TargetPeriod != "week" && *clientGoal.TargetPeriod != "month" {
+			continue // Skip goals with invalid target_period
+		}
+
 		serverGoal, err := s.db.GetGoalByID(clientGoal.ID)
 		if err != nil {
 			return nil, err
