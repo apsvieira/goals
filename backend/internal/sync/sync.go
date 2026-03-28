@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"sync"
 	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/db"
@@ -9,12 +10,27 @@ import (
 
 // Service handles sync operations
 type Service struct {
-	db db.Database
+	db    db.Database
+	mu    sync.Mutex
+	locks map[string]*sync.Mutex
 }
 
 // NewService creates a new sync service
 func NewService(database db.Database) *Service {
-	return &Service{db: database}
+	return &Service{
+		db:    database,
+		locks: make(map[string]*sync.Mutex),
+	}
+}
+
+// getUserLock returns a mutex for the given user ID, creating one if needed.
+func (s *Service) getUserLock(userID string) *sync.Mutex {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.locks[userID]; !ok {
+		s.locks[userID] = &sync.Mutex{}
+	}
+	return s.locks[userID]
 }
 
 // GetChangesSince returns all goals and completions modified since the given timestamp
@@ -49,6 +65,10 @@ func (s *Service) GetChangesSince(userID string, since *time.Time) (*SyncRespons
 
 // ApplyChanges merges client changes with server using LWW strategy
 func (s *Service) ApplyChanges(userID string, req *SyncRequest) (*SyncResponse, error) {
+	userLock := s.getUserLock(userID)
+	userLock.Lock()
+	defer userLock.Unlock()
+
 	serverTime := time.Now().UTC()
 
 	// Track what changes to send back to client (server updates that override client changes)

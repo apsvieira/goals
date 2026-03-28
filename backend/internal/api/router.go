@@ -13,6 +13,7 @@ import (
 
 	"github.com/apsv/goal-tracker/backend/internal/auth"
 	"github.com/apsv/goal-tracker/backend/internal/db"
+	"github.com/apsv/goal-tracker/backend/internal/sync"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -61,6 +62,7 @@ type Server struct {
 	syncRateLimiter *RateLimiter
 	frontendURL     string
 	authCodeStore   *auth.AuthCodeStore
+	syncService     *sync.Service
 }
 
 func NewServer(database db.Database, staticFS fs.FS) *Server {
@@ -96,6 +98,7 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 		syncRateLimiter: syncRateLimiter,
 		frontendURL:     frontendURL,
 		authCodeStore:   auth.NewAuthCodeStore(30 * time.Second),
+		syncService:     sync.NewService(database),
 	}
 	s.setupRoutes()
 	return s

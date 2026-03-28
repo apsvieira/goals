@@ -55,8 +55,7 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process sync
-	syncService := sync.NewService(s.db)
-	resp, err := syncService.ApplyChanges(user.ID, &req)
+	resp, err := s.syncService.ApplyChanges(user.ID, &req)
 	if err != nil {
 		Logger.Error("sync failed",
 			"user_id", user.ID,
