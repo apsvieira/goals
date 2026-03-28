@@ -70,8 +70,12 @@ func main() {
 
 	// Create HTTP server with the handler
 	server := &http.Server{
-		Addr:    serverAddr,
-		Handler: handler,
+		Addr:              serverAddr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Channel to receive shutdown signals
