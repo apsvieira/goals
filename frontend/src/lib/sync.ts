@@ -197,13 +197,39 @@ class SyncManager {
             completed: false,
             updated_at: op.timestamp,
           });
+        } else if (op.type === 'reorder_goals') {
+          // Convert reorder to individual goal changes with updated positions
+          const goals = await getAllLocalGoals();
+          const orderedIds: string[] = op.payload.goal_ids;
+          for (let i = 0; i < orderedIds.length; i++) {
+            const goal = goals.find(g => g.id === orderedIds[i]);
+            if (goal) {
+              goalChanges.push({
+                id: goal.id,
+                name: goal.name,
+                color: goal.color,
+                position: i + 1,
+                target_count: goal.target_count,
+                target_period: goal.target_period as 'week' | 'month' | undefined,
+                updated_at: op.timestamp,
+                deleted: !!goal.archived_at,
+              });
+            }
+          }
         }
       }
+
+      // Deduplicate goal changes — keep last entry per ID (later ops win)
+      const goalChangeMap = new Map<string, GoalChange>();
+      for (const change of goalChanges) {
+        goalChangeMap.set(change.id, change);
+      }
+      const deduplicatedGoalChanges = Array.from(goalChangeMap.values());
 
       // Send to server
       const req: SyncRequest = {
         last_synced_at: this.lastSyncedAt?.toISOString() ?? null,
-        goals: goalChanges,
+        goals: deduplicatedGoalChanges,
         completions: completionChanges,
       };
 
