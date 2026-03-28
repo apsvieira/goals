@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.tinytracker.app',
+  appId: 'software.maleficent.tinytracker',
   appName: 'tiny tracker',
   webDir: 'dist',
   server: {

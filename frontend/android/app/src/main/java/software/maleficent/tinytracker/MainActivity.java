@@ -1,4 +1,4 @@
-package com.tinytracker.app;
+package software.maleficent.tinytracker;
 
 import com.getcapacitor.BridgeActivity;
 
