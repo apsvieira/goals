@@ -28,7 +28,8 @@
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, isOnline, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
-  import { saveToken } from './lib/token-storage';
+  import { saveToken, clearToken } from './lib/token-storage';
+  import { clearLocalData } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
@@ -413,6 +414,13 @@
       await unregisterPushNotifications();
 
       await logout();
+
+      // Clear local data (IndexedDB: goals, completions, meta, operations)
+      await clearLocalData();
+
+      // Clear stored auth token (Capacitor Preferences)
+      await clearToken();
+
       authStore.set({ type: 'unauthenticated' });
       goals = [];
       completions = [];

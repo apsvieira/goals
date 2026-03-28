@@ -190,6 +190,7 @@ export async function clearLocalData(): Promise<void> {
   await database.clear('goals');
   await database.clear('completions');
   await database.clear('meta');
+  await database.clear('operations');
 }
 
 // Get max position for new goals

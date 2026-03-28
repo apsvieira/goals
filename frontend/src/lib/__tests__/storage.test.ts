@@ -5,6 +5,7 @@ import {
   saveQueuedOperation,
   getQueuedOperations,
   clearQueuedOperations,
+  clearLocalData,
   resetDB,
   type QueuedOperation,
 } from '../storage';
@@ -204,6 +205,32 @@ describe('Storage Operations Preservation', () => {
     const retrieved = await getQueuedOperations();
     // Should be sorted by timestamp
     expect(retrieved.map(o => o.id)).toEqual(['op-1', 'op-2', 'op-3']);
+  }, 10000);
+
+  it('clearLocalData should also clear the operations queue', async () => {
+    await initStorage();
+
+    // Queue an operation
+    const operation: QueuedOperation = {
+      id: 'op-clear-test',
+      type: 'create_goal',
+      entityId: 'goal-1',
+      payload: { name: 'Test' },
+      timestamp: new Date().toISOString(),
+      retryCount: 0,
+    };
+    await saveQueuedOperation(operation);
+
+    // Verify it's there
+    let ops = await getQueuedOperations();
+    expect(ops).toHaveLength(1);
+
+    // Clear all local data
+    await clearLocalData();
+
+    // Operations should also be cleared
+    ops = await getQueuedOperations();
+    expect(ops).toHaveLength(0);
   }, 10000);
 });
 
