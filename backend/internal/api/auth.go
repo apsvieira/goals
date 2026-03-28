@@ -9,6 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// MobileRedirectScheme is the URL scheme registered in the Android manifest.
+// MUST match: frontend/android/app/src/main/AndroidManifest.xml <data android:scheme="...">
+// and: frontend/capacitor.config.ts plugins.App.urlScheme
+const MobileRedirectScheme = "tinytracker"
+
 // getCurrentUser returns the currently authenticated user
 func (s *Server) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	user := auth.GetUserFromContext(r.Context())
@@ -59,7 +64,7 @@ func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	// Handle mobile OAuth callback - redirect with one-time auth code
 	if result.IsMobile {
 		code := s.authCodeStore.Generate(result.SessionToken)
-		redirectURL := "goaltracker://auth?code=" + code
+		redirectURL := MobileRedirectScheme + "://auth?code=" + code
 		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
