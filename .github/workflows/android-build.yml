@@ -98,7 +98,7 @@ jobs:
           EOF
 
       - name: Create Play Publisher key
-        run: echo '${{ secrets.PLAY_PUBLISHER_KEY }}' > play-publisher-key.json
+        run: echo '${{ secrets.PLAY_PUBLISHER_KEY }}' > frontend/play-publisher-key.json
 
       - name: Install frontend dependencies
         working-directory: frontend
