@@ -69,7 +69,15 @@ jobs:
         id: version
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
+          if ! [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag does not match strict semver: v$TAG"
+            exit 1
+          fi
           IFS='.' read -r MAJOR MINOR PATCH <<< "$TAG"
+          if [ "$MINOR" -gt 99 ] || [ "$PATCH" -gt 99 ]; then
+            echo "::error::Version components must be 0-99 (got $MAJOR.$MINOR.$PATCH)"
+            exit 1
+          fi
           VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
           echo "version_name=$TAG" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
@@ -126,7 +134,7 @@ jobs:
 
       - name: Build release AAB
         working-directory: frontend/android
-        run: ./gradlew bundleRelease -PversionName=${{ steps.version.outputs.version_name }} -PversionCode=${{ steps.version.outputs.version_code }}
+        run: ./gradlew bundleRelease "-PversionName=${{ steps.version.outputs.version_name }}" "-PversionCode=${{ steps.version.outputs.version_code }}"
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
@@ -137,4 +145,4 @@ jobs:
 
       - name: Publish to internal track
         working-directory: frontend/android
-        run: ./gradlew publishBundle -PversionName=${{ steps.version.outputs.version_name }} -PversionCode=${{ steps.version.outputs.version_code }}
+        run: ./gradlew publishBundle "-PversionName=${{ steps.version.outputs.version_name }}" "-PversionCode=${{ steps.version.outputs.version_code }}"
