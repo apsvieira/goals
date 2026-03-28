@@ -58,8 +58,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
-	defer database.Close()
-
 	log.Println("Running migrations...")
 	if err := database.Migrate(); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
