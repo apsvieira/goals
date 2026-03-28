@@ -210,7 +210,7 @@ class SyncManager {
                 color: goal.color,
                 position: i + 1,
                 target_count: goal.target_count,
-                target_period: goal.target_period as 'week' | 'month' | undefined,
+                target_period: goal.target_period,
                 updated_at: op.timestamp,
                 deleted: !!goal.archived_at,
               });
