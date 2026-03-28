@@ -56,11 +56,10 @@ func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle mobile OAuth callback - redirect to custom URL scheme
+	// Handle mobile OAuth callback - redirect with one-time auth code
 	if result.IsMobile {
-		// Redirect to mobile app with token
-		// The mobile app will use this token with Bearer authentication
-		redirectURL := "goaltracker://auth?token=" + result.SessionToken
+		code := s.authCodeStore.Generate(result.SessionToken)
+		redirectURL := "goaltracker://auth?code=" + code
 		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 		return
 	}
@@ -156,5 +155,28 @@ func (s *Server) devLogin(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"session_token": sessionToken,
 		"user":          user,
+	})
+}
+
+// exchangeAuthCode exchanges a one-time auth code for a session token.
+// Used by the mobile app after OAuth redirect.
+func (s *Server) exchangeAuthCode(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" {
+		http.Error(w, "code is required", http.StatusBadRequest)
+		return
+	}
+
+	sessionToken, ok := s.authCodeStore.Exchange(body.Code)
+	if !ok {
+		http.Error(w, "invalid or expired code", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"session_token": sessionToken,
 	})
 }

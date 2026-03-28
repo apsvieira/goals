@@ -1093,3 +1093,39 @@ func TestSync_ArchivedGoalPreservesArchivedAt(t *testing.T) {
 		t.Error("archived goal not found in list (may have been treated as deleted)")
 	}
 }
+
+func TestAuthCodeExchange(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Generate an auth code directly (simulating what oauthCallback would do)
+	code := server.AuthCodeStore().Generate("test-session-token")
+
+	// Exchange it
+	body := bytes.NewBufferString(`{"code":"` + code + `"}`)
+	req := httptest.NewRequest("POST", "/api/v1/auth/exchange", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]string
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp["session_token"] != "test-session-token" {
+		t.Errorf("expected test-session-token, got %s", resp["session_token"])
+	}
+
+	// Second exchange should fail
+	body2 := bytes.NewBufferString(`{"code":"` + code + `"}`)
+	req2 := httptest.NewRequest("POST", "/api/v1/auth/exchange", body2)
+	req2.Header.Set("Content-Type", "application/json")
+	w2 := httptest.NewRecorder()
+	server.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for reused code, got %d", w2.Code)
+	}
+}

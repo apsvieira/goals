@@ -60,6 +60,7 @@ type Server struct {
 	apiRateLimiter  *RateLimiter
 	syncRateLimiter *RateLimiter
 	frontendURL     string
+	authCodeStore   *auth.AuthCodeStore
 }
 
 func NewServer(database db.Database, staticFS fs.FS) *Server {
@@ -94,6 +95,7 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 		apiRateLimiter:  apiRateLimiter,
 		syncRateLimiter: syncRateLimiter,
 		frontendURL:     frontendURL,
+		authCodeStore:   auth.NewAuthCodeStore(30 * time.Second),
 	}
 	s.setupRoutes()
 	return s
@@ -131,6 +133,7 @@ func (s *Server) setupRoutes() {
 			r.Get("/me", s.getCurrentUser)
 			r.Get("/oauth/{provider}", s.startOAuth)
 			r.Get("/oauth/{provider}/callback", s.oauthCallback)
+			r.Post("/exchange", s.exchangeAuthCode)
 			r.Post("/logout", s.logout)
 
 			// Dev login - only enabled when DEV_LOGIN=true
@@ -237,6 +240,11 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
+}
+
+// AuthCodeStore returns the server's auth code store (used by tests).
+func (s *Server) AuthCodeStore() *auth.AuthCodeStore {
+	return s.authCodeStore
 }
 
 func requestLogger(next http.Handler) http.Handler {
