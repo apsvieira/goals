@@ -33,8 +33,9 @@ func (s *Service) getUserLock(userID string) *sync.Mutex {
 	return s.locks[userID]
 }
 
-// GetChangesSince returns all goals and completions modified since the given timestamp
-func (s *Service) GetChangesSince(userID string, since *time.Time) (*SyncResponse, error) {
+// getChangesSince returns all goals and completions modified since the given timestamp.
+// Must be called from within a user-locked context (e.g., ApplyChanges).
+func (s *Service) getChangesSince(userID string, since *time.Time) (*SyncResponse, error) {
 	goals, err := s.db.GetGoalChangesSince(&userID, since)
 	if err != nil {
 		return nil, err
@@ -140,7 +141,7 @@ func (s *Service) ApplyChanges(userID string, req *SyncRequest) (*SyncResponse, 
 
 	// Get all server changes since the client's last sync (to include changes from other devices)
 	if req.LastSyncedAt != nil {
-		serverChanges, err := s.GetChangesSince(userID, req.LastSyncedAt)
+		serverChanges, err := s.getChangesSince(userID, req.LastSyncedAt)
 		if err != nil {
 			return nil, err
 		}

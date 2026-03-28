@@ -22,7 +22,7 @@ jobs:
 
       - name: Run backend tests
         working-directory: backend
-        run: go test ./...
+        run: go test -race ./...
 
   deploy:
     runs-on: ubuntu-latest
