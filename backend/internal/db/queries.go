@@ -995,6 +995,10 @@ func (d *SQLiteDB) DeleteAccount(userID string) error {
 	if _, err := tx.Exec(`DELETE FROM device_tokens WHERE user_id = ?`, userID); err != nil {
 		return fmt.Errorf("delete device tokens: %w", err)
 	}
+	// Delete auth providers
+	if _, err := tx.Exec(`DELETE FROM auth_providers WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("delete auth providers: %w", err)
+	}
 	// Delete sessions
 	if _, err := tx.Exec(`DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
 		return fmt.Errorf("delete sessions: %w", err)
