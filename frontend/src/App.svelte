@@ -31,6 +31,7 @@
   import { saveToken, clearToken } from './lib/token-storage';
   import { clearLocalData } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
+  import { startMobileOAuth } from './lib/mobile-auth';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
   const GOAL_PALETTE = [
@@ -406,28 +407,22 @@
   }
 
   async function handleLogout() {
-    try {
-      // Stop automatic sync
-      syncManager.stopAutoSync();
+    // Stop automatic sync
+    syncManager.stopAutoSync();
 
-      // Unregister push notifications
-      await unregisterPushNotifications();
+    // Best-effort server-side cleanup
+    try { await unregisterPushNotifications(); } catch (e) { console.error('Failed to unregister push:', e); }
+    try { await logout(); } catch (e) { console.error('Failed to logout from server:', e); }
 
-      await logout();
+    // Critical: always clear local state, each step independent
+    try { await clearLocalData(); } catch (e) { console.error('Failed to clear local data:', e); }
+    try { await clearToken(); } catch (e) { console.error('Failed to clear token:', e); }
 
-      // Clear local data (IndexedDB: goals, completions, meta, operations)
-      await clearLocalData();
-
-      // Clear stored auth token (Capacitor Preferences)
-      await clearToken();
-
-      authStore.set({ type: 'unauthenticated' });
-      goals = [];
-      completions = [];
-      allCompletions = [];
-    } catch (e) {
-      error = getUserFriendlyMessage(e);
-    }
+    authStore.set({ type: 'unauthenticated' });
+    goals = [];
+    completions = [];
+    allCompletions = [];
+    periodCompletions = [];
   }
 
   async function handleProfileClick() {
@@ -447,6 +442,10 @@
   }
 
   function handleSignIn() {
+    if (Capacitor.isNativePlatform()) {
+      startMobileOAuth();
+      return;
+    }
     window.location.href = '/api/v1/auth/oauth/google';
   }
 
@@ -595,12 +594,30 @@
       if (Capacitor.isNativePlatform()) {
         appUrlOpenListener = await CapApp.addListener('appUrlOpen', async (event) => {
           const url = event.url;
-          if (url.startsWith('goaltracker://auth')) {
+          if (url.startsWith('tinytracker://auth')) {
             try {
               const urlObj = new URL(url);
-              const token = urlObj.searchParams.get('token');
-              if (token) {
-                await saveToken(token);
+              const code = urlObj.searchParams.get('code');
+              if (code) {
+                // Exchange the one-time auth code for a session token
+                const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
+                const res = await fetch(`${PRODUCTION_API_URL}/api/v1/auth/exchange`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ code }),
+                });
+                if (!res.ok) {
+                  throw new Error(`Auth code exchange failed (${res.status})`);
+                }
+                const data = await res.json();
+                await saveToken(data.session_token);
+                // Close the in-app browser opened by startMobileOAuth()
+                try {
+                  const { Browser } = await import('@capacitor/browser');
+                  await Browser.close();
+                } catch {
+                  // Browser plugin may not be available or already closed
+                }
                 await checkAuth();
               }
             } catch (e) {
