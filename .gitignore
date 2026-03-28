@@ -4,6 +4,7 @@ bin/
 # Backend
 *.db
 .env
+backend/server
 
 # Frontend
 frontend/node_modules/
