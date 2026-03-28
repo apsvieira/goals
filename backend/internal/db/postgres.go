@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/models"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
@@ -741,9 +742,9 @@ func (d *PostgresDB) DeleteExpiredSessions() error {
 	return nil
 }
 
-// generatePostgresUUID creates a simple UUID for IDs
+// generatePostgresUUID creates a UUID v4 for IDs
 func generatePostgresUUID() string {
-	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().UnixNano()%1000000)
+	return uuid.New().String()
 }
 
 // Sync operations

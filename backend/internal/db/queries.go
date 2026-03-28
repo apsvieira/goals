@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/models"
+	"github.com/google/uuid"
 )
 
 // Goals
@@ -643,9 +644,9 @@ func (d *SQLiteDB) DeleteExpiredSessions() error {
 	return nil
 }
 
-// generateUUID creates a simple UUID for IDs
+// generateUUID creates a UUID v4 for IDs
 func generateUUID() string {
-	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().UnixNano()%1000000)
+	return uuid.New().String()
 }
 
 // Sync operations
