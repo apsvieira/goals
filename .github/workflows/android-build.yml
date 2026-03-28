@@ -85,7 +85,7 @@ jobs:
           build-root-directory: frontend/android
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > tiny-tracker-upload.keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > frontend/tiny-tracker-upload.keystore
 
       - name: Create keystore.properties
         working-directory: frontend/android
