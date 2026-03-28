@@ -904,7 +904,8 @@ func (d *PostgresDB) UpsertCompletion(c *models.Completion) error {
 	_, err := d.Exec(`
 		INSERT INTO completions (id, goal_id, date, created_at, updated_at, deleted_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT(id) DO UPDATE SET
+		ON CONFLICT(goal_id, date) DO UPDATE SET
+			id = EXCLUDED.id,
 			updated_at = EXCLUDED.updated_at,
 			deleted_at = EXCLUDED.deleted_at
 		WHERE EXCLUDED.updated_at > completions.updated_at

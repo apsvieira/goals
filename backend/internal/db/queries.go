@@ -800,7 +800,8 @@ func (d *SQLiteDB) UpsertCompletion(c *models.Completion) error {
 	_, err := d.Exec(`
 		INSERT INTO completions (id, goal_id, date, created_at, updated_at, deleted_at)
 		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
+		ON CONFLICT(goal_id, date) DO UPDATE SET
+			id = excluded.id,
 			updated_at = excluded.updated_at,
 			deleted_at = excluded.deleted_at
 		WHERE excluded.updated_at > completions.updated_at

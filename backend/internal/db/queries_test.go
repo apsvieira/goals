@@ -123,6 +123,78 @@ func TestSoftDeleteCompletion_RespectsOwnership(t *testing.T) {
 	}
 }
 
+func TestUpsertCompletion_ConflictsOnGoalAndDate(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	now := time.Now().UTC()
+	userID := "user-upsert-test"
+	if err := db.CreateUser(&models.User{ID: userID, Email: "upsert@test.com", Name: "Upsert", CreatedAt: now}); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	// Create a goal
+	goal := &models.Goal{
+		ID:        "goal-upsert-comp",
+		Name:      "Test",
+		Color:     "#000000",
+		UserID:    &userID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := db.CreateGoal(goal); err != nil {
+		t.Fatalf("create goal: %v", err)
+	}
+
+	// Insert a completion
+	c1 := &models.Completion{
+		ID:        "comp-1",
+		GoalID:    "goal-upsert-comp",
+		Date:      "2026-03-28",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := db.UpsertCompletion(c1); err != nil {
+		t.Fatalf("first upsert: %v", err)
+	}
+
+	// Soft-delete it
+	later := now.Add(time.Second)
+	c1.DeletedAt = &later
+	c1.UpdatedAt = later
+	if err := db.UpsertCompletion(c1); err != nil {
+		t.Fatalf("soft-delete upsert: %v", err)
+	}
+
+	// Upsert with a DIFFERENT ID but same (goal_id, date) — simulates sync race
+	evenLater := later.Add(time.Second)
+	c2 := &models.Completion{
+		ID:        "comp-2-different",
+		GoalID:    "goal-upsert-comp",
+		Date:      "2026-03-28",
+		CreatedAt: evenLater,
+		UpdatedAt: evenLater,
+	}
+	if err := db.UpsertCompletion(c2); err != nil {
+		t.Fatalf("upsert with different ID, same (goal_id, date) should not error: %v", err)
+	}
+
+	// Verify only one completion exists for this (goal_id, date)
+	comp, err := db.GetCompletionByGoalAndDate("goal-upsert-comp", "2026-03-28")
+	if err != nil {
+		t.Fatalf("get completion: %v", err)
+	}
+	if comp == nil {
+		t.Fatal("expected completion to exist after upsert")
+	}
+	if comp.DeletedAt != nil {
+		t.Fatal("expected completion to be active (not soft-deleted) after upsert")
+	}
+	if comp.ID != "comp-2-different" {
+		t.Fatalf("expected id to be updated to comp-2-different, got %s", comp.ID)
+	}
+}
+
 func TestCreateGoal_PositionsAreSequential(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
