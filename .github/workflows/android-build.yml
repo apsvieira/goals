@@ -112,9 +112,9 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
-      - name: Build release AAB and publish to internal track
+      - name: Build release AAB
         working-directory: frontend/android
-        run: ./gradlew publishBundle
+        run: ./gradlew bundleRelease
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
@@ -122,3 +122,7 @@ jobs:
           name: release-aab
           path: frontend/android/app/build/outputs/bundle/release/*.aab
           retention-days: 90
+
+      - name: Publish to internal track
+        working-directory: frontend/android
+        run: ./gradlew publishBundle
