@@ -7,11 +7,13 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/android-build.yml'
-  workflow_dispatch:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.ref_type != 'tag'
 
     steps:
       - name: Checkout code
@@ -60,9 +62,19 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.ref_type == 'tag'
 
     steps:
+      - name: Parse version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$TAG"
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          echo "version_name=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "Parsed tag v$TAG → versionName=$TAG, versionCode=$VERSION_CODE"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -114,7 +126,7 @@ jobs:
 
       - name: Build release AAB
         working-directory: frontend/android
-        run: ./gradlew bundleRelease
+        run: ./gradlew bundleRelease -PversionName=${{ steps.version.outputs.version_name }} -PversionCode=${{ steps.version.outputs.version_code }}
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
@@ -125,4 +137,4 @@ jobs:
 
       - name: Publish to internal track
         working-directory: frontend/android
-        run: ./gradlew publishBundle
+        run: ./gradlew publishBundle -PversionName=${{ steps.version.outputs.version_name }} -PversionCode=${{ steps.version.outputs.version_code }}
