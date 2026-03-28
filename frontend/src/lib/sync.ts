@@ -14,6 +14,8 @@ import {
   type QueuedOperation,
 } from './storage';
 import type { Goal, Completion } from './api';
+import { Capacitor } from '@capacitor/core';
+import { getToken } from './token-storage';
 
 // Sync status store for UI feedback
 export type SyncStatus =
@@ -24,8 +26,16 @@ export type SyncStatus =
 
 export const syncStatus = writable<SyncStatus>({ state: 'idle' });
 
-// Always use relative URL - Vite proxy handles localhost in development
-const API_BASE = '/api/v1';
+const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
+
+function getApiBase(): string {
+  if (Capacitor.isNativePlatform()) {
+    return `${PRODUCTION_API_URL}/api/v1`;
+  }
+  return '/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 interface GoalChange {
   id: string;
@@ -237,12 +247,18 @@ class SyncManager {
         completions: completionChanges,
       };
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      const token = await getToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_BASE}/sync/`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(req),
       });
 

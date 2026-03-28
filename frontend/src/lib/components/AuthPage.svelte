@@ -1,11 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Capacitor } from '@capacitor/core';
+  import { startMobileOAuth } from '../mobile-auth';
+
+  const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
+
+  function getConfigUrl(): string {
+    if (Capacitor.isNativePlatform()) {
+      return `${PRODUCTION_API_URL}/api/v1/auth/config`;
+    }
+    return '/api/v1/auth/config';
+  }
 
   let devLoginEnabled = false;
 
   onMount(async () => {
     try {
-      const res = await fetch('/api/v1/auth/config');
+      const res = await fetch(getConfigUrl());
       if (res.ok) {
         const config = await res.json();
         devLoginEnabled = config.devLogin;
@@ -16,6 +27,10 @@
   });
 
   function handleGoogleLogin() {
+    if (Capacitor.isNativePlatform()) {
+      startMobileOAuth();
+      return;
+    }
     window.location.href = '/api/v1/auth/oauth/google';
   }
 
