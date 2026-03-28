@@ -1,5 +1,7 @@
 # Play Store Release Preparation
 
+> **Status:** OUTDATED
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Prepare tiny tracker for its first Google Play Store release, including build pipeline, store listing automation, and all required compliance artifacts.
