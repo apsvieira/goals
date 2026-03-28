@@ -213,35 +213,34 @@ func (d *PostgresDB) GetGoal(userID *string, id string) (*models.Goal, error) {
 }
 
 func (d *PostgresDB) CreateGoal(g *models.Goal) error {
-	// Get next position for this user's goals
-	var maxPos sql.NullInt64
-	var err error
-	if g.UserID == nil {
-		err = d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id IS NULL AND deleted_at IS NULL`).Scan(&maxPos)
-	} else {
-		err = d.QueryRow(`SELECT MAX(position) FROM goals WHERE user_id = $1 AND deleted_at IS NULL`, *g.UserID).Scan(&maxPos)
-	}
-	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("get max position: %w", err)
-	}
-	nextPos := 0
-	if maxPos.Valid {
-		nextPos = int(maxPos.Int64) + 1
-	}
-	g.Position = nextPos
-
 	now := time.Now().UTC()
 	if g.UpdatedAt.IsZero() {
 		g.UpdatedAt = now
 	}
 
-	_, err = d.Exec(
-		`INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		g.ID, g.Name, g.Color, g.Position, g.TargetCount, g.TargetPeriod, g.UserID, g.CreatedAt, g.UpdatedAt,
-	)
-	if err != nil {
-		return fmt.Errorf("insert goal: %w", err)
+	var position int
+	if g.UserID == nil {
+		err := d.QueryRow(
+			`INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at)
+			 VALUES ($1, $2, $3, COALESCE((SELECT MAX(position) FROM goals WHERE user_id IS NULL AND deleted_at IS NULL), -1) + 1, $4, $5, $6, $7, $8)
+			 RETURNING position`,
+			g.ID, g.Name, g.Color, g.TargetCount, g.TargetPeriod, g.UserID, g.CreatedAt, g.UpdatedAt,
+		).Scan(&position)
+		if err != nil {
+			return fmt.Errorf("insert goal: %w", err)
+		}
+	} else {
+		err := d.QueryRow(
+			`INSERT INTO goals (id, name, color, position, target_count, target_period, user_id, created_at, updated_at)
+			 VALUES ($1, $2, $3, COALESCE((SELECT MAX(position) FROM goals WHERE user_id = $4 AND deleted_at IS NULL), -1) + 1, $5, $6, $7, $8, $9)
+			 RETURNING position`,
+			g.ID, g.Name, g.Color, *g.UserID, g.TargetCount, g.TargetPeriod, g.UserID, g.CreatedAt, g.UpdatedAt,
+		).Scan(&position)
+		if err != nil {
+			return fmt.Errorf("insert goal: %w", err)
+		}
 	}
+	g.Position = position
 	return nil
 }
 
