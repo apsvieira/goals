@@ -934,3 +934,33 @@ func TestSync_RoundTrip_GoalsAndCompletions(t *testing.T) {
 		t.Errorf("expected 1 server change (the new goal), got %d", len(serverGoals))
 	}
 }
+
+func TestUpdateGoal_RejectsEmptyName(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "test@localhost")
+
+	// Create a goal first
+	createBody := bytes.NewBufferString(`{"name": "Exercise", "color": "#4CAF50"}`)
+	createReq := httptest.NewRequest("POST", "/api/v1/goals", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.AddCookie(cookie)
+	createW := httptest.NewRecorder()
+	server.ServeHTTP(createW, createReq)
+
+	var createdGoal models.Goal
+	json.NewDecoder(createW.Body).Decode(&createdGoal)
+
+	// Try to update with empty name
+	updateBody := bytes.NewBufferString(`{"name": ""}`)
+	updateReq := httptest.NewRequest("PATCH", "/api/v1/goals/"+createdGoal.ID, updateBody)
+	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.AddCookie(cookie)
+	updateW := httptest.NewRecorder()
+	server.ServeHTTP(updateW, updateReq)
+
+	if updateW.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for empty name, got %d: %s", updateW.Code, updateW.Body.String())
+	}
+}

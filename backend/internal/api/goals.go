@@ -118,9 +118,9 @@ func (s *Server) updateGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate name if provided
-	if req.Name != nil && *req.Name != "" {
-		if len(*req.Name) > 200 {
-			http.Error(w, "name must be 200 characters or less", http.StatusBadRequest)
+	if req.Name != nil {
+		if valid, errMsg := validateGoalName(*req.Name); !valid {
+			http.Error(w, errMsg, http.StatusBadRequest)
 			return
 		}
 	}
