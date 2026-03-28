@@ -26,6 +26,7 @@ type GoalChange struct {
 	TargetPeriod *string   `json:"target_period,omitempty"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Deleted      bool      `json:"deleted"`
+	Archived     bool      `json:"archived"`
 }
 
 // CompletionChange represents a completion change for sync

@@ -26,6 +26,9 @@ func MergeGoal(clientChange GoalChange, serverGoal *models.Goal) (*models.Goal, 
 		if clientChange.Deleted {
 			goal.DeletedAt = &clientChange.UpdatedAt
 		}
+		if clientChange.Archived {
+			goal.ArchivedAt = &clientChange.UpdatedAt
+		}
 		return goal, true
 	}
 
@@ -41,6 +44,11 @@ func MergeGoal(clientChange GoalChange, serverGoal *models.Goal) (*models.Goal, 
 			serverGoal.DeletedAt = &clientChange.UpdatedAt
 		} else {
 			serverGoal.DeletedAt = nil
+		}
+		if clientChange.Archived {
+			serverGoal.ArchivedAt = &clientChange.UpdatedAt
+		} else {
+			serverGoal.ArchivedAt = nil
 		}
 		return serverGoal, true
 	}
@@ -107,6 +115,7 @@ func GoalToChange(goal *models.Goal) GoalChange {
 		TargetPeriod: goal.TargetPeriod,
 		UpdatedAt:    goal.UpdatedAt,
 		Deleted:      goal.DeletedAt != nil,
+		Archived:     goal.ArchivedAt != nil,
 	}
 }
 

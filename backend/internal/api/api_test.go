@@ -1032,3 +1032,64 @@ func TestUpdateGoal_RejectsEmptyName(t *testing.T) {
 		t.Errorf("expected 400 for empty name, got %d: %s", updateW.Code, updateW.Body.String())
 	}
 }
+
+func TestSync_ArchivedGoalPreservesArchivedAt(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cookie := authenticateTestUser(t, server, "sync-archive@test.com")
+
+	now := time.Now().UTC()
+
+	// Send an archived goal via sync
+	syncBody, _ := json.Marshal(map[string]interface{}{
+		"last_synced_at": nil,
+		"goals": []map[string]interface{}{
+			{
+				"id": "archived-goal-1", "name": "Old Habit", "color": "#FF0000",
+				"position": 1, "updated_at": now.Format(time.RFC3339Nano),
+				"deleted": false, "archived": true,
+			},
+		},
+		"completions": []interface{}{},
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/sync/", bytes.NewReader(syncBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("sync failed: %d %s", w.Code, w.Body.String())
+	}
+
+	// Fetch goals including archived — the goal should be archived, not deleted
+	listReq := httptest.NewRequest("GET", "/api/v1/goals?archived=true", nil)
+	listReq.AddCookie(cookie)
+	listW := httptest.NewRecorder()
+	server.ServeHTTP(listW, listReq)
+
+	if listW.Code != http.StatusOK {
+		t.Fatalf("list goals failed: %d %s", listW.Code, listW.Body.String())
+	}
+
+	var goals []models.Goal
+	json.NewDecoder(listW.Body).Decode(&goals)
+
+	found := false
+	for _, g := range goals {
+		if g.ID == "archived-goal-1" {
+			found = true
+			if g.ArchivedAt == nil {
+				t.Error("expected ArchivedAt to be set")
+			}
+			if g.DeletedAt != nil {
+				t.Error("expected DeletedAt to be nil (archived, not deleted)")
+			}
+		}
+	}
+	if !found {
+		t.Error("archived goal not found in list (may have been treated as deleted)")
+	}
+}

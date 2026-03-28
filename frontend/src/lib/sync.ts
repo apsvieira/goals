@@ -36,6 +36,7 @@ interface GoalChange {
   target_period?: 'week' | 'month';
   updated_at: string;
   deleted: boolean;
+  archived: boolean;
 }
 
 interface CompletionChange {
@@ -158,7 +159,8 @@ class SyncManager {
               target_count: goal.target_count,
               target_period: goal.target_period,
               updated_at: op.timestamp,
-              deleted: !!goal.archived_at,
+              deleted: false,
+              archived: !!goal.archived_at,
             });
           }
         } else if (op.type === 'delete_goal') {
@@ -175,6 +177,7 @@ class SyncManager {
               target_period: goal.target_period,
               updated_at: op.timestamp,
               deleted: true,
+              archived: false,
             });
           }
         } else if (op.type === 'create_completion') {
@@ -212,7 +215,8 @@ class SyncManager {
                 target_count: goal.target_count,
                 target_period: goal.target_period,
                 updated_at: op.timestamp,
-                deleted: !!goal.archived_at,
+                deleted: false,
+                archived: !!goal.archived_at,
               });
             }
           }
@@ -301,6 +305,7 @@ class SyncManager {
           target_count: goalChange.target_count,
           target_period: goalChange.target_period,
           created_at: goalChange.updated_at,
+          archived_at: goalChange.archived ? goalChange.updated_at : undefined,
         };
         await saveLocalGoal(goal);
       }

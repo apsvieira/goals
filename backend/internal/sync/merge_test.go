@@ -123,6 +123,31 @@ func TestMergeGoal_ClientDeletesExisting(t *testing.T) {
 
 // --- Completion merge tests ---
 
+func TestMergeGoal_ArchivedClientGoal_SetsArchivedAt(t *testing.T) {
+	now := time.Now().UTC()
+
+	clientChange := GoalChange{
+		ID:        "goal-1",
+		Name:      "Read",
+		Color:     "#FF0000",
+		Position:  1,
+		UpdatedAt: now,
+		Deleted:   false,
+		Archived:  true,
+	}
+
+	mergedGoal, shouldApply := MergeGoal(clientChange, nil)
+	if !shouldApply {
+		t.Fatal("expected shouldApply to be true for new archived goal")
+	}
+	if mergedGoal.ArchivedAt == nil {
+		t.Fatal("expected ArchivedAt to be set for archived goal")
+	}
+	if mergedGoal.DeletedAt != nil {
+		t.Fatal("expected DeletedAt to be nil for archived (not deleted) goal")
+	}
+}
+
 func TestMergeCompletion_NewCompletion_Completed(t *testing.T) {
 	client := CompletionChange{
 		GoalID: "g1", Date: "2026-01-15", Completed: true,
