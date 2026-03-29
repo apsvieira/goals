@@ -1186,3 +1186,37 @@ func TestCORS_UnknownOriginBlocked(t *testing.T) {
 		t.Errorf("unknown origin should not get CORS header, got %q", got)
 	}
 }
+
+func TestMobileOAuthCallback_ReturnsHTMLRedirect(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// Generate an auth code and simulate the mobile callback redirect.
+	// We can't do a full OAuth flow in tests (needs real Google), so we test
+	// the HTML redirect helper directly by checking the oauthCallback behavior
+	// with a pre-seeded auth code.
+	//
+	// Instead, verify the mobile redirect helper produces correct HTML.
+	_ = server // ensure test server setup works
+	code := "test-auth-code-123"
+	redirectURL := "tinytracker://auth?code=" + code
+
+	html := api.MobileRedirectHTML(redirectURL)
+
+	// Must be HTML, not a redirect status
+	if !bytes.Contains([]byte(html), []byte("<html>")) {
+		t.Error("expected HTML document")
+	}
+	// Must contain JS redirect
+	if !bytes.Contains([]byte(html), []byte("window.location.href")) {
+		t.Error("expected JavaScript redirect")
+	}
+	// Must contain the deep link URL
+	if !bytes.Contains([]byte(html), []byte(redirectURL)) {
+		t.Errorf("expected HTML to contain %q", redirectURL)
+	}
+	// Must contain a fallback link
+	if !bytes.Contains([]byte(html), []byte("</a>")) {
+		t.Error("expected fallback anchor link")
+	}
+}

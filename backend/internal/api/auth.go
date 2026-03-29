@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"strings"
 
@@ -13,6 +14,18 @@ import (
 // MUST match: frontend/android/app/src/main/AndroidManifest.xml <data android:scheme="...">
 // and: frontend/capacitor.config.ts plugins.App.urlScheme
 const MobileRedirectScheme = "tinytracker"
+
+// MobileRedirectHTML returns an HTML page that redirects to the given deep-link
+// URL via JavaScript, with a fallback tap-to-continue link. This is more
+// reliable than a 307 redirect to a custom URL scheme in Chrome Custom Tabs.
+func MobileRedirectHTML(deepLinkURL string) string {
+	escaped := template.HTMLEscapeString(deepLinkURL)
+	return `<html><head><title>Redirecting…</title></head><body>` +
+		`<script>window.location.href="` + escaped + `";</script>` +
+		`<p style="font-family:sans-serif;text-align:center;margin-top:40vh">` +
+		`Redirecting to app&hellip; <a href="` + escaped + `">Tap here</a> if nothing happens.</p>` +
+		`</body></html>`
+}
 
 // getCurrentUser returns the currently authenticated user
 func (s *Server) getCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -61,11 +74,15 @@ func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle mobile OAuth callback - redirect with one-time auth code
+	// Handle mobile OAuth callback — serve HTML page that deep-links into the app.
+	// Using an HTML page with JS redirect is more reliable than a 307 to a custom
+	// URL scheme in Chrome Custom Tabs on Android.
 	if result.IsMobile {
 		code := s.authCodeStore.Generate(result.SessionToken)
-		redirectURL := MobileRedirectScheme + "://auth?code=" + code
-		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+		deepLink := MobileRedirectScheme + "://auth?code=" + code
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(MobileRedirectHTML(deepLink)))
 		return
 	}
 
