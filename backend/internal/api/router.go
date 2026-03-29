@@ -336,9 +336,11 @@ func corsMiddleware(next http.Handler) http.Handler {
 	allowedOrigins := os.Getenv("CORS_ORIGINS")
 
 	// Mobile app origins that are always allowed (Capacitor/Cordova apps)
+	// Capacitor 5+ defaults to https://localhost as the WebView origin on Android.
 	mobileOrigins := map[string]bool{
 		"capacitor://localhost": true,
 		"http://localhost":      true,
+		"https://localhost":     true,
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

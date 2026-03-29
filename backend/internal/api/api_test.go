@@ -1129,3 +1129,60 @@ func TestAuthCodeExchange(t *testing.T) {
 		t.Errorf("expected 401 for reused code, got %d", w2.Code)
 	}
 }
+
+func TestCORS_CapacitorOrigins(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// All Capacitor origins that must be allowed
+	origins := []string{
+		"capacitor://localhost",
+		"http://localhost",
+		"https://localhost",
+	}
+
+	for _, origin := range origins {
+		t.Run(origin, func(t *testing.T) {
+			// Preflight
+			req := httptest.NewRequest("OPTIONS", "/api/v1/auth/me", nil)
+			req.Header.Set("Origin", origin)
+			req.Header.Set("Access-Control-Request-Method", "GET")
+			w := httptest.NewRecorder()
+			server.ServeHTTP(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("preflight expected 200, got %d", w.Code)
+			}
+			if got := w.Header().Get("Access-Control-Allow-Origin"); got != origin {
+				t.Errorf("expected Allow-Origin %q, got %q", origin, got)
+			}
+			if got := w.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+				t.Errorf("expected Allow-Credentials true, got %q", got)
+			}
+
+			// Actual request
+			req2 := httptest.NewRequest("GET", "/api/v1/auth/me", nil)
+			req2.Header.Set("Origin", origin)
+			w2 := httptest.NewRecorder()
+			server.ServeHTTP(w2, req2)
+
+			if got := w2.Header().Get("Access-Control-Allow-Origin"); got != origin {
+				t.Errorf("expected Allow-Origin %q on GET, got %q", origin, got)
+			}
+		})
+	}
+}
+
+func TestCORS_UnknownOriginBlocked(t *testing.T) {
+	server, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest("GET", "/api/v1/auth/me", nil)
+	req.Header.Set("Origin", "https://evil.com")
+	w := httptest.NewRecorder()
+	server.ServeHTTP(w, req)
+
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("unknown origin should not get CORS header, got %q", got)
+	}
+}
