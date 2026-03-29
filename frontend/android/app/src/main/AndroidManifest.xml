@@ -22,8 +22,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep link handling for goaltracker:// URL scheme -->
-            <intent-filter android:autoVerify="true">
+            <!-- Deep link handling for tinytracker:// URL scheme -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
