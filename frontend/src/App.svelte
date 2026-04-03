@@ -588,10 +588,23 @@
 
     // Set up deep link handler for mobile OAuth callback
     let appUrlOpenListener: { remove: () => Promise<void> } | null = null;
+    let backButtonListener: { remove: () => Promise<void> } | null = null;
 
     // Async initialization (fire-and-forget)
     (async () => {
       if (Capacitor.isNativePlatform()) {
+        backButtonListener = await CapApp.addListener('backButton', () => {
+          if (showProfile) {
+            showProfile = false;
+          } else if (editorState !== null) {
+            editorState = null;
+          } else if (currentRoute !== 'home') {
+            history.back();
+          } else {
+            CapApp.exitApp();
+          }
+        });
+
         appUrlOpenListener = await CapApp.addListener('appUrlOpen', async (event) => {
           const url = event.url;
           if (url.startsWith('tinytracker://auth')) {
@@ -642,6 +655,9 @@
       syncManager.stopAutoSync();
       if (appUrlOpenListener) {
         appUrlOpenListener.remove();
+      }
+      if (backButtonListener) {
+        backButtonListener.remove();
       }
     };
   });
@@ -797,6 +813,8 @@
     display: grid;
     grid-template-rows: auto 1fr auto;
     min-height: 100vh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   main {
