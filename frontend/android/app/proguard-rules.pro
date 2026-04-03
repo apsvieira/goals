@@ -2,6 +2,9 @@
 -keep class com.getcapacitor.** { *; }
 -dontwarn com.getcapacitor.**
 
+# Local Capacitor plugins (methods invoked via reflection)
+-keep class software.maleficent.tinytracker.** { *; }
+
 # Keep JavaScript interface methods
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;

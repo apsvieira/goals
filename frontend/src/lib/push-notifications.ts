@@ -1,5 +1,11 @@
 import { PushNotifications, type Token, type PushNotificationSchema, type ActionPerformed } from '@capacitor/push-notifications';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+interface FirebaseCheckPlugin {
+  isAvailable(): Promise<{ available: boolean }>;
+}
+
+const FirebaseCheck = registerPlugin<FirebaseCheckPlugin>('FirebaseCheck');
 import { registerDevice, unregisterDevice } from './api';
 
 // Store the device ID returned from backend for unregistration
@@ -17,6 +23,13 @@ export async function initPushNotifications(): Promise<void> {
   }
 
   try {
+    // Check if Firebase is configured before attempting registration
+    const { available } = await FirebaseCheck.isAvailable();
+    if (!available) {
+      console.warn('[Push] Firebase not configured — skipping push notification registration');
+      return;
+    }
+
     // Request permission
     const permResult = await PushNotifications.requestPermissions();
 
