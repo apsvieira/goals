@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { _ } from 'svelte-i18n';
+
     function handleLinkClick(e: MouseEvent, path: string) {
         e.preventDefault();
         window.history.pushState({}, "", path);
@@ -10,7 +12,7 @@
     <div class="footer-content">
         <nav class="footer-links">
             <a href="/privacy" on:click={(e) => handleLinkClick(e, "/privacy")}
-                >Privacy</a
+                >{$_('footer.privacy')}</a
             >
         </nav>
     </div>
