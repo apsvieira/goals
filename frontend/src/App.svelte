@@ -56,6 +56,14 @@
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   })();
+
+  // Whether we're viewing the current calendar month
+  $: isCurrentMonth = (() => {
+    const now = new Date();
+    const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return currentMonth === todayMonth;
+  })();
+
   let goals: Goal[] = [];
   let completions: Completion[] = [];
   let periodCompletions: Completion[] = [];
@@ -109,20 +117,15 @@
 
   // Compute currentDay for disabling future dates
   // If viewing current month: currentDay = today's day number
-  // If viewing past month: currentDay = 0 (no restriction)
-  // If viewing future month: currentDay = 0 but all days disabled via different logic
+  // If viewing past month: currentDay = 0 (no restriction, 7-day limit handled by DayGrid)
   $: {
     const now = new Date();
     const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     if (currentMonth === todayMonth) {
-      // Current month: disable days after today
       currentDay = now.getDate();
-    } else if (currentMonth < todayMonth) {
-      // Past month: no restriction
-      currentDay = 0;
     } else {
-      // Future month: all days disabled (currentDay = -1 makes day > currentDay always true)
-      currentDay = -1;
+      // Past month: no day-level restriction
+      currentDay = 0;
     }
   }
   let currentDay: number;
@@ -206,6 +209,7 @@
   }
 
   function nextMonth() {
+    if (isCurrentMonth) return;
     const [year, month] = currentMonth.split('-').map(Number);
     const d = new Date(year, month, 1);
     currentMonth = d.toISOString().slice(0, 7);
