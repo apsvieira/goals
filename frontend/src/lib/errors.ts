@@ -1,65 +1,69 @@
+import { get } from 'svelte/store';
+import { format } from 'svelte-i18n';
+
 /**
  * Maps technical error messages to user-friendly messages.
  * Technical details are logged to console for debugging.
  */
 export function getUserFriendlyMessage(error: unknown): string {
+  const t = get(format);
   const msg = error instanceof Error ? error.message : String(error);
   const lowerMsg = msg.toLowerCase();
 
   // Network errors
   if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || lowerMsg.includes('network')) {
     console.error('[Network Error]', msg);
-    return 'Unable to connect. Please check your internet connection.';
+    return t('error.network');
   }
 
   // Auth errors
   if (msg.includes('401') || lowerMsg.includes('unauthorized')) {
     console.error('[Auth Error]', msg);
-    return 'Your session has expired. Please sign in again.';
+    return t('error.auth');
   }
 
   // Rate limiting
   if (msg.includes('429') || lowerMsg.includes('rate limit')) {
     console.error('[Rate Limit]', msg);
-    return 'Too many requests. Please wait a moment.';
+    return t('error.rateLimit');
   }
 
   // Not found errors
   if (msg.includes('404') || lowerMsg.includes('not found')) {
     console.error('[Not Found]', msg);
-    return 'The item was not found. It may have been deleted.';
+    return t('error.notFound');
   }
 
   // Validation errors
   if (msg.includes('400') || lowerMsg.includes('invalid') || lowerMsg.includes('required')) {
     console.error('[Validation Error]', msg);
     // Return more specific message if available
-    if (lowerMsg.includes('name')) return 'Please enter a valid goal name.';
-    if (lowerMsg.includes('color')) return 'Please select a valid color.';
-    if (lowerMsg.includes('date')) return 'Please select a valid date.';
-    if (lowerMsg.includes('future')) return 'Cannot mark future dates as complete.';
-    return 'Please check your input and try again.';
+    if (lowerMsg.includes('name')) return t('error.validationName');
+    if (lowerMsg.includes('color')) return t('error.validationColor');
+    if (lowerMsg.includes('date')) return t('error.validationDate');
+    if (lowerMsg.includes('future')) return t('error.validationFuture');
+    return t('error.validationGeneric');
   }
 
   // Conflict errors (e.g., duplicate)
   if (msg.includes('409') || lowerMsg.includes('conflict') || lowerMsg.includes('already exists')) {
     console.error('[Conflict Error]', msg);
-    return 'This item already exists.';
+    return t('error.conflict');
   }
 
   // Server errors
   if (msg.includes('500') || msg.includes('502') || msg.includes('503') || lowerMsg.includes('internal server')) {
     console.error('[Server Error]', msg);
-    return 'Server error. Please try again later.';
+    return t('error.server');
   }
 
   // Sync errors
   if (lowerMsg.includes('sync')) {
     console.error('[Sync Error]', msg);
-    return 'Unable to sync your data. Changes will be saved locally.';
+    return t('error.sync');
   }
 
   // Log unknown errors for debugging
   console.error('[App Error]', msg);
-  return 'Something went wrong. Please try again.';
+  return t('error.unknown');
 }
