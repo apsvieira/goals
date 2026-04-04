@@ -2,6 +2,7 @@
   export let month: string; // YYYY-MM format
   export let onPrev: () => void;
   export let onNext: () => void;
+  export let disableNext: boolean = false;
 
   const monthNames = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -23,7 +24,7 @@
     </svg>
   </button>
   <span class="month-display">{displayMonth}</span>
-  <button class="nav-btn" on:click={onNext} aria-label="Next month">
+  <button class="nav-btn" on:click={onNext} aria-label="Next month" disabled={disableNext}>
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
       <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
     </svg>
@@ -49,9 +50,15 @@
     color: var(--text-secondary);
   }
 
-  .nav-btn:hover {
+  .nav-btn:hover:not(:disabled) {
     background: var(--bg-tertiary);
     color: var(--text-primary);
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.25;
+    cursor: default;
+    pointer-events: none;
   }
 
   .month-display {

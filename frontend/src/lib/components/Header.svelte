@@ -6,6 +6,7 @@
   export let month: string;
   export let onPrev: () => void;
   export let onNext: () => void;
+  export let disableNextMonth: boolean = false;
   export let showAddForm: boolean;
   export let onToggleAddForm: () => void;
   export let user: User | null = null;
@@ -71,7 +72,7 @@
       </svg>
       <span class="btn-text">{showAddForm ? 'Cancel' : 'New Goal'}</span>
     </button>
-    <MonthNav {month} {onPrev} {onNext} />
+    <MonthNav {month} {onPrev} {onNext} disableNext={disableNextMonth} />
     {#if syncing}
       <span class="sync-cloud" title="Syncing...">
         <svg viewBox="0 0 24 20" width="18" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">

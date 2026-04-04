@@ -708,6 +708,7 @@
         month={currentMonth}
         onPrev={prevMonth}
         onNext={nextMonth}
+        disableNextMonth={isCurrentMonth}
         showAddForm={false}
         onToggleAddForm={() => editorState = { mode: 'add' }}
         {user}
