@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { User } from '../stores';
-  import { _ } from 'svelte-i18n';
+  import { _, locale } from 'svelte-i18n';
+  import { supportedLocales, saveLocale } from '../i18n';
 
   export let user: User | null;
   export let onClose: () => void;
@@ -37,6 +38,24 @@
     </svg>
     <span>{$_('menu.profile')}</span>
   </button>
+
+  <div class="divider"></div>
+  <div class="menu-section">
+    <span class="menu-label">{$_('menu.language')}</span>
+    <div class="language-options">
+      {#each supportedLocales as loc}
+        <button
+          class="language-btn"
+          class:active={$locale === loc.code}
+          on:click={() => saveLocale(loc.code)}
+          role="menuitemradio"
+          aria-checked={$locale === loc.code}
+        >
+          {loc.label}
+        </button>
+      {/each}
+    </div>
+  </div>
 
   <div class="divider"></div>
 
@@ -151,5 +170,46 @@
 
   .menu-item.logout svg {
     fill: var(--error);
+  }
+
+  .menu-section {
+    padding: 0.5rem 1rem;
+  }
+
+  .menu-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .language-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin-top: 0.375rem;
+  }
+
+  .language-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .language-btn:hover {
+    background: var(--bg-secondary);
+  }
+
+  .language-btn.active {
+    background: var(--bg-tertiary);
+    font-weight: 600;
   }
 </style>
