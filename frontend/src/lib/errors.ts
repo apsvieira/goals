@@ -6,7 +6,13 @@ import { format } from 'svelte-i18n';
  * Technical details are logged to console for debugging.
  */
 export function getUserFriendlyMessage(error: unknown): string {
-  const t = get(format);
+  let t: (id: string) => string;
+  try {
+    t = get(format);
+  } catch {
+    // i18n not yet initialised — fall back to raw message
+    return error instanceof Error ? error.message : String(error);
+  }
   const msg = error instanceof Error ? error.message : String(error);
   const lowerMsg = msg.toLowerCase();
 
