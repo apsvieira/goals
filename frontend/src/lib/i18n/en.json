@@ -1,0 +1,100 @@
+{
+  "app": {
+    "loading": "Loading your goals..."
+  },
+  "auth": {
+    "title": "tiny tracker",
+    "subtitle": "Track your daily habits and achieve your goals",
+    "signInGoogle": "Sign in with Google",
+    "devLogin": "Dev Login",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "header": {
+    "newGoal": "New Goal",
+    "cancel": "Cancel"
+  },
+  "month": {
+    "jan": "Jan",
+    "feb": "Feb",
+    "mar": "Mar",
+    "apr": "Apr",
+    "may": "May",
+    "jun": "Jun",
+    "jul": "Jul",
+    "aug": "Aug",
+    "sep": "Sep",
+    "oct": "Oct",
+    "nov": "Nov",
+    "dec": "Dec"
+  },
+  "menu": {
+    "profile": "Profile",
+    "language": "Language",
+    "logOut": "Log Out"
+  },
+  "welcome": {
+    "title": "Welcome to Goal Tracker!",
+    "description": "Track daily habits and goals with a visual calendar.",
+    "featureCreate": "Create goals",
+    "featureCreateDesc": "Click \"{newGoal}\" to start tracking",
+    "featureMark": "Mark completions",
+    "featureMarkDesc": "Click day squares to toggle",
+    "featureTargets": "Set targets",
+    "featureTargetsDesc": "Optional weekly/monthly targets with progress bars",
+    "featureSwipe": "Swipe to navigate",
+    "featureSwipeDesc": "View past months",
+    "cta": "Create Your First Goal"
+  },
+  "offline": {
+    "message": "You're offline. Changes will be saved locally."
+  },
+  "goalEditor": {
+    "nameLabel": "Name",
+    "namePlaceholder": "Goal name",
+    "targetFrequency": "Target frequency",
+    "daily": "Daily (no target)",
+    "weekly": "Weekly target",
+    "monthly": "Monthly target",
+    "timesPerWeek": "Times per week",
+    "timesPerMonth": "Times per month",
+    "previewDefault": "Goal Name",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "addGoal": "Add Goal",
+    "save": "Save",
+    "deleteConfirm": "Are you sure you want to delete this goal?"
+  },
+  "progress": {
+    "perWeek": "/wk",
+    "perMonth": "/mo"
+  },
+  "profile": {
+    "back": "Back",
+    "memberSince": "Member since {date}",
+    "overview": "Overview",
+    "totalCompletions": "Total Completions",
+    "avgRate": "Avg Completion Rate",
+    "bestStreak": "Best Streak (days)",
+    "activeGoals": "Active Goals",
+    "goalStats": "Goal Statistics",
+    "noGoals": "No goals yet. Create your first goal to start tracking!",
+    "days": "{count} days ({rate}% rate)",
+    "dayStreak": "{count} day streak",
+    "bestDays": "Best: {count} days",
+    "bestWeek": "Best week: {count}",
+    "bestMonth": "Best month: {count}",
+    "periodSuccess": "{rate}% of {period} target met ({successful}/{total})",
+    "periodWeeks": "weeks",
+    "periodMonths": "months",
+    "dataExport": "Data Export",
+    "exportDescription": "Download a copy of all your goals and completions.",
+    "exportButton": "Export Data (JSON)"
+  },
+  "footer": {
+    "privacy": "Privacy"
+  },
+  "language": {
+    "en": "English",
+    "pt-BR": "Português (Brasil)"
+  }
+}

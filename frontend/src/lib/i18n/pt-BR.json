@@ -1,0 +1,100 @@
+{
+  "app": {
+    "loading": "Carregando seus objetivos..."
+  },
+  "auth": {
+    "title": "tiny tracker",
+    "subtitle": "Acompanhe seus hábitos diários e alcance seus objetivos",
+    "signInGoogle": "Entrar com Google",
+    "devLogin": "Login Dev",
+    "privacyPolicy": "Política de Privacidade"
+  },
+  "header": {
+    "newGoal": "Novo Objetivo",
+    "cancel": "Cancelar"
+  },
+  "month": {
+    "jan": "Jan",
+    "feb": "Fev",
+    "mar": "Mar",
+    "apr": "Abr",
+    "may": "Mai",
+    "jun": "Jun",
+    "jul": "Jul",
+    "aug": "Ago",
+    "sep": "Set",
+    "oct": "Out",
+    "nov": "Nov",
+    "dec": "Dez"
+  },
+  "menu": {
+    "profile": "Perfil",
+    "language": "Idioma",
+    "logOut": "Sair"
+  },
+  "welcome": {
+    "title": "Bem-vindo ao Goal Tracker!",
+    "description": "Acompanhe hábitos diários e objetivos com um calendário visual.",
+    "featureCreate": "Crie objetivos",
+    "featureCreateDesc": "Clique em \"{newGoal}\" para começar",
+    "featureMark": "Marque conclusões",
+    "featureMarkDesc": "Clique nos quadrados dos dias para alternar",
+    "featureTargets": "Defina metas",
+    "featureTargetsDesc": "Metas semanais/mensais opcionais com barras de progresso",
+    "featureSwipe": "Deslize para navegar",
+    "featureSwipeDesc": "Veja meses anteriores",
+    "cta": "Crie Seu Primeiro Objetivo"
+  },
+  "offline": {
+    "message": "Você está offline. As alterações serão salvas localmente."
+  },
+  "goalEditor": {
+    "nameLabel": "Nome",
+    "namePlaceholder": "Nome do objetivo",
+    "targetFrequency": "Frequência alvo",
+    "daily": "Diário (sem meta)",
+    "weekly": "Meta semanal",
+    "monthly": "Meta mensal",
+    "timesPerWeek": "Vezes por semana",
+    "timesPerMonth": "Vezes por mês",
+    "previewDefault": "Nome do Objetivo",
+    "delete": "Excluir",
+    "cancel": "Cancelar",
+    "addGoal": "Adicionar Objetivo",
+    "save": "Salvar",
+    "deleteConfirm": "Tem certeza de que deseja excluir este objetivo?"
+  },
+  "progress": {
+    "perWeek": "/sem",
+    "perMonth": "/mês"
+  },
+  "profile": {
+    "back": "Voltar",
+    "memberSince": "Membro desde {date}",
+    "overview": "Visão Geral",
+    "totalCompletions": "Total de Conclusões",
+    "avgRate": "Taxa Média de Conclusão",
+    "bestStreak": "Melhor Sequência (dias)",
+    "activeGoals": "Objetivos Ativos",
+    "goalStats": "Estatísticas dos Objetivos",
+    "noGoals": "Nenhum objetivo ainda. Crie seu primeiro objetivo para começar!",
+    "days": "{count} dias ({rate}% taxa)",
+    "dayStreak": "sequência de {count} dias",
+    "bestDays": "Melhor: {count} dias",
+    "bestWeek": "Melhor semana: {count}",
+    "bestMonth": "Melhor mês: {count}",
+    "periodSuccess": "{rate}% das {period} com meta atingida ({successful}/{total})",
+    "periodWeeks": "semanas",
+    "periodMonths": "meses",
+    "dataExport": "Exportar Dados",
+    "exportDescription": "Baixe uma cópia de todos os seus objetivos e conclusões.",
+    "exportButton": "Exportar Dados (JSON)"
+  },
+  "footer": {
+    "privacy": "Privacidade"
+  },
+  "language": {
+    "en": "English",
+    "pt-BR": "Português (Brasil)"
+  }
+}
