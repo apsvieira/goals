@@ -96,5 +96,46 @@
   "language": {
     "en": "English",
     "pt-BR": "Português (Brasil)"
+  },
+  "aria": {
+    "closeForm": "Fechar formulário",
+    "addGoal": "Adicionar objetivo",
+    "previousMonth": "Mês anterior",
+    "nextMonth": "Próximo mês",
+    "goal": "Objetivo: {name}",
+    "goalSelected": "Objetivo: {name} (selecionado para navegação por teclado)",
+    "editGoal": "Editar {name}. Arraste para reordenar.",
+    "progressBar": "{current} de {target} do objetivo {period} concluído",
+    "progressWeekly": "semanal",
+    "progressMonthly": "mensal",
+    "day": "Dia {day}",
+    "userMenu": "Menu do usuário"
+  },
+  "tooltip": {
+    "syncing": "Sincronizando...",
+    "day": "Dia {day}"
+  },
+  "alt": {
+    "userAvatar": "Avatar do usuário",
+    "userAvatarOf": "Avatar de {name}",
+    "profileAvatar": "Avatar do usuário"
+  },
+  "error": {
+    "network": "Não foi possível conectar. Verifique sua conexão com a internet.",
+    "auth": "Sua sessão expirou. Por favor, entre novamente.",
+    "rateLimit": "Muitas solicitações. Por favor, aguarde um momento.",
+    "notFound": "O item não foi encontrado. Pode ter sido excluído.",
+    "validationName": "Por favor, insira um nome válido para o objetivo.",
+    "validationColor": "Por favor, selecione uma cor válida.",
+    "validationDate": "Por favor, selecione uma data válida.",
+    "validationFuture": "Não é possível marcar datas futuras como concluídas.",
+    "validationGeneric": "Por favor, verifique sua entrada e tente novamente.",
+    "conflict": "Este item já existe.",
+    "server": "Erro no servidor. Por favor, tente novamente mais tarde.",
+    "sync": "Não foi possível sincronizar seus dados. As alterações serão salvas localmente.",
+    "unknown": "Algo deu errado. Por favor, tente novamente."
+  },
+  "fallback": {
+    "user": "Usuário"
   }
 }

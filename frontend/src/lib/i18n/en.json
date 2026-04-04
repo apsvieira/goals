@@ -96,5 +96,46 @@
   "language": {
     "en": "English",
     "pt-BR": "Português (Brasil)"
+  },
+  "aria": {
+    "closeForm": "Close form",
+    "addGoal": "Add goal",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "goal": "Goal: {name}",
+    "goalSelected": "Goal: {name} (selected for keyboard navigation)",
+    "editGoal": "Edit {name}. Drag to reorder.",
+    "progressBar": "{current} of {target} {period} goal completed",
+    "progressWeekly": "weekly",
+    "progressMonthly": "monthly",
+    "day": "Day {day}",
+    "userMenu": "User menu"
+  },
+  "tooltip": {
+    "syncing": "Syncing...",
+    "day": "Day {day}"
+  },
+  "alt": {
+    "userAvatar": "User avatar",
+    "userAvatarOf": "Avatar of {name}",
+    "profileAvatar": "User avatar"
+  },
+  "error": {
+    "network": "Unable to connect. Please check your internet connection.",
+    "auth": "Your session has expired. Please sign in again.",
+    "rateLimit": "Too many requests. Please wait a moment.",
+    "notFound": "The item was not found. It may have been deleted.",
+    "validationName": "Please enter a valid goal name.",
+    "validationColor": "Please select a valid color.",
+    "validationDate": "Please select a valid date.",
+    "validationFuture": "Cannot mark future dates as complete.",
+    "validationGeneric": "Please check your input and try again.",
+    "conflict": "This item already exists.",
+    "server": "Server error. Please try again later.",
+    "sync": "Unable to sync your data. Changes will be saved locally.",
+    "unknown": "Something went wrong. Please try again."
+  },
+  "fallback": {
+    "user": "User"
   }
 }
