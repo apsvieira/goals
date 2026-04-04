@@ -39,4 +39,16 @@ test.describe('Language Switching', () => {
     // Should still be in Portuguese
     await expect(page.locator('button:has-text("Novo Objetivo")')).toBeVisible();
   });
+
+  test('aria-labels are translated in Portuguese', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('goal-tracker-locale', 'pt-BR');
+    });
+    await page.goto('/');
+    await page.waitForSelector('header', { timeout: 10000 });
+
+    // Month nav buttons should have Portuguese aria-labels
+    await expect(page.locator('button[aria-label="Mês anterior"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Próximo mês"]')).toBeAttached();
+  });
 });
