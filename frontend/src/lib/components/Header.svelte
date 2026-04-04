@@ -2,6 +2,7 @@
   import MonthNav from './MonthNav.svelte';
   import UserDropdown from './UserDropdown.svelte';
   import type { User } from '../stores';
+  import { _ } from 'svelte-i18n';
 
   export let month: string;
   export let onPrev: () => void;
@@ -69,7 +70,7 @@
       <svg class="plus-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
       </svg>
-      <span class="btn-text">{showAddForm ? 'Cancel' : 'New Goal'}</span>
+      <span class="btn-text">{showAddForm ? $_('header.cancel') : $_('header.newGoal')}</span>
     </button>
     <MonthNav {month} {onPrev} {onNext} />
     {#if syncing}
