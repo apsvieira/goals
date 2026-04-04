@@ -16,7 +16,7 @@
   aria-valuenow={current}
   aria-valuemin={0}
   aria-valuemax={target}
-  aria-label="{current} of {target} {period === 'week' ? 'weekly' : 'monthly'} goal completed"
+  aria-label={$_('aria.progressBar', { values: { current, target, period: period === 'week' ? $_('aria.progressWeekly') : $_('aria.progressMonthly') }})}
 >
   <div class="bar-container">
     <div

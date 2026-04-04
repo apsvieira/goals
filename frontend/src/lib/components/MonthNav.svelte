@@ -21,13 +21,13 @@
 </script>
 
 <div class="month-nav">
-  <button class="nav-btn" on:click={onPrev} aria-label="Previous month">
+  <button class="nav-btn" on:click={onPrev} aria-label={$_('aria.previousMonth')}>
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
       <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
     </svg>
   </button>
   <span class="month-display">{displayMonth}</span>
-  <button class="nav-btn" on:click={onNext} aria-label="Next month" disabled={disableNext}>
+  <button class="nav-btn" on:click={onNext} aria-label={$_('aria.nextMonth')} disabled={disableNext}>
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
       <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
     </svg>

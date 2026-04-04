@@ -66,7 +66,7 @@
     <button
       class="add-btn"
       on:click={onToggleAddForm}
-      aria-label={showAddForm ? 'Close form' : 'Add goal'}
+      aria-label={showAddForm ? $_('aria.closeForm') : $_('aria.addGoal')}
     >
       <svg class="plus-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
@@ -75,7 +75,7 @@
     </button>
     <MonthNav {month} {onPrev} {onNext} disableNext={disableNextMonth} />
     {#if syncing}
-      <span class="sync-cloud" title="Syncing...">
+      <span class="sync-cloud" title={$_('tooltip.syncing')}>
         <svg viewBox="0 0 24 20" width="18" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
           <path d="M6 14a4 4 0 0 1-.68-7.95A5.5 5.5 0 0 1 16.5 5h.5a4 4 0 0 1 1 7.87"/>
           <line class="drop drop-1" x1="10" y1="14" x2="10" y2="18"/>
@@ -87,7 +87,7 @@
     <div class="user-menu">
       <button class="user-indicator" on:click|stopPropagation={toggleDropdown} aria-expanded={dropdownOpen}>
         {#if user?.avatar_url}
-          <img src={user.avatar_url} alt="User avatar" class="avatar" />
+          <img src={user.avatar_url} alt={$_('alt.userAvatar')} class="avatar" />
         {:else}
           <div class="avatar avatar-placeholder">
             <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">

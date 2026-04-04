@@ -257,13 +257,13 @@
     <div class="profile-header">
       <div class="avatar">
         {#if user?.avatar_url}
-          <img src={user.avatar_url} alt="User avatar" />
+          <img src={user.avatar_url} alt={$_('alt.profileAvatar')} />
         {:else}
           <span class="avatar-initial">{user?.name?.[0] || user?.email?.[0] || '?'}</span>
         {/if}
       </div>
 
-      <h1 class="user-name">{user?.name || user?.email?.split('@')[0] || 'User'}</h1>
+      <h1 class="user-name">{user?.name || user?.email?.split('@')[0] || $_('fallback.user')}</h1>
 
       {#if user?.email}
         <p class="user-email">{user.email}</p>

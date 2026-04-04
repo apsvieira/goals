@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   export let filled = false;
   export let color = '#4CAF50';
   export let day: number;
@@ -18,8 +20,8 @@
   class:disabled
   style="--day-color: {color}"
   on:click={handleClick}
-  aria-label="Day {day}"
-  title="Day {day}"
+  aria-label={$_('aria.day', { values: { day }})}
+  title={$_('tooltip.day', { values: { day }})}
 >
   {day}
 </button>

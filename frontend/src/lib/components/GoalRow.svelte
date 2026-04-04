@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
   import DayGrid from './DayGrid.svelte';
   import ProgressBar from './ProgressBar.svelte';
   import type { Goal } from '../api';
@@ -28,7 +29,7 @@
   on:drop={onDrop}
   on:dragleave={() => isDragOver = false}
   role="listitem"
-  aria-label="Goal: {goal.name}{isFocused ? ' (selected for keyboard navigation)' : ''}"
+  aria-label={isFocused ? $_('aria.goalSelected', { values: { name: goal.name }}) : $_('aria.goal', { values: { name: goal.name }})}
 >
   <div class="goal-info">
     <button
@@ -36,7 +37,7 @@
       on:click={onEdit}
       draggable="true"
       on:dragstart={onDragStart}
-      aria-label="Edit {goal.name}. Drag to reorder."
+      aria-label={$_('aria.editGoal', { values: { name: goal.name }})}
     >
       {goal.name}
     </button>

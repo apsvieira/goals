@@ -9,15 +9,15 @@
   export let onProfileClick: () => void;
   export let onSignIn: () => void = () => {};
 
-  $: displayName = user?.name || 'User';
+  $: displayName = user?.name || $_('fallback.user');
   $: avatarUrl = user?.avatar_url || null;
 </script>
 
-<div class="dropdown" role="menu" aria-label="User menu">
+<div class="dropdown" role="menu" aria-label={$_('aria.userMenu')}>
   <div class="user-info">
     <div class="avatar">
       {#if avatarUrl}
-        <img src={avatarUrl} alt="{displayName}'s avatar" />
+        <img src={avatarUrl} alt={$_('alt.userAvatarOf', { values: { name: displayName }})} />
       {:else}
         <div class="avatar-placeholder">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
