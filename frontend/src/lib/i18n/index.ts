@@ -15,9 +15,13 @@ register('pt-BR', () => Promise.resolve(ptBR));
 
 function getInitialLocale(): string {
   // 1. Check localStorage for saved preference
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && supportedLocales.some(l => l.code === saved)) {
-    return saved;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved && supportedLocales.some(l => l.code === saved)) {
+      return saved;
+    }
+  } catch {
+    // localStorage unavailable
   }
 
   // 2. Check browser locale
@@ -33,7 +37,11 @@ function getInitialLocale(): string {
 }
 
 export function saveLocale(loc: string) {
-  localStorage.setItem(STORAGE_KEY, loc);
+  try {
+    localStorage.setItem(STORAGE_KEY, loc);
+  } catch {
+    // localStorage unavailable
+  }
   locale.set(loc);
 }
 
