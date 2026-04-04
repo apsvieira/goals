@@ -16,10 +16,8 @@
  *   Why: These change less frequently and benefit from offline availability
  */
 
-// IMPORTANT: Update this version on each deployment to bust the cache
-// Format: YYYYMMDD-HHMMSS or commit hash
-// TODO: Automate this via build script (e.g., inject via Vite environment variable)
-const CACHE_VERSION = '20260108-000000'; // Manual update required
+// IMPORTANT: __BUILD_VERSION__ is replaced at build time by the Vite plugin in vite.config.ts
+const CACHE_VERSION = '__BUILD_VERSION__';
 const CACHE_NAME = `goal-tracker-v${CACHE_VERSION}`;
 
 // Network timeout before falling back to cache (milliseconds)

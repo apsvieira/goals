@@ -14,8 +14,11 @@
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
+      // Skip SW registration on Capacitor's native server — assets are served locally
+      var isNative = window.location.protocol === 'capacitor:'
+        || window.location.hostname === 'localhost';
+      if (!isNative && 'serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
           navigator.serviceWorker.register('/sw.js');
         });
       }
