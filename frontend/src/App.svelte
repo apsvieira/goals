@@ -742,7 +742,7 @@
             <li><strong>Create goals</strong> - Click "New Goal" to start tracking</li>
             <li><strong>Mark completions</strong> - Click day squares to toggle</li>
             <li><strong>Set targets</strong> - Optional weekly/monthly targets with progress bars</li>
-            <li><strong>Swipe to navigate</strong> - View past or future months</li>
+            <li><strong>Swipe to navigate</strong> - View past months</li>
           </ul>
           <button class="welcome-cta" on:click={() => editorState = { mode: 'add' }}>
             Create Your First Goal
