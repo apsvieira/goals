@@ -11,7 +11,10 @@ type GoalTrackerFixtures = {
 export const test = base.extend<GoalTrackerFixtures>({
   // goalTrackerPage: pre-configured page with helpers
   goalTrackerPage: async ({ page }, use) => {
-    // Add custom helper methods to page
+    // Ensure English locale for consistent E2E tests
+    await page.addInitScript(() => {
+      localStorage.setItem('goal-tracker-locale', 'en');
+    });
     await page.goto('/');
     await use(page);
   },
@@ -20,6 +23,11 @@ export const test = base.extend<GoalTrackerFixtures>({
   testGoal: async ({ page }, use) => {
     const goalName = `Test Goal ${Date.now()}`;
     let goalId: string | null = null;
+
+    // Ensure English locale for consistent E2E tests
+    await page.addInitScript(() => {
+      localStorage.setItem('goal-tracker-locale', 'en');
+    });
 
     // Setup: Create a test goal
     await page.goto('/');
