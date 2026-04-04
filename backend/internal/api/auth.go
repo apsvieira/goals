@@ -80,6 +80,9 @@ func (s *Server) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	if result.IsMobile {
 		code := s.authCodeStore.Generate(result.SessionToken)
 		deepLink := MobileRedirectScheme + "://auth?code=" + code
+		// Override the global CSP which blocks inline scripts. This page is a
+		// one-time redirect with no user content, so 'unsafe-inline' is safe here.
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(MobileRedirectHTML(deepLink)))
