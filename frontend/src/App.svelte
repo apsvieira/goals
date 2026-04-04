@@ -236,7 +236,7 @@
     if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * SWIPE_RATIO) {
       if (deltaX > 0) {
         prevMonth(); // Swipe right = previous month
-      } else {
+      } else if (!isCurrentMonth) {
         nextMonth(); // Swipe left = next month
       }
     }
@@ -501,7 +501,9 @@
       return;
     }
     if (e.key === 'ArrowRight') {
-      nextMonth();
+      if (!isCurrentMonth) {
+        nextMonth();
+      }
       e.preventDefault();
       return;
     }
