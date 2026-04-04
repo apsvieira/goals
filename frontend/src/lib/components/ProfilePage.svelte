@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { User } from '../stores';
   import type { Goal, Completion } from '../api';
+  import { _, locale } from 'svelte-i18n';
 
   export let user: User | null;
   export let goals: Goal[] = [];
@@ -210,7 +211,8 @@
   function formatMemberSince(dateStr: string | undefined): string {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const currentLocale = $locale || 'en';
+    return date.toLocaleDateString(currentLocale, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   function exportData() {
@@ -249,7 +251,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
       </svg>
-      Back
+      {$_('profile.back')}
     </button>
 
     <div class="profile-header">
@@ -268,7 +270,7 @@
       {/if}
 
       {#if user?.created_at}
-        <p class="member-since">Member since {formatMemberSince(user.created_at)}</p>
+        <p class="member-since">{$_('profile.memberSince', { values: { date: formatMemberSince(user.created_at) }})}</p>
       {/if}
     </div>
 
@@ -276,23 +278,23 @@
 
     {#if goals && goals.length > 0 && completions && completions.length > 0}
       <div class="overall-stats">
-        <h2 class="stats-title">Overview</h2>
+        <h2 class="stats-title">{$_('profile.overview')}</h2>
         <div class="stats-grid">
           <div class="stat-card">
             <span class="stat-value">{overallStats.totalCompletions}</span>
-            <span class="stat-label">Total Completions</span>
+            <span class="stat-label">{$_('profile.totalCompletions')}</span>
           </div>
           <div class="stat-card">
             <span class="stat-value">{overallStats.avgCompletionRate}%</span>
-            <span class="stat-label">Avg Completion Rate</span>
+            <span class="stat-label">{$_('profile.avgRate')}</span>
           </div>
           <div class="stat-card">
             <span class="stat-value">{overallStats.bestOverallStreak}</span>
-            <span class="stat-label">Best Streak (days)</span>
+            <span class="stat-label">{$_('profile.bestStreak')}</span>
           </div>
           <div class="stat-card">
             <span class="stat-value">{overallStats.totalActiveGoals}</span>
-            <span class="stat-label">Active Goals</span>
+            <span class="stat-label">{$_('profile.activeGoals')}</span>
           </div>
         </div>
       </div>
@@ -301,10 +303,10 @@
     {/if}
 
     <div class="stats-section">
-      <h2 class="stats-title">Goal Statistics</h2>
+      <h2 class="stats-title">{$_('profile.goalStats')}</h2>
 
       {#if !goals || goals.length === 0}
-        <p class="no-goals">No goals yet. Create your first goal to start tracking!</p>
+        <p class="no-goals">{$_('profile.noGoals')}</p>
       {:else}
         <div class="goals-list">
           {#each (goals ?? []).filter(g => !g.archived_at) as goal (goal.id)}
@@ -316,31 +318,31 @@
               </div>
               <div class="goal-stats-row">
                 <p class="goal-progress">
-                  {stats.daysCompleted} days ({stats.rate}% rate)
+                  {$_('profile.days', { values: { count: stats.daysCompleted, rate: stats.rate }})}
                 </p>
                 {#if stats.currentStreak > 0}
                   <span class="streak-badge current">
-                    {stats.currentStreak} day streak
+                    {$_('profile.dayStreak', { values: { count: stats.currentStreak }})}
                   </span>
                 {/if}
               </div>
               <div class="goal-details">
                 <span class="detail-item">
                   <span class="detail-icon">&#128293;</span>
-                  Best: {stats.longestStreak} days
+                  {$_('profile.bestDays', { values: { count: stats.longestStreak }})}
                 </span>
                 <span class="detail-item">
                   <span class="detail-icon">&#128197;</span>
-                  Best week: {stats.bestWeek}
+                  {$_('profile.bestWeek', { values: { count: stats.bestWeek }})}
                 </span>
                 <span class="detail-item">
                   <span class="detail-icon">&#128198;</span>
-                  Best month: {stats.bestMonth}
+                  {$_('profile.bestMonth', { values: { count: stats.bestMonth }})}
                 </span>
               </div>
               {#if stats.periodStats}
                 <p class="goal-period-success">
-                  {stats.periodStats.successRate}% of {stats.periodStats.period} target met ({stats.periodStats.successful}/{stats.periodStats.total})
+                  {$_('profile.periodSuccess', { values: { rate: stats.periodStats.successRate, period: $_(stats.periodStats.period === 'weeks' ? 'profile.periodWeeks' : 'profile.periodMonths'), successful: stats.periodStats.successful, total: stats.periodStats.total }})}
                 </p>
               {/if}
             </div>
@@ -352,13 +354,13 @@
     <div class="divider"></div>
 
     <div class="export-section">
-      <h2 class="section-title">Data Export</h2>
-      <p class="export-description">Download a copy of all your goals and completions.</p>
+      <h2 class="section-title">{$_('profile.dataExport')}</h2>
+      <p class="export-description">{$_('profile.exportDescription')}</p>
       <button class="export-button" on:click={exportData}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
         </svg>
-        Export Data (JSON)
+        {$_('profile.exportButton')}
       </button>
     </div>
   </div>

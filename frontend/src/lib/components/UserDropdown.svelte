@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { User } from '../stores';
+  import { _, locale } from 'svelte-i18n';
+  import { supportedLocales, saveLocale } from '../i18n';
 
   export let user: User | null;
   export let onClose: () => void;
@@ -34,8 +36,26 @@
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
       <circle cx="12" cy="7" r="4"></circle>
     </svg>
-    <span>Profile</span>
+    <span>{$_('menu.profile')}</span>
   </button>
+
+  <div class="divider"></div>
+  <div class="menu-section">
+    <span class="menu-label">{$_('menu.language')}</span>
+    <div class="language-options">
+      {#each supportedLocales as loc}
+        <button
+          class="language-btn"
+          class:active={$locale === loc.code}
+          on:click={() => saveLocale(loc.code)}
+          role="menuitemradio"
+          aria-checked={$locale === loc.code}
+        >
+          {loc.label}
+        </button>
+      {/each}
+    </div>
+  </div>
 
   <div class="divider"></div>
 
@@ -43,7 +63,7 @@
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
       <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
     </svg>
-    <span>Log Out</span>
+    <span>{$_('menu.logOut')}</span>
   </button>
 </div>
 
@@ -150,5 +170,46 @@
 
   .menu-item.logout svg {
     fill: var(--error);
+  }
+
+  .menu-section {
+    padding: 0.5rem 1rem;
+  }
+
+  .menu-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .language-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin-top: 0.375rem;
+  }
+
+  .language-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.25rem;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .language-btn:hover {
+    background: var(--bg-secondary);
+  }
+
+  .language-btn.active {
+    background: var(--bg-tertiary);
+    font-weight: 600;
   }
 </style>

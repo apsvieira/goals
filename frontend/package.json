@@ -40,6 +40,7 @@
     "@capacitor/core": "^8.0.0",
     "@capacitor/preferences": "^8.0.0",
     "@capacitor/push-notifications": "^8.0.0",
-    "idb": "^8.0.3"
+    "idb": "^8.0.3",
+    "svelte-i18n": "^4.0.1"
   }
 }

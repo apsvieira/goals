@@ -1,17 +1,20 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   export let month: string; // YYYY-MM format
   export let onPrev: () => void;
   export let onNext: () => void;
   export let disableNext: boolean = false;
 
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  const monthKeys = [
+    'month.jan', 'month.feb', 'month.mar', 'month.apr',
+    'month.may', 'month.jun', 'month.jul', 'month.aug',
+    'month.sep', 'month.oct', 'month.nov', 'month.dec'
   ];
 
   $: {
     const [year, monthNum] = month.split('-').map(Number);
-    displayMonth = monthNames[monthNum - 1];
+    displayMonth = $_(monthKeys[monthNum - 1]);
   }
 
   let displayMonth: string;

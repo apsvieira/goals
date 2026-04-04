@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { App as CapApp } from '@capacitor/app';
   import { Capacitor } from '@capacitor/core';
+  import { _ } from 'svelte-i18n';
   import Header from './lib/components/Header.svelte';
   import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
@@ -680,7 +681,7 @@
 {:else if authState.type === 'loading'}
   <div class="loading-container">
     <Spinner size="large" />
-    <p class="loading-text">Loading your goals...</p>
+    <p class="loading-text">{$_('app.loading')}</p>
   </div>
 {:else if authState.type === 'unauthenticated'}
   <AuthPage />
@@ -726,7 +727,7 @@
         {#if !online}
           <div class="offline-banner" role="alert" aria-live="assertive">
             <span class="offline-icon" aria-hidden="true">⚡</span>
-            <span>You're offline. Changes will be saved locally.</span>
+            <span>{$_('offline.message')}</span>
           </div>
         {/if}
 
@@ -736,16 +737,16 @@
         </div>
       {:else if goals.length === 0}
         <div class="welcome-card">
-          <h2 class="welcome-title">Welcome to Goal Tracker!</h2>
-          <p class="welcome-text">Track daily habits and goals with a visual calendar.</p>
+          <h2 class="welcome-title">{$_('welcome.title')}</h2>
+          <p class="welcome-text">{$_('welcome.description')}</p>
           <ul class="welcome-features">
-            <li><strong>Create goals</strong> - Click "New Goal" to start tracking</li>
-            <li><strong>Mark completions</strong> - Click day squares to toggle</li>
-            <li><strong>Set targets</strong> - Optional weekly/monthly targets with progress bars</li>
-            <li><strong>Swipe to navigate</strong> - View past months</li>
+            <li><strong>{$_('welcome.featureCreate')}</strong> - {$_('welcome.featureCreateDesc', { values: { newGoal: $_('header.newGoal') }})}</li>
+            <li><strong>{$_('welcome.featureMark')}</strong> - {$_('welcome.featureMarkDesc')}</li>
+            <li><strong>{$_('welcome.featureTargets')}</strong> - {$_('welcome.featureTargetsDesc')}</li>
+            <li><strong>{$_('welcome.featureSwipe')}</strong> - {$_('welcome.featureSwipeDesc')}</li>
           </ul>
           <button class="welcome-cta" on:click={() => editorState = { mode: 'add' }}>
-            Create Your First Goal
+            {$_('welcome.cta')}
           </button>
         </div>
       {:else}

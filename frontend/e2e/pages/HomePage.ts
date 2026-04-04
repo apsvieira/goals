@@ -26,6 +26,10 @@ export class HomePage {
   }
 
   async goto() {
+    // Ensure English locale for consistent E2E tests
+    await this.page.addInitScript(() => {
+      localStorage.setItem('goal-tracker-locale', 'en');
+    });
     await this.page.goto('/');
     await this.header.waitFor({ state: 'visible', timeout: 10000 });
   }

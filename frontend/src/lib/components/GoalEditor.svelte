@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { _ } from 'svelte-i18n';
 
   export let mode: 'add' | 'edit' = 'add';
   export let goal: { id: string; name: string; color: string; target_count?: number; target_period?: 'week' | 'month' } | null = null;
@@ -75,34 +76,34 @@
   <form on:submit|preventDefault={handleSave}>
     <div class="form-content">
       <div class="field">
-        <label for="goal-name">Name</label>
+        <label for="goal-name">{$_('goalEditor.nameLabel')}</label>
         <input
           id="goal-name"
           type="text"
           bind:value={name}
-          placeholder="Goal name"
+          placeholder={$_('goalEditor.namePlaceholder')}
         />
       </div>
 
       <fieldset class="field target-field">
-        <legend>Target frequency</legend>
+        <legend>{$_('goalEditor.targetFrequency')}</legend>
         <div class="target-options">
           <label class="target-option">
             <input type="radio" bind:group={targetType} value="daily" />
-            <span>Daily (no target)</span>
+            <span>{$_('goalEditor.daily')}</span>
           </label>
           <label class="target-option">
             <input type="radio" bind:group={targetType} value="weekly" />
-            <span>Weekly target</span>
+            <span>{$_('goalEditor.weekly')}</span>
           </label>
           <label class="target-option">
             <input type="radio" bind:group={targetType} value="monthly" />
-            <span>Monthly target</span>
+            <span>{$_('goalEditor.monthly')}</span>
           </label>
         </div>
         {#if targetType !== 'daily'}
           <div class="target-count">
-            <label for="target-count">Times per {targetType === 'weekly' ? 'week' : 'month'}</label>
+            <label for="target-count">{$_(targetType === 'weekly' ? 'goalEditor.timesPerWeek' : 'goalEditor.timesPerMonth')}</label>
             <input
               id="target-count"
               type="number"
@@ -115,7 +116,7 @@
       </fieldset>
 
       <div class="preview">
-        <span class="preview-name">{name || 'Goal Name'}</span>
+        <span class="preview-name">{name || $_('goalEditor.previewDefault')}</span>
         <div class="preview-squares">
           {#each Array(7) as _}
             <span class="preview-square" style="border-color: {displayColor}; background-color: {displayColor}"></span>
@@ -127,15 +128,15 @@
     <div class="actions">
       {#if mode === 'edit' && onDelete}
         <button type="button" class="btn-delete" on:click={handleDeleteClick}>
-          Delete
+          {$_('goalEditor.delete')}
         </button>
       {/if}
       <div class="right-actions">
         <button type="button" class="btn-cancel" on:click={onCancel}>
-          Cancel
+          {$_('goalEditor.cancel')}
         </button>
         <button type="submit" class="btn-save" disabled={!name.trim()}>
-          {mode === 'add' ? 'Add Goal' : 'Save'}
+          {mode === 'add' ? $_('goalEditor.addGoal') : $_('goalEditor.save')}
         </button>
       </div>
     </div>
@@ -144,13 +145,13 @@
   {#if showDeleteConfirm}
     <div class="confirm-overlay" on:click={cancelDelete} on:keydown={(e) => e.key === 'Escape' && cancelDelete()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="confirm-dialog" role="document" on:click|stopPropagation on:keydown|stopPropagation>
-        <p>Are you sure you want to delete this goal?</p>
+        <p>{$_('goalEditor.deleteConfirm')}</p>
         <div class="confirm-actions">
           <button type="button" class="btn-cancel" on:click={cancelDelete}>
-            Cancel
+            {$_('goalEditor.cancel')}
           </button>
           <button type="button" class="btn-confirm-delete" on:click={handleDelete}>
-            Delete
+            {$_('goalEditor.delete')}
           </button>
         </div>
       </div>

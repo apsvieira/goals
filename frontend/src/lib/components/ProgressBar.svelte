@@ -1,11 +1,13 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   export let current: number;
   export let target: number;
   export let period: 'week' | 'month';
   export let color: string;
 
   $: percentage = Math.min(100, Math.round((current / target) * 100));
-  $: periodShort = period === 'week' ? '/wk' : '/mo';
+  $: periodShort = period === 'week' ? $_('progress.perWeek') : $_('progress.perMonth');
 </script>
 
 <div
