@@ -78,4 +78,8 @@ export class HomePage {
   async isSyncing(): Promise<boolean> {
     return await this.syncBanner.isVisible();
   }
+
+  async isNextMonthDisabled(): Promise<boolean> {
+    return await this.nextMonthButton.isDisabled();
+  }
 }
