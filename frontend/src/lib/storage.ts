@@ -241,6 +241,11 @@ export async function getQueuedOperations(): Promise<QueuedOperation[]> {
   return operations.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
+export async function saveQueuedOperation(op: QueuedOperation): Promise<void> {
+  const database = getDB();
+  await database.put('operations', op);
+}
+
 export async function deleteQueuedOperation(id: string): Promise<void> {
   const database = getDB();
   await database.delete('operations', id);
