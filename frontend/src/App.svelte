@@ -28,10 +28,10 @@
   } from './lib/api';
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, isOnline, type AuthState } from './lib/stores';
-  import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
-  import { startEventSync, stopEventSync } from './lib/event-sync';
+  import { syncStatus, type SyncStatus } from './lib/sync';
+  import { startEventSync, stopEventSync, flushPendingEvents } from './lib/event-sync';
   import { saveToken, clearToken } from './lib/token-storage';
-  import { clearLocalData } from './lib/storage';
+  import { clearLocalData, initStorage } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
   import { startMobileOAuth } from './lib/mobile-auth';
 
@@ -260,7 +260,6 @@
         periodCompletions = periodCompletions.filter(c => c.id !== existingId);
 
         deleteCompletion(existingId, goalId, date)
-          .then(() => syncManager.sync().catch(console.error))
           .catch((e) => {
             // Revert on failure
             completions = prevCompletions;
@@ -271,9 +270,6 @@
         const newCompletion = await createCompletion(goalId, date);
         completions = [...completions, newCompletion];
         periodCompletions = [...periodCompletions, newCompletion];
-
-        // Trigger sync after completion changes
-        syncManager.sync().catch(console.error);
       }
     } catch (e) {
       error = getUserFriendlyMessage(e);
@@ -302,9 +298,6 @@
         goals = goals.map(g => g.id === updated.id ? updated : g);
       }
       editorState = null;
-
-      // Trigger sync after goal changes to persist to server
-      syncManager.sync().catch(console.error);
     } catch (e) {
       error = getUserFriendlyMessage(e);
     }
@@ -318,9 +311,6 @@
       await archiveGoal(goalId);
       goals = goals.filter(g => g.id !== goalId);
       editorState = null;
-
-      // Trigger sync after goal deletion
-      syncManager.sync().catch(console.error);
     } catch (e) {
       error = getUserFriendlyMessage(e);
     }
@@ -383,8 +373,8 @@
   }
 
   async function checkAuth() {
-    // Initialize sync manager
-    await syncManager.init();
+    // Initialize local storage
+    await initStorage();
 
     // Check if we have a session
     try {
@@ -393,8 +383,7 @@
         initialAuthInProgress = true;
         authStore.set({ type: 'authenticated', user });
 
-        // Start automatic sync
-        syncManager.startAutoSync();
+        // Start event sync
         startEventSync();
 
         // Load initial data
@@ -414,8 +403,7 @@
   }
 
   async function handleLogout() {
-    // Stop automatic sync
-    syncManager.stopAutoSync();
+    // Stop event sync
     stopEventSync();
 
     // Best-effort server-side cleanup
@@ -586,15 +574,7 @@
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
 
-    // Sync on online/offline events
-    window.addEventListener('online', () => {
-      console.log('Online, triggering sync');
-      syncManager.sync().catch(console.error);
-    });
-
-    window.addEventListener('offline', () => {
-      console.log('Offline');
-    });
+    // event-sync.ts already has its own online listener for flushing events
 
     // Set up deep link handler for mobile OAuth callback
     let appUrlOpenListener: { remove: () => Promise<void> } | null = null;
@@ -650,8 +630,8 @@
         });
 
         CapApp.addListener('resume', () => {
-          console.log('App resumed, triggering sync');
-          syncManager.sync().catch(console.error);
+          console.log('App resumed, flushing pending events');
+          flushPendingEvents().catch(console.error);
         });
       }
 
@@ -662,7 +642,6 @@
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
-      syncManager.stopAutoSync();
       stopEventSync();
       if (appUrlOpenListener) {
         appUrlOpenListener.remove();

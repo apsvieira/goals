@@ -12,7 +12,6 @@ import {
   getLocalCompletionByGoalAndDate,
   getMaxPosition,
   getAllLocalCompletions,
-  getQueuedOperations,
   saveSyncEvent,
 } from './storage';
 import type { SyncEvent } from './events';
@@ -115,42 +114,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function getCalendar(month: string): Promise<CalendarResponse> {
   await ensureStorageInitialized();
-
   try {
-    const serverData = await request<CalendarResponse>(`/calendar?month=${month}`);
-
-    // Reconcile server response with pending local changes that haven't
-    // been synced yet. Without this, navigating months before sync completes
-    // would overwrite the goals array with stale server data.
-    const pendingOps = await getQueuedOperations();
-
-    if (pendingOps.length > 0) {
-      const pendingCreateIds = new Set(
-        pendingOps.filter(op => op.type === 'create_goal').map(op => op.entityId)
-      );
-      const pendingDeleteIds = new Set(
-        pendingOps.filter(op => op.type === 'delete_goal').map(op => op.entityId)
-      );
-
-      // Remove goals that were locally archived/deleted but server still returns
-      if (pendingDeleteIds.size > 0) {
-        serverData.goals = (serverData.goals ?? []).filter(g => !pendingDeleteIds.has(g.id));
-      }
-
-      // Add goals that were locally created but server doesn't have yet
-      if (pendingCreateIds.size > 0) {
-        const localGoals = await getLocalGoals();
-        const serverGoalIds = new Set((serverData.goals ?? []).map(g => g.id));
-        const unsyncedGoals = localGoals.filter(
-          g => pendingCreateIds.has(g.id) && !serverGoalIds.has(g.id)
-        );
-        serverData.goals = [...(serverData.goals ?? []), ...unsyncedGoals];
-      }
-    }
-
-    return serverData;
+    return await request<CalendarResponse>(`/calendar?month=${month}`);
   } catch (e) {
-    // Offline: return cached data
     const goals = await getLocalGoals();
     const completions = await getLocalCompletions(month);
     return { goals, completions };

@@ -234,12 +234,7 @@ export async function deleteLocalCompletionByGoalAndDate(goalId: string, date: s
   }
 }
 
-// Operation queue operations
-export async function saveQueuedOperation(operation: QueuedOperation): Promise<void> {
-  const database = getDB();
-  await database.put('operations', operation);
-}
-
+// Operation queue operations (kept temporarily for Task 6 migration)
 export async function getQueuedOperations(): Promise<QueuedOperation[]> {
   const database = getDB();
   const operations = await database.getAllFromIndex('operations', 'by-timestamp');
@@ -249,11 +244,6 @@ export async function getQueuedOperations(): Promise<QueuedOperation[]> {
 export async function deleteQueuedOperation(id: string): Promise<void> {
   const database = getDB();
   await database.delete('operations', id);
-}
-
-export async function clearQueuedOperations(): Promise<void> {
-  const database = getDB();
-  await database.clear('operations');
 }
 
 // Sync event operations

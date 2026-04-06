@@ -7,15 +7,12 @@ import {
   getUnsyncedEvents,
   markEventsSynced,
   getSyncEvents,
-  saveQueuedOperation,
-  getQueuedOperations,
   saveLocalGoal,
   getLocalGoals,
   saveLocalCompletion,
   getLocalCompletions,
   clearLocalData,
   resetDB,
-  type QueuedOperation,
 } from '../storage';
 
 function makeEvent(overrides: Partial<SyncEvent> = {}): SyncEvent {
@@ -234,7 +231,7 @@ describe('v2 to v3 upgrade preserves existing stores', () => {
     }
   });
 
-  it('should preserve goals, completions, operations, and meta after upgrade', async () => {
+  it('should preserve goals, completions, and meta after upgrade', async () => {
     await initStorage();
 
     // Populate existing stores
@@ -255,16 +252,6 @@ describe('v2 to v3 upgrade preserves existing stores', () => {
     };
     await saveLocalCompletion(completion);
 
-    const operation: QueuedOperation = {
-      id: 'op-1',
-      type: 'create_goal',
-      entityId: 'g-1',
-      payload: { name: 'Exercise' },
-      timestamp: '2026-01-01T00:00:00Z',
-      retryCount: 0,
-    };
-    await saveQueuedOperation(operation);
-
     // Verify pre-existing data is accessible
     const goals = await getLocalGoals();
     expect(goals).toHaveLength(1);
@@ -272,9 +259,6 @@ describe('v2 to v3 upgrade preserves existing stores', () => {
 
     const completions = await getLocalCompletions('2026-04');
     expect(completions).toHaveLength(1);
-
-    const ops = await getQueuedOperations();
-    expect(ops).toHaveLength(1);
 
     // Verify the new events store works alongside existing stores
     const event = makeEvent({ id: 'evt-1' });
@@ -286,9 +270,6 @@ describe('v2 to v3 upgrade preserves existing stores', () => {
     // Verify old data is still intact
     const goalsAfter = await getLocalGoals();
     expect(goalsAfter).toHaveLength(1);
-
-    const opsAfter = await getQueuedOperations();
-    expect(opsAfter).toHaveLength(1);
   }, 10000);
 
   it('clearLocalData should clear events store too', async () => {
