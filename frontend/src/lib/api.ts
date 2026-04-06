@@ -13,10 +13,11 @@ import {
   getLocalCompletionByGoalAndDate,
   getMaxPosition,
   getAllLocalCompletions,
-  type QueuedOperation,
-  saveQueuedOperation,
   getQueuedOperations,
+  saveSyncEvent,
 } from './storage';
+import type { SyncEvent } from './events';
+import { sendEvent } from './event-sync';
 import { getToken } from './token-storage';
 
 const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
@@ -190,18 +191,24 @@ export async function createGoal(
   // Save to local cache immediately
   await saveLocalGoal(goal);
 
-  // Queue operation for sync
-  const operation: QueuedOperation = {
+  // Create and persist sync event, then fire-and-forget to server
+  const event: SyncEvent = {
     id: generateId(),
-    type: 'create_goal',
-    entityId: goal.id,
-    payload: { name, color, target_count: targetCount, target_period: targetPeriod },
+    type: 'goal_upsert',
     timestamp: new Date().toISOString(),
-    retryCount: 0,
+    synced: false,
+    payload: {
+      id: goal.id,
+      name: goal.name,
+      color: goal.color,
+      position: goal.position,
+      target_count: goal.target_count,
+      target_period: goal.target_period,
+    },
   };
-  await saveQueuedOperation(operation);
+  await saveSyncEvent(event);
+  sendEvent(event).catch(console.error);
 
-  // Attempt immediate sync (will be handled by sync manager)
   return goal;
 }
 
@@ -220,16 +227,23 @@ export async function updateGoal(
   const updatedGoal: Goal = { ...existingGoal, ...updates };
   await saveLocalGoal(updatedGoal);
 
-  // Queue operation
-  const operation: QueuedOperation = {
+  // Create and persist sync event with FULL goal state (not just the delta)
+  const event: SyncEvent = {
     id: generateId(),
-    type: 'update_goal',
-    entityId: id,
-    payload: updates,
+    type: 'goal_upsert',
     timestamp: new Date().toISOString(),
-    retryCount: 0,
+    synced: false,
+    payload: {
+      id: updatedGoal.id,
+      name: updatedGoal.name,
+      color: updatedGoal.color,
+      position: updatedGoal.position,
+      target_count: updatedGoal.target_count,
+      target_period: updatedGoal.target_period,
+    },
   };
-  await saveQueuedOperation(operation);
+  await saveSyncEvent(event);
+  sendEvent(event).catch(console.error);
 
   return updatedGoal;
 }
@@ -249,16 +263,16 @@ export async function archiveGoal(id: string): Promise<void> {
   };
   await saveLocalGoal(archivedGoal);
 
-  // Queue operation
-  const operation: QueuedOperation = {
+  // Create and persist sync event for goal deletion
+  const event: SyncEvent = {
     id: generateId(),
-    type: 'delete_goal',
-    entityId: id,
-    payload: {},
+    type: 'goal_delete',
     timestamp: new Date().toISOString(),
-    retryCount: 0,
+    synced: false,
+    payload: { id },
   };
-  await saveQueuedOperation(operation);
+  await saveSyncEvent(event);
+  sendEvent(event).catch(console.error);
 }
 
 export async function createCompletion(goalId: string, date: string): Promise<Completion> {
@@ -272,16 +286,16 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
   };
   await saveLocalCompletion(completion);
 
-  // Queue operation
-  const operation: QueuedOperation = {
+  // Create and persist sync event for completion
+  const event: SyncEvent = {
     id: generateId(),
-    type: 'create_completion',
-    entityId: completion.id,
-    payload: { goal_id: goalId, date },
+    type: 'completion_set',
     timestamp: new Date().toISOString(),
-    retryCount: 0,
+    synced: false,
+    payload: { goal_id: goalId, date },
   };
-  await saveQueuedOperation(operation);
+  await saveSyncEvent(event);
+  sendEvent(event).catch(console.error);
 
   return completion;
 }
@@ -295,16 +309,16 @@ export async function deleteCompletion(id: string, goalId: string, date: string)
   // Also delete by goal_id + date (covers sync-created and server-ID mismatches)
   await deleteLocalCompletionByGoalAndDate(goalId, date);
 
-  // Always queue the sync operation using goal_id + date (reliable payload)
-  const operation: QueuedOperation = {
+  // Create and persist sync event for completion removal
+  const event: SyncEvent = {
     id: generateId(),
-    type: 'delete_completion',
-    entityId: id,
-    payload: { goal_id: goalId, date },
+    type: 'completion_unset',
     timestamp: new Date().toISOString(),
-    retryCount: 0,
+    synced: false,
+    payload: { goal_id: goalId, date },
   };
-  await saveQueuedOperation(operation);
+  await saveSyncEvent(event);
+  sendEvent(event).catch(console.error);
 }
 
 export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
@@ -322,16 +336,25 @@ export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
     }
   }
 
-  // Queue operation
-  const operation: QueuedOperation = {
-    id: generateId(),
-    type: 'reorder_goals',
-    entityId: 'reorder',
-    payload: { goal_ids: goalIds },
-    timestamp: new Date().toISOString(),
-    retryCount: 0,
-  };
-  await saveQueuedOperation(operation);
+  // Create one goal_upsert event per goal with the new position
+  for (const goal of updatedGoals) {
+    const event: SyncEvent = {
+      id: generateId(),
+      type: 'goal_upsert',
+      timestamp: new Date().toISOString(),
+      synced: false,
+      payload: {
+        id: goal.id,
+        name: goal.name,
+        color: goal.color,
+        position: goal.position,
+        target_count: goal.target_count,
+        target_period: goal.target_period,
+      },
+    };
+    await saveSyncEvent(event);
+    sendEvent(event).catch(console.error);
+  }
 
   return updatedGoals.sort((a, b) => a.position - b.position);
 }

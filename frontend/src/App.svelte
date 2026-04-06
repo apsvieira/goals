@@ -29,6 +29,7 @@
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, isOnline, type AuthState } from './lib/stores';
   import { syncManager, syncStatus, type SyncStatus } from './lib/sync';
+  import { startEventSync, stopEventSync } from './lib/event-sync';
   import { saveToken, clearToken } from './lib/token-storage';
   import { clearLocalData } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
@@ -394,6 +395,7 @@
 
         // Start automatic sync
         syncManager.startAutoSync();
+        startEventSync();
 
         // Load initial data
         initialAuthInProgress = false;
@@ -414,6 +416,7 @@
   async function handleLogout() {
     // Stop automatic sync
     syncManager.stopAutoSync();
+    stopEventSync();
 
     // Best-effort server-side cleanup
     try { await unregisterPushNotifications(); } catch (e) { console.error('Failed to unregister push:', e); }
@@ -660,6 +663,7 @@
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
       syncManager.stopAutoSync();
+      stopEventSync();
       if (appUrlOpenListener) {
         appUrlOpenListener.remove();
       }
