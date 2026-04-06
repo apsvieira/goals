@@ -332,7 +332,7 @@ class SyncManager {
       if (compChange.completed) {
         // Create or update completion
         const completion: Completion = {
-          id: `${compChange.goal_id}-${compChange.date}`,
+          id: `${compChange.goal_id}:${compChange.date}`,
           goal_id: compChange.goal_id,
           date: compChange.date,
           created_at: compChange.updated_at,

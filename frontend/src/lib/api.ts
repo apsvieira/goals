@@ -83,8 +83,8 @@ async function ensureStorageInitialized(): Promise<void> {
 }
 
 // Generate a unique ID for local storage
-function generateId(): string {
-  return `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+export function generateId(): string {
+  return crypto.randomUUID();
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -260,7 +260,7 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
   await ensureStorageInitialized();
 
   const completion: Completion = {
-    id: generateId(),
+    id: `${goalId}:${date}`,
     goal_id: goalId,
     date,
     created_at: new Date().toISOString(),

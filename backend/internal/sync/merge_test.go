@@ -260,3 +260,49 @@ func TestMergeCompletion_SameTimestamp_BothCompleted_NoOp(t *testing.T) {
 		t.Fatal("both completed at same time: no update needed")
 	}
 }
+
+// --- generateCompletionID tests ---
+
+func TestGenerateCompletionID_DeterministicFormat(t *testing.T) {
+	id := generateCompletionID("goal-abc123", "2026-04-05")
+	expected := "goal-abc123:2026-04-05"
+	if id != expected {
+		t.Errorf("expected %q, got %q", expected, id)
+	}
+}
+
+func TestGenerateCompletionID_SameInputsSameOutput(t *testing.T) {
+	id1 := generateCompletionID("g1", "2026-01-15")
+	id2 := generateCompletionID("g1", "2026-01-15")
+	if id1 != id2 {
+		t.Errorf("same inputs should produce same ID: %q != %q", id1, id2)
+	}
+}
+
+func TestGenerateCompletionID_DifferentInputsDifferentOutput(t *testing.T) {
+	id1 := generateCompletionID("g1", "2026-01-15")
+	id2 := generateCompletionID("g1", "2026-01-16")
+	id3 := generateCompletionID("g2", "2026-01-15")
+	if id1 == id2 {
+		t.Error("different dates should produce different IDs")
+	}
+	if id1 == id3 {
+		t.Error("different goals should produce different IDs")
+	}
+}
+
+func TestMergeCompletion_NewCompletion_UsesDeterministicID(t *testing.T) {
+	client := CompletionChange{
+		GoalID: "goal-xyz", Date: "2026-03-20", Completed: true,
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	merged, shouldApply := MergeCompletion(client, nil)
+	if !shouldApply {
+		t.Fatal("new completed completion should be applied")
+	}
+	expectedID := "goal-xyz:2026-03-20"
+	if merged.ID != expectedID {
+		t.Errorf("expected deterministic ID %q, got %q", expectedID, merged.ID)
+	}
+}
