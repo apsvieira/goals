@@ -27,10 +27,8 @@ export type SyncEventPayload =
   | CompletionSetPayload
   | CompletionUnsetPayload;
 
-export interface SyncEvent {
-  id: string;
-  type: 'goal_upsert' | 'goal_delete' | 'completion_set' | 'completion_unset';
-  timestamp: string;
-  synced: boolean;
-  payload: SyncEventPayload;
-}
+export type SyncEvent =
+  | { id: string; type: 'goal_upsert';     timestamp: string; synced: boolean; payload: GoalUpsertPayload }
+  | { id: string; type: 'goal_delete';      timestamp: string; synced: boolean; payload: GoalDeletePayload }
+  | { id: string; type: 'completion_set';   timestamp: string; synced: boolean; payload: CompletionSetPayload }
+  | { id: string; type: 'completion_unset'; timestamp: string; synced: boolean; payload: CompletionUnsetPayload };

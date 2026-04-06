@@ -262,6 +262,10 @@ export async function saveSyncEvent(event: SyncEvent): Promise<void> {
   await database.put('events', event);
 }
 
+// Note: Loads all events and filters in memory because IndexedDB does not support
+// boolean index keys. For this app's mutation volume (~20/day) this is fine.
+// If the event log grows large, consider pruning old synced events or using a
+// numeric synced field (0/1) with a compound index.
 export async function getUnsyncedEvents(): Promise<SyncEvent[]> {
   const database = getDB();
   const allEvents = await database.getAll('events');
