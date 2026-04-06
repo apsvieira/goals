@@ -101,11 +101,10 @@ export async function flushPendingEvents(): Promise<void> {
   }
 }
 
-// --- Migration: convert old QueuedOperation entries to SyncEvents ---
+// --- Migration (no-op, kept for one release cycle) ---
 
 export async function migrateOldQueue(): Promise<void> {
-  // No-op: the operations store was removed in IndexedDB v4.
-  // This function is kept temporarily for one release cycle, then can be removed.
+  // No-op: kept for one release cycle so callers don't break, then removable.
 }
 
 // --- Lifecycle: online listener + periodic flush ---
@@ -121,7 +120,7 @@ function onOnline(): void {
  * listen for online events, and set up a periodic flush interval as a safety net.
  */
 export async function startEventSync(): Promise<void> {
-  // One-time migration of old QueuedOperation entries to SyncEvents
+  // One-time migration (no-op, kept for one release cycle)
   try {
     await migrateOldQueue();
   } catch (err) {

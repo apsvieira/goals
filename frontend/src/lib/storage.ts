@@ -189,18 +189,6 @@ export async function getLocalCompletionByGoalAndDate(goalId: string, date: stri
   return allCompletions.find(c => c.date === date);
 }
 
-// Meta operations
-export async function getLastSyncedAt(): Promise<string | null> {
-  const database = getDB();
-  const meta = await database.get('meta', 'lastSyncedAt');
-  return meta?.value ?? null;
-}
-
-export async function setLastSyncedAt(timestamp: string): Promise<void> {
-  const database = getDB();
-  await database.put('meta', { key: 'lastSyncedAt', value: timestamp });
-}
-
 // Clear all local data
 export async function clearLocalData(): Promise<void> {
   const database = getDB();

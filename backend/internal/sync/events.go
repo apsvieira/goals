@@ -166,22 +166,29 @@ func (s *Service) processGoalUpsert(userID string, event EventRequest) error {
 }
 
 func (s *Service) processGoalDelete(userID string, event EventRequest) error {
-	p := event.Payload
-
 	change := GoalChange{
-		ID:        p.ID,
+		ID:        event.Payload.ID,
 		UpdatedAt: event.Timestamp,
 		Deleted:   true,
 	}
 
-	serverGoal, err := s.db.GetGoalByID(p.ID)
+	serverGoal, err := s.db.GetGoalByID(event.Payload.ID)
 	if err != nil {
 		return err
 	}
 
 	// Verify ownership if goal exists
 	if serverGoal != nil && (serverGoal.UserID == nil || *serverGoal.UserID != userID) {
-		return fmt.Errorf("goal %s not owned by user", p.ID)
+		return nil
+	}
+
+	// Preserve metadata from existing server goal for archival integrity
+	if serverGoal != nil {
+		change.Name = serverGoal.Name
+		change.Color = serverGoal.Color
+		change.Position = serverGoal.Position
+		change.TargetCount = serverGoal.TargetCount
+		change.TargetPeriod = serverGoal.TargetPeriod
 	}
 
 	mergedGoal, shouldApply := MergeGoal(change, serverGoal)
@@ -193,7 +200,6 @@ func (s *Service) processGoalDelete(userID string, event EventRequest) error {
 			return err
 		}
 	}
-
 	return nil
 }
 

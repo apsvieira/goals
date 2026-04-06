@@ -563,6 +563,77 @@ func TestProcessEvents_EmptyBatch(t *testing.T) {
 	}
 }
 
+func TestProcessEvents_GoalDeletePreservesMetadata(t *testing.T) {
+	svc, userID, cleanup := setupEventsTest(t)
+	defer cleanup()
+
+	targetCount := 5
+	targetPeriod := "week"
+
+	// Create a goal with full metadata
+	goal := &models.Goal{
+		ID:           "goal-meta",
+		Name:         "Meditation",
+		Color:        "#AB12CD",
+		Position:     7,
+		TargetCount:  &targetCount,
+		TargetPeriod: &targetPeriod,
+		UserID:       &userID,
+		CreatedAt:    time.Now().UTC(),
+		UpdatedAt:    time.Now().UTC().Add(-time.Hour),
+	}
+	if err := svc.db.UpsertGoal(goal); err != nil {
+		t.Fatalf("upsert goal: %v", err)
+	}
+
+	// Delete via event (payload only contains the ID)
+	events := []EventRequest{
+		{
+			ID:        "evt-meta-del",
+			Type:      EventTypeGoalDelete,
+			Timestamp: time.Now().UTC(),
+			Payload: EventPayload{
+				ID: "goal-meta",
+			},
+		},
+	}
+
+	resp, err := svc.ProcessEvents(userID, events)
+	if err != nil {
+		t.Fatalf("ProcessEvents failed: %v", err)
+	}
+	if len(resp.Processed) != 1 {
+		t.Fatalf("expected 1 processed, got %d", len(resp.Processed))
+	}
+
+	// Verify soft-deleted AND metadata preserved
+	deleted, err := svc.db.GetGoalByID("goal-meta")
+	if err != nil {
+		t.Fatalf("GetGoalByID failed: %v", err)
+	}
+	if deleted == nil {
+		t.Fatal("expected goal to still exist (soft-deleted)")
+	}
+	if deleted.DeletedAt == nil {
+		t.Fatal("expected goal to be soft-deleted")
+	}
+	if deleted.Name != "Meditation" {
+		t.Errorf("expected name 'Meditation' preserved, got '%s'", deleted.Name)
+	}
+	if deleted.Color != "#AB12CD" {
+		t.Errorf("expected color '#AB12CD' preserved, got '%s'", deleted.Color)
+	}
+	if deleted.Position != 7 {
+		t.Errorf("expected position 7 preserved, got %d", deleted.Position)
+	}
+	if deleted.TargetCount == nil || *deleted.TargetCount != 5 {
+		t.Errorf("expected target_count=5 preserved, got %v", deleted.TargetCount)
+	}
+	if deleted.TargetPeriod == nil || *deleted.TargetPeriod != "week" {
+		t.Errorf("expected target_period='week' preserved, got %v", deleted.TargetPeriod)
+	}
+}
+
 func TestProcessEvents_GoalUpsertStaleTimestamp_LWWRejects(t *testing.T) {
 	svc, userID, cleanup := setupEventsTest(t)
 	defer cleanup()
