@@ -8,6 +8,7 @@ import {
   getSyncEvents,
   saveLocalGoal,
 } from '../storage';
+import { syncStatus } from '../sync';
 import type { SyncEvent } from '../events';
 
 // Mock @capacitor/core to avoid native platform detection
@@ -364,5 +365,92 @@ describe('api.ts creates SyncEvent on mutation', () => {
     expect(byGoalId['g-c'].position).toBe(1);
     expect(byGoalId['g-a'].position).toBe(2);
     expect(byGoalId['g-b'].position).toBe(3);
+  }, 10000);
+});
+
+describe('flushPendingEvents syncStatus', () => {
+  beforeEach(() => {
+    resetDB();
+    vi.restoreAllMocks();
+    syncStatus.set({ state: 'idle' });
+    mockAuthStore.subscribe = vi.fn((cb: (v: unknown) => void) => {
+      cb({ type: 'authenticated', user: { id: 'u1', email: 'test@test.com', created_at: '' } });
+      return () => {};
+    });
+  });
+
+  afterEach(async () => {
+    resetDB();
+    try {
+      await deleteDB('goal-tracker');
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should set syncStatus to syncing then idle on successful flush', async () => {
+    await initStorage();
+
+    await saveSyncEvent(makeEvent({ id: 'evt-status-1' }));
+
+    const statusSnapshots: Array<{ state: string }> = [];
+    const unsubscribe = syncStatus.subscribe(s => statusSnapshots.push({ ...s }));
+
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ processed: ['evt-status-1'] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { flushPendingEvents } = await import('../event-sync');
+    await flushPendingEvents();
+
+    unsubscribe();
+
+    // Should have transitioned: idle -> syncing -> idle
+    const states = statusSnapshots.map(s => s.state);
+    expect(states).toContain('syncing');
+    expect(states[states.length - 1]).toBe('idle');
+  }, 10000);
+
+  it('should set syncStatus to error on network failure', async () => {
+    await initStorage();
+
+    await saveSyncEvent(makeEvent({ id: 'evt-status-err' }));
+
+    const statusSnapshots: Array<Record<string, unknown>> = [];
+    const unsubscribe = syncStatus.subscribe(s => statusSnapshots.push({ ...s }));
+
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+    const { flushPendingEvents } = await import('../event-sync');
+    await flushPendingEvents();
+
+    unsubscribe();
+
+    const lastStatus = statusSnapshots[statusSnapshots.length - 1];
+    expect(lastStatus.state).toBe('error');
+    expect(lastStatus.message).toBe('Sync failed');
+    expect(lastStatus.canRetry).toBe(true);
+  }, 10000);
+
+  it('should not set syncStatus to syncing when there are no unsynced events', async () => {
+    await initStorage();
+
+    const statusSnapshots: Array<{ state: string }> = [];
+    const unsubscribe = syncStatus.subscribe(s => statusSnapshots.push({ ...s }));
+
+    globalThis.fetch = vi.fn();
+
+    const { flushPendingEvents } = await import('../event-sync');
+    await flushPendingEvents();
+
+    unsubscribe();
+
+    // Should never have reached 'syncing' state
+    const states = statusSnapshots.map(s => s.state);
+    expect(states).not.toContain('syncing');
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   }, 10000);
 });

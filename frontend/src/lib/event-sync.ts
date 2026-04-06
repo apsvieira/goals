@@ -7,6 +7,7 @@ import { getToken } from './token-storage';
 import { get } from 'svelte/store';
 import { authStore } from './stores';
 import { getApiBase } from './config';
+import { syncStatus } from './sync';
 
 const FLUSH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes safety net
 
@@ -70,6 +71,8 @@ export async function flushPendingEvents(): Promise<void> {
     const events = await getUnsyncedEvents();
     if (events.length === 0) return;
 
+    syncStatus.set({ state: 'syncing', message: 'Syncing...' });
+
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const token = await getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -95,10 +98,12 @@ export async function flushPendingEvents(): Promise<void> {
       }
     }
   } catch {
-    // Will retry on next flush
+    syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });
+    return;
   } finally {
     isFlushing = false;
   }
+  syncStatus.set({ state: 'idle' });
 }
 
 // --- Migration (no-op, kept for one release cycle) ---
