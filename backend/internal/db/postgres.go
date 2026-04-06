@@ -901,18 +901,58 @@ func (d *PostgresDB) UpsertCompletion(c *models.Completion) error {
 		c.UpdatedAt = now
 	}
 
-	_, err := d.Exec(`
+	// Multi-step upsert to handle dual unique constraints
+	// (PK on id + UNIQUE on goal_id,date).
+
+	// Step 1: Try to update by PK (most common path: same id for same row).
+	res, err := d.Exec(`
+		UPDATE completions SET
+			updated_at = $1,
+			deleted_at = $2
+		WHERE id = $3 AND $1 > updated_at
+	`, c.UpdatedAt, c.DeletedAt, c.ID)
+	if err != nil {
+		return fmt.Errorf("upsert completion (update by id): %w", err)
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected > 0 {
+		return nil
+	}
+
+	// Check if the row exists by id but wasn't updated (server is newer).
+	var existsByID int
+	if err := d.QueryRow(`SELECT COUNT(*) FROM completions WHERE id = $1`, c.ID).Scan(&existsByID); err != nil {
+		return fmt.Errorf("upsert completion (check id): %w", err)
+	}
+	if existsByID > 0 {
+		return nil // Row exists but server is newer; LWW keeps server version
+	}
+
+	// Step 2: Try to update by (goal_id, date) — handles the case where a
+	// different id maps to the same (goal_id, date) pair (sync race).
+	res, err = d.Exec(`
+		UPDATE completions SET
+			id = $1,
+			updated_at = $2,
+			deleted_at = $3
+		WHERE goal_id = $4 AND date = $5 AND $2 > updated_at
+	`, c.ID, c.UpdatedAt, c.DeletedAt, c.GoalID, c.Date)
+	if err != nil {
+		return fmt.Errorf("upsert completion (update by goal_date): %w", err)
+	}
+	rowsAffected, _ = res.RowsAffected()
+	if rowsAffected > 0 {
+		return nil
+	}
+
+	// Step 3: No existing row; insert new (ignore conflicts from races).
+	_, err = d.Exec(`
 		INSERT INTO completions (id, goal_id, date, created_at, updated_at, deleted_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT(goal_id, date) DO UPDATE SET
-			id = EXCLUDED.id,
-			updated_at = EXCLUDED.updated_at,
-			deleted_at = EXCLUDED.deleted_at
-		WHERE EXCLUDED.updated_at > completions.updated_at
+		ON CONFLICT DO NOTHING
 	`, c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt, c.DeletedAt)
-
 	if err != nil {
-		return fmt.Errorf("upsert completion: %w", err)
+		return fmt.Errorf("upsert completion (insert): %w", err)
 	}
 	return nil
 }

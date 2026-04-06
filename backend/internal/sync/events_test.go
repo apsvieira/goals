@@ -562,3 +562,64 @@ func TestProcessEvents_EmptyBatch(t *testing.T) {
 		t.Errorf("expected 0 processed, got %d", len(resp.Processed))
 	}
 }
+
+func TestProcessEvents_GoalUpsertStaleTimestamp_LWWRejects(t *testing.T) {
+	svc, userID, cleanup := setupEventsTest(t)
+	defer cleanup()
+
+	// Insert a goal with a recent timestamp directly in the DB (server copy).
+	serverTime := time.Now().UTC()
+	serverGoal := &models.Goal{
+		ID:        "goal-lww",
+		Name:      "ServerName",
+		Color:     "#00FF00",
+		Position:  1,
+		UserID:    &userID,
+		CreatedAt: serverTime,
+		UpdatedAt: serverTime,
+	}
+	if err := svc.db.UpsertGoal(serverGoal); err != nil {
+		t.Fatalf("upsert server goal: %v", err)
+	}
+
+	// Send a goal_upsert event with an older timestamp (stale client change).
+	staleTime := serverTime.Add(-time.Hour)
+	events := []EventRequest{
+		{
+			ID:        "evt-stale",
+			Type:      EventTypeGoalUpsert,
+			Timestamp: staleTime,
+			Payload: EventPayload{
+				ID:    "goal-lww",
+				Name:  "StaleName",
+				Color: "#FF0000",
+			},
+		},
+	}
+
+	resp, err := svc.ProcessEvents(userID, events)
+	if err != nil {
+		t.Fatalf("ProcessEvents failed: %v", err)
+	}
+	if len(resp.Processed) != 1 || resp.Processed[0] != "evt-stale" {
+		t.Errorf("expected processed=[evt-stale], got %v", resp.Processed)
+	}
+
+	// Verify the goal is unchanged (server wins LWW).
+	goal, err := svc.db.GetGoalByID("goal-lww")
+	if err != nil {
+		t.Fatalf("GetGoalByID failed: %v", err)
+	}
+	if goal == nil {
+		t.Fatal("expected goal to exist")
+	}
+	if goal.Name != "ServerName" {
+		t.Errorf("expected name 'ServerName' (server wins), got '%s'", goal.Name)
+	}
+	if goal.Color != "#00FF00" {
+		t.Errorf("expected color '#00FF00' (server wins), got '%s'", goal.Color)
+	}
+	if goal.Position != 1 {
+		t.Errorf("expected position 1 (server wins), got %d", goal.Position)
+	}
+}

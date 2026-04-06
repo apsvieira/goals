@@ -20,7 +20,7 @@ type EventPayload struct {
 	ID           string  `json:"id,omitempty"`
 	Name         string  `json:"name,omitempty"`
 	Color        string  `json:"color,omitempty"`
-	Position     int     `json:"position,omitempty"`
+	Position     int     `json:"position"`
 	TargetCount  *int    `json:"target_count,omitempty"`
 	TargetPeriod *string `json:"target_period,omitempty"`
 
@@ -55,10 +55,19 @@ func (s *Service) ProcessEvents(userID string, events []EventRequest) (*EventsRe
 	userLock.Lock()
 	defer userLock.Unlock()
 
-	// Lazily prune old processed events (older than 30 days)
-	pruneThreshold := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	if err := s.db.PruneProcessedEvents(pruneThreshold); err != nil {
-		return nil, fmt.Errorf("prune processed events: %w", err)
+	// Lazily prune old processed events (older than 30 days), at most once per hour
+	now := time.Now().UTC()
+	s.mu.Lock()
+	shouldPrune := now.Sub(s.lastPruneTime) > time.Hour
+	s.mu.Unlock()
+	if shouldPrune {
+		pruneThreshold := now.Add(-30 * 24 * time.Hour)
+		if err := s.db.PruneProcessedEvents(pruneThreshold); err != nil {
+			return nil, fmt.Errorf("prune processed events: %w", err)
+		}
+		s.mu.Lock()
+		s.lastPruneTime = now
+		s.mu.Unlock()
 	}
 
 	// Sort events by timestamp to process in order

@@ -10,9 +10,10 @@ import (
 
 // Service handles sync operations
 type Service struct {
-	db    db.Database
-	mu    sync.Mutex
-	locks map[string]*sync.Mutex
+	db            db.Database
+	mu            sync.Mutex
+	locks         map[string]*sync.Mutex
+	lastPruneTime time.Time
 }
 
 // NewService creates a new sync service
