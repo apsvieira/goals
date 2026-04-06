@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/apsv/goal-tracker/backend/internal/models"
+	"github.com/google/uuid"
 )
 
 // MergeGoal merges a client goal change with a server goal using Last-Write-Wins strategy.
@@ -128,7 +129,10 @@ func CompletionToChange(completion *models.Completion) CompletionChange {
 	}
 }
 
-// generateCompletionID generates a deterministic ID for a completion from its goal and date.
+// completionNamespace is a fixed UUID v5 namespace for generating deterministic completion IDs.
+var completionNamespace = uuid.MustParse("a3c1f8d2-7b4e-4f9a-b6c5-d8e2f1a0b3c4")
+
+// generateCompletionID generates a deterministic UUID v5 for a completion from its goal and date.
 func generateCompletionID(goalID, date string) string {
-	return goalID + ":" + date
+	return uuid.NewSHA1(completionNamespace, []byte(goalID+":"+date)).String()
 }

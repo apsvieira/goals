@@ -263,11 +263,14 @@ func TestMergeCompletion_SameTimestamp_BothCompleted_NoOp(t *testing.T) {
 
 // --- generateCompletionID tests ---
 
-func TestGenerateCompletionID_DeterministicFormat(t *testing.T) {
+func TestGenerateCompletionID_ValidUUID(t *testing.T) {
 	id := generateCompletionID("goal-abc123", "2026-04-05")
-	expected := "goal-abc123:2026-04-05"
-	if id != expected {
-		t.Errorf("expected %q, got %q", expected, id)
+	if len(id) != 36 {
+		t.Errorf("expected UUID format (36 chars), got %q (%d chars)", id, len(id))
+	}
+	// Should not contain the raw input (old bug: was goalID:date)
+	if id == "goal-abc123:2026-04-05" {
+		t.Error("should produce a UUID, not goalID:date concatenation")
 	}
 }
 
@@ -301,7 +304,7 @@ func TestMergeCompletion_NewCompletion_UsesDeterministicID(t *testing.T) {
 	if !shouldApply {
 		t.Fatal("new completed completion should be applied")
 	}
-	expectedID := "goal-xyz:2026-03-20"
+	expectedID := generateCompletionID("goal-xyz", "2026-03-20")
 	if merged.ID != expectedID {
 		t.Errorf("expected deterministic ID %q, got %q", expectedID, merged.ID)
 	}
