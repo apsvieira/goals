@@ -13,7 +13,7 @@ import {
   deleteQueuedOperation,
   type QueuedOperation,
 } from './storage';
-import type { Goal, Completion } from './api';
+import { generateCompletionId, type Goal, type Completion } from './api';
 import { Capacitor } from '@capacitor/core';
 import { getToken } from './token-storage';
 
@@ -332,7 +332,7 @@ class SyncManager {
       if (compChange.completed) {
         // Create or update completion
         const completion: Completion = {
-          id: `${compChange.goal_id}:${compChange.date}`,
+          id: generateCompletionId(compChange.goal_id, compChange.date),
           goal_id: compChange.goal_id,
           date: compChange.date,
           created_at: compChange.updated_at,

@@ -1,11 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { deleteDB } from 'idb';
-import { generateId } from '../api';
+import { generateId, generateCompletionId } from '../api';
 import {
   initStorage,
   resetDB,
-  saveLocalGoal,
-  getLocalGoals,
   saveLocalCompletion,
   getLocalCompletions,
 } from '../storage';
@@ -47,15 +45,12 @@ describe('Completion ID format', () => {
   it('should create completions with deterministic goalId:date IDs', async () => {
     await initStorage();
 
-    // We import createCompletion dynamically to avoid hoisting issues
-    // with module-level mocks. Instead, test the ID format directly.
     const goalId = 'abc-123';
     const date = '2026-04-05';
-    const expectedId = `${goalId}:${date}`;
+    const expectedId = generateCompletionId(goalId, date);
 
-    // Simulate what createCompletion does for the ID
     const completion = {
-      id: `${goalId}:${date}`,
+      id: generateCompletionId(goalId, date),
       goal_id: goalId,
       date,
       created_at: new Date().toISOString(),
@@ -72,22 +67,22 @@ describe('Completion ID format', () => {
   it('should produce the same ID for the same goal and date', () => {
     const goalId = 'goal-xyz';
     const date = '2026-01-15';
-    const id1 = `${goalId}:${date}`;
-    const id2 = `${goalId}:${date}`;
+    const id1 = generateCompletionId(goalId, date);
+    const id2 = generateCompletionId(goalId, date);
     expect(id1).toBe(id2);
   });
 
   it('should produce different IDs for different dates', () => {
     const goalId = 'goal-xyz';
-    const id1 = `${goalId}:2026-01-15`;
-    const id2 = `${goalId}:2026-01-16`;
+    const id1 = generateCompletionId(goalId, '2026-01-15');
+    const id2 = generateCompletionId(goalId, '2026-01-16');
     expect(id1).not.toBe(id2);
   });
 
   it('should produce different IDs for different goals', () => {
     const date = '2026-01-15';
-    const id1 = `goal-a:${date}`;
-    const id2 = `goal-b:${date}`;
+    const id1 = generateCompletionId('goal-a', date);
+    const id2 = generateCompletionId('goal-b', date);
     expect(id1).not.toBe(id2);
   });
 

@@ -87,6 +87,11 @@ export function generateId(): string {
   return crypto.randomUUID();
 }
 
+// Generate a deterministic completion ID from goal ID and date
+export function generateCompletionId(goalId: string, date: string): string {
+  return `${goalId}:${date}`;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   // Build headers with optional Authorization token for mobile
   const headers: Record<string, string> = {
@@ -260,7 +265,7 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
   await ensureStorageInitialized();
 
   const completion: Completion = {
-    id: `${goalId}:${date}`,
+    id: generateCompletionId(goalId, date),
     goal_id: goalId,
     date,
     created_at: new Date().toISOString(),
