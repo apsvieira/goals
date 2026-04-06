@@ -14,8 +14,8 @@ import {
   type QueuedOperation,
 } from './storage';
 import { generateCompletionId, type Goal, type Completion } from './api';
-import { Capacitor } from '@capacitor/core';
 import { getToken } from './token-storage';
+import { getApiBase } from './config';
 
 // Sync status store for UI feedback
 export type SyncStatus =
@@ -25,15 +25,6 @@ export type SyncStatus =
   | { state: 'error'; message: string; canRetry: boolean };
 
 export const syncStatus = writable<SyncStatus>({ state: 'idle' });
-
-const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
-
-function getApiBase(): string {
-  if (Capacitor.isNativePlatform()) {
-    return `${PRODUCTION_API_URL}/api/v1`;
-  }
-  return '/api/v1';
-}
 
 const API_BASE = getApiBase();
 

@@ -1,5 +1,4 @@
 import { get } from 'svelte/store';
-import { Capacitor } from '@capacitor/core';
 import { authStore, type User } from './stores';
 import {
   initStorage,
@@ -17,19 +16,9 @@ import {
   saveSyncEvent,
 } from './storage';
 import type { SyncEvent } from './events';
-import { sendEvent } from './event-sync';
+import { sendEvent, flushPendingEvents } from './event-sync';
 import { getToken } from './token-storage';
-
-const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
-
-// Use production URL for native platforms, relative URL for web (Vite proxy handles localhost)
-function getApiBase(): string {
-  if (Capacitor.isNativePlatform()) {
-    return `${PRODUCTION_API_URL}/api/v1`;
-  }
-  // Always use relative path - Vite proxy handles localhost in development
-  return '/api/v1';
-}
+import { getApiBase } from './config';
 
 const API_BASE = getApiBase();
 
@@ -336,7 +325,7 @@ export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
     }
   }
 
-  // Create one goal_upsert event per goal with the new position
+  // Save all goal_upsert events first, then batch-flush once
   for (const goal of updatedGoals) {
     const event: SyncEvent = {
       id: generateId(),
@@ -353,8 +342,8 @@ export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
       },
     };
     await saveSyncEvent(event);
-    sendEvent(event).catch(console.error);
   }
+  flushPendingEvents().catch(console.error);
 
   return updatedGoals.sort((a, b) => a.position - b.position);
 }

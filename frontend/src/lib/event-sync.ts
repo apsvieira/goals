@@ -1,19 +1,13 @@
 import { getUnsyncedEvents, markEventsSynced } from './storage';
 import type { SyncEvent } from './events';
 import { getToken } from './token-storage';
-import { Capacitor } from '@capacitor/core';
 import { get } from 'svelte/store';
 import { authStore } from './stores';
+import { getApiBase } from './config';
 
-const PRODUCTION_API_URL = 'https://goal-tracker-app.fly.dev';
 const FLUSH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes safety net
 
-function getApiBase(): string {
-  if (Capacitor.isNativePlatform()) {
-    return `${PRODUCTION_API_URL}/api/v1`;
-  }
-  return '/api/v1';
-}
+let isFlushing = false;
 
 /**
  * Send a single event to the server immediately (fire-and-forget).
@@ -62,15 +56,17 @@ export async function sendEvent(event: SyncEvent): Promise<void> {
  * Called on reconnect, on a timer, and at startup.
  */
 export async function flushPendingEvents(): Promise<void> {
+  if (isFlushing) return;
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
 
   const auth = get(authStore);
   if (auth.type !== 'authenticated') return;
 
-  const events = await getUnsyncedEvents();
-  if (events.length === 0) return;
-
+  isFlushing = true;
   try {
+    const events = await getUnsyncedEvents();
+    if (events.length === 0) return;
+
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const token = await getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -97,6 +93,8 @@ export async function flushPendingEvents(): Promise<void> {
     }
   } catch {
     // Will retry on next flush
+  } finally {
+    isFlushing = false;
   }
 }
 
