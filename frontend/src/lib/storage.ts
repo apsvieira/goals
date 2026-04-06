@@ -2,16 +2,6 @@ import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Goal, Completion } from './api';
 import type { SyncEvent } from './events';
 
-export interface QueuedOperation {
-  id: string;
-  type: 'create_goal' | 'update_goal' | 'delete_goal' |
-        'create_completion' | 'delete_completion' | 'reorder_goals';
-  entityId: string;
-  payload: any;
-  timestamp: string;
-  retryCount: number;
-}
-
 interface GoalTrackerDB extends DBSchema {
   goals: {
     key: string;
@@ -27,11 +17,6 @@ interface GoalTrackerDB extends DBSchema {
     key: string;
     value: { key: string; value: string | null };
   };
-  operations: {
-    key: string;
-    value: QueuedOperation;
-    indexes: { 'by-timestamp': string };
-  };
   events: {
     key: string;
     value: SyncEvent;
@@ -40,7 +25,7 @@ interface GoalTrackerDB extends DBSchema {
 }
 
 const DB_NAME = 'goal-tracker';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let db: IDBPDatabase<GoalTrackerDB> | null = null;
 
@@ -84,6 +69,13 @@ export async function initStorage(): Promise<void> {
           const eventsStore = database.createObjectStore('events', { keyPath: 'id' });
           eventsStore.createIndex('by-timestamp', 'timestamp');
         }
+
+        // Remove the old operations queue store (replaced by events store in v3)
+        if (oldVersion < 4) {
+          if (database.objectStoreNames.contains('operations')) {
+            database.deleteObjectStore('operations');
+          }
+        }
       },
     });
   } catch (error) {
@@ -124,6 +116,13 @@ export async function initStorage(): Promise<void> {
           if (oldVersion < 3) {
             const eventsStore = database.createObjectStore('events', { keyPath: 'id' });
             eventsStore.createIndex('by-timestamp', 'timestamp');
+          }
+
+          // Remove the old operations queue store (replaced by events store in v3)
+          if (oldVersion < 4) {
+            if (database.objectStoreNames.contains('operations')) {
+              database.deleteObjectStore('operations');
+            }
           }
         },
       });
@@ -208,7 +207,6 @@ export async function clearLocalData(): Promise<void> {
   await database.clear('goals');
   await database.clear('completions');
   await database.clear('meta');
-  await database.clear('operations');
   await database.clear('events');
 }
 
@@ -232,23 +230,6 @@ export async function deleteLocalCompletionByGoalAndDate(goalId: string, date: s
   if (completion) {
     await database.delete('completions', completion.id);
   }
-}
-
-// Operation queue operations (kept temporarily for Task 6 migration)
-export async function getQueuedOperations(): Promise<QueuedOperation[]> {
-  const database = getDB();
-  const operations = await database.getAllFromIndex('operations', 'by-timestamp');
-  return operations.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-}
-
-export async function saveQueuedOperation(op: QueuedOperation): Promise<void> {
-  const database = getDB();
-  await database.put('operations', op);
-}
-
-export async function deleteQueuedOperation(id: string): Promise<void> {
-  const database = getDB();
-  await database.delete('operations', id);
 }
 
 // Sync event operations

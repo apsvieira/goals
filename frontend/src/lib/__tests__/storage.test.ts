@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { deleteDB } from 'idb';
 import {
   initStorage,
-  getQueuedOperations,
   clearLocalData,
   resetDB,
   saveLocalGoal,
@@ -110,10 +109,6 @@ describe('Storage clearLocalData', () => {
     expect(goals).toHaveLength(0);
     events = await getSyncEvents();
     expect(events).toHaveLength(0);
-
-    // Operations queue should also be empty
-    const ops = await getQueuedOperations();
-    expect(ops).toHaveLength(0);
   }, 10000);
 });
 
