@@ -96,6 +96,9 @@ export async function flushPendingEvents(): Promise<void> {
       if (data.processed?.length > 0) {
         await markEventsSynced(data.processed);
       }
+    } else {
+      syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });
+      return;
     }
   } catch {
     syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });

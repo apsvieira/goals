@@ -435,6 +435,29 @@ describe('flushPendingEvents syncStatus', () => {
     expect(lastStatus.canRetry).toBe(true);
   }, 10000);
 
+  it('should set syncStatus to error on HTTP error response', async () => {
+    await initStorage();
+
+    await saveSyncEvent(makeEvent({ id: 'evt-status-500' }));
+
+    const statusSnapshots: Array<Record<string, unknown>> = [];
+    const unsubscribe = syncStatus.subscribe(s => statusSnapshots.push({ ...s }));
+
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('Internal Server Error', { status: 500 })
+    );
+
+    const { flushPendingEvents } = await import('../event-sync');
+    await flushPendingEvents();
+
+    unsubscribe();
+
+    const lastStatus = statusSnapshots[statusSnapshots.length - 1];
+    expect(lastStatus.state).toBe('error');
+    expect(lastStatus.message).toBe('Sync failed');
+    expect(lastStatus.canRetry).toBe(true);
+  }, 10000);
+
   it('should not set syncStatus to syncing when there are no unsynced events', async () => {
     await initStorage();
 
