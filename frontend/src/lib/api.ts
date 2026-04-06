@@ -115,7 +115,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export async function getCalendar(month: string): Promise<CalendarResponse> {
   await ensureStorageInitialized();
   try {
-    return await request<CalendarResponse>(`/calendar?month=${month}`);
+    const data = await request<CalendarResponse>(`/calendar?month=${month}`);
+
+    // Persist server data to IndexedDB so local mutations (archive, update) can find goals
+    for (const goal of data.goals ?? []) {
+      await saveLocalGoal(goal);
+    }
+    for (const completion of data.completions ?? []) {
+      await saveLocalCompletion(completion);
+    }
+
+    return data;
   } catch (e) {
     const goals = await getLocalGoals();
     const completions = await getLocalCompletions(month);
