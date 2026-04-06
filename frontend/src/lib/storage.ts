@@ -1,5 +1,6 @@
 import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Goal, Completion } from './api';
+import type { SyncEvent } from './events';
 
 export interface QueuedOperation {
   id: string;
@@ -31,10 +32,15 @@ interface GoalTrackerDB extends DBSchema {
     value: QueuedOperation;
     indexes: { 'by-timestamp': string };
   };
+  events: {
+    key: string;
+    value: SyncEvent;
+    indexes: { 'by-timestamp': string };
+  };
 }
 
 const DB_NAME = 'goal-tracker';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let db: IDBPDatabase<GoalTrackerDB> | null = null;
 
@@ -72,6 +78,12 @@ export async function initStorage(): Promise<void> {
           const operationsStore = database.createObjectStore('operations', { keyPath: 'id' });
           operationsStore.createIndex('by-timestamp', 'timestamp');
         }
+
+        // Add events store in version 3
+        if (oldVersion < 3) {
+          const eventsStore = database.createObjectStore('events', { keyPath: 'id' });
+          eventsStore.createIndex('by-timestamp', 'timestamp');
+        }
       },
     });
   } catch (error) {
@@ -106,6 +118,12 @@ export async function initStorage(): Promise<void> {
           if (oldVersion < 2) {
             const operationsStore = database.createObjectStore('operations', { keyPath: 'id' });
             operationsStore.createIndex('by-timestamp', 'timestamp');
+          }
+
+          // Add events store in version 3
+          if (oldVersion < 3) {
+            const eventsStore = database.createObjectStore('events', { keyPath: 'id' });
+            eventsStore.createIndex('by-timestamp', 'timestamp');
           }
         },
       });
@@ -191,6 +209,7 @@ export async function clearLocalData(): Promise<void> {
   await database.clear('completions');
   await database.clear('meta');
   await database.clear('operations');
+  await database.clear('events');
 }
 
 // Get max position for new goals
@@ -235,4 +254,36 @@ export async function deleteQueuedOperation(id: string): Promise<void> {
 export async function clearQueuedOperations(): Promise<void> {
   const database = getDB();
   await database.clear('operations');
+}
+
+// Sync event operations
+export async function saveSyncEvent(event: SyncEvent): Promise<void> {
+  const database = getDB();
+  await database.put('events', event);
+}
+
+export async function getUnsyncedEvents(): Promise<SyncEvent[]> {
+  const database = getDB();
+  const allEvents = await database.getAll('events');
+  return allEvents
+    .filter((e) => !e.synced)
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
+export async function markEventsSynced(ids: string[]): Promise<void> {
+  const database = getDB();
+  const tx = database.transaction('events', 'readwrite');
+  for (const id of ids) {
+    const event = await tx.store.get(id);
+    if (event) {
+      event.synced = true;
+      await tx.store.put(event);
+    }
+  }
+  await tx.done;
+}
+
+export async function getSyncEvents(): Promise<SyncEvent[]> {
+  const database = getDB();
+  return database.getAll('events');
 }
