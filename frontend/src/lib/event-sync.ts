@@ -12,7 +12,6 @@ import { getApiBase } from './config';
 export type SyncStatus =
   | { state: 'idle' }
   | { state: 'syncing'; message: string }
-  | { state: 'success'; message: string }
   | { state: 'error'; message: string; canRetry: boolean };
 
 export const syncStatus = writable<SyncStatus>({ state: 'idle' });
@@ -164,4 +163,6 @@ export function stopEventSync(): void {
     clearInterval(flushIntervalId);
     flushIntervalId = null;
   }
+
+  syncStatus.set({ state: 'idle' });
 }
