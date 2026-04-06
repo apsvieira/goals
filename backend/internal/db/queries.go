@@ -797,18 +797,57 @@ func (d *SQLiteDB) UpsertCompletion(c *models.Completion) error {
 		c.UpdatedAt = now
 	}
 
-	_, err := d.Exec(`
-		INSERT INTO completions (id, goal_id, date, created_at, updated_at, deleted_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(goal_id, date) DO UPDATE SET
-			id = excluded.id,
-			updated_at = excluded.updated_at,
-			deleted_at = excluded.deleted_at
-		WHERE excluded.updated_at > completions.updated_at
-	`, c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt, c.DeletedAt)
+	// Multi-step upsert to handle SQLite's limitation with multiple unique
+	// constraints (PK on id + UNIQUE on goal_id,date).
 
+	// Step 1: Try to update by PK (most common path: same id for same row).
+	res, err := d.Exec(`
+		UPDATE completions SET
+			updated_at = ?,
+			deleted_at = ?
+		WHERE id = ? AND ? > updated_at
+	`, c.UpdatedAt, c.DeletedAt, c.ID, c.UpdatedAt)
 	if err != nil {
-		return fmt.Errorf("upsert completion: %w", err)
+		return fmt.Errorf("upsert completion (update by id): %w", err)
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected > 0 {
+		return nil
+	}
+
+	// Check if the row exists by id but wasn't updated (server is newer).
+	var existsByID int
+	if err := d.QueryRow(`SELECT COUNT(*) FROM completions WHERE id = ?`, c.ID).Scan(&existsByID); err != nil {
+		return fmt.Errorf("upsert completion (check id): %w", err)
+	}
+	if existsByID > 0 {
+		return nil // Row exists but server is newer; LWW keeps server version
+	}
+
+	// Step 2: Try to update by (goal_id, date) — handles the case where a
+	// different id maps to the same (goal_id, date) pair (sync race).
+	res, err = d.Exec(`
+		UPDATE completions SET
+			id = ?,
+			updated_at = ?,
+			deleted_at = ?
+		WHERE goal_id = ? AND date = ? AND ? > updated_at
+	`, c.ID, c.UpdatedAt, c.DeletedAt, c.GoalID, c.Date, c.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("upsert completion (update by goal_date): %w", err)
+	}
+	rowsAffected, _ = res.RowsAffected()
+	if rowsAffected > 0 {
+		return nil
+	}
+
+	// Step 3: No existing row; insert new.
+	_, err = d.Exec(`
+		INSERT OR IGNORE INTO completions (id, goal_id, date, created_at, updated_at, deleted_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, c.ID, c.GoalID, c.Date, c.CreatedAt, c.UpdatedAt, c.DeletedAt)
+	if err != nil {
+		return fmt.Errorf("upsert completion (insert): %w", err)
 	}
 	return nil
 }
@@ -973,6 +1012,34 @@ func (d *SQLiteDB) UpdateDeviceTokenLastUsed(tokenID string) error {
 	)
 	if err != nil {
 		return fmt.Errorf("update device token last used: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) IsEventProcessed(eventID string) (bool, error) {
+	var count int
+	err := d.QueryRow(`SELECT COUNT(*) FROM processed_events WHERE event_id = ?`, eventID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("check processed event: %w", err)
+	}
+	return count > 0, nil
+}
+
+func (d *SQLiteDB) MarkEventProcessed(eventID string) error {
+	_, err := d.Exec(
+		`INSERT OR IGNORE INTO processed_events (event_id, processed_at) VALUES (?, ?)`,
+		eventID, time.Now().UTC(),
+	)
+	if err != nil {
+		return fmt.Errorf("mark event processed: %w", err)
+	}
+	return nil
+}
+
+func (d *SQLiteDB) PruneProcessedEvents(olderThan time.Time) error {
+	_, err := d.Exec(`DELETE FROM processed_events WHERE processed_at < ?`, olderThan)
+	if err != nil {
+		return fmt.Errorf("prune processed events: %w", err)
 	}
 	return nil
 }
