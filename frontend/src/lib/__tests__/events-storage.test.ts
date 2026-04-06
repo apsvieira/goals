@@ -7,6 +7,7 @@ import {
   getUnsyncedEvents,
   markEventsSynced,
   getSyncEvents,
+  pruneSyncedEvents,
   saveLocalGoal,
   getLocalGoals,
   saveLocalCompletion,
@@ -284,6 +285,94 @@ describe('v2 to v3 upgrade preserves existing stores', () => {
     await clearLocalData();
 
     events = await getSyncEvents();
+    expect(events).toHaveLength(0);
+  }, 10000);
+});
+
+describe('pruneSyncedEvents', () => {
+  beforeEach(() => {
+    resetDB();
+  });
+
+  afterEach(async () => {
+    resetDB();
+    try {
+      await deleteDB('goal-tracker');
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should delete synced events older than the specified days', async () => {
+    await initStorage();
+
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const oldSynced = makeEvent({ id: 'evt-old-synced', synced: true, timestamp: tenDaysAgo });
+    await saveSyncEvent(oldSynced);
+
+    await pruneSyncedEvents(7);
+
+    const events = await getSyncEvents();
+    expect(events).toHaveLength(0);
+  }, 10000);
+
+  it('should keep synced events newer than the cutoff', async () => {
+    await initStorage();
+
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const recentSynced = makeEvent({ id: 'evt-recent-synced', synced: true, timestamp: twoDaysAgo });
+    await saveSyncEvent(recentSynced);
+
+    await pruneSyncedEvents(7);
+
+    const events = await getSyncEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe('evt-recent-synced');
+  }, 10000);
+
+  it('should keep unsynced events even if they are old', async () => {
+    await initStorage();
+
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const oldUnsynced = makeEvent({ id: 'evt-old-unsynced', synced: false, timestamp: tenDaysAgo });
+    await saveSyncEvent(oldUnsynced);
+
+    await pruneSyncedEvents(7);
+
+    const events = await getSyncEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe('evt-old-unsynced');
+  }, 10000);
+
+  it('should correctly prune a mix of events', async () => {
+    await initStorage();
+
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Old synced — should be pruned
+    await saveSyncEvent(makeEvent({ id: 'evt-old-synced', synced: true, timestamp: tenDaysAgo }));
+    // Old unsynced — should be kept
+    await saveSyncEvent(makeEvent({ id: 'evt-old-unsynced', synced: false, timestamp: tenDaysAgo }));
+    // Recent synced — should be kept
+    await saveSyncEvent(makeEvent({ id: 'evt-recent-synced', synced: true, timestamp: twoDaysAgo }));
+    // Recent unsynced — should be kept
+    await saveSyncEvent(makeEvent({ id: 'evt-recent-unsynced', synced: false, timestamp: twoDaysAgo }));
+
+    await pruneSyncedEvents(7);
+
+    const events = await getSyncEvents();
+    expect(events).toHaveLength(3);
+    const ids = events.map(e => e.id).sort();
+    expect(ids).toEqual(['evt-old-unsynced', 'evt-recent-synced', 'evt-recent-unsynced']);
+  }, 10000);
+
+  it('should handle empty events store', async () => {
+    await initStorage();
+
+    await pruneSyncedEvents(7);
+
+    const events = await getSyncEvents();
     expect(events).toHaveLength(0);
   }, 10000);
 });

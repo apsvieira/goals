@@ -1,6 +1,7 @@
 import {
   getUnsyncedEvents,
   markEventsSynced,
+  pruneSyncedEvents,
 } from './storage';
 import type { SyncEvent } from './events';
 import { getToken } from './token-storage';
@@ -95,6 +96,12 @@ export async function flushPendingEvents(): Promise<void> {
       const data = await res.json();
       if (data.processed?.length > 0) {
         await markEventsSynced(data.processed);
+      }
+      // Best-effort pruning of old synced events
+      try {
+        await pruneSyncedEvents(7);
+      } catch {
+        // Prune failure should not affect sync status
       }
     } else {
       syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });

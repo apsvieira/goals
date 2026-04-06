@@ -255,3 +255,16 @@ export async function getSyncEvents(): Promise<SyncEvent[]> {
   const database = getDB();
   return database.getAll('events');
 }
+
+export async function pruneSyncedEvents(olderThanDays: number): Promise<void> {
+  const database = getDB();
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
+  const tx = database.transaction('events', 'readwrite');
+  const allEvents = await tx.store.getAll();
+  for (const event of allEvents) {
+    if (event.synced && event.timestamp < cutoff) {
+      await tx.store.delete(event.id);
+    }
+  }
+  await tx.done;
+}
