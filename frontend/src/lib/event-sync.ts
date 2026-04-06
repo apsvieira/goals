@@ -5,10 +5,17 @@ import {
 } from './storage';
 import type { SyncEvent } from './events';
 import { getToken } from './token-storage';
-import { get } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { authStore } from './stores';
 import { getApiBase } from './config';
-import { syncStatus } from './sync';
+
+export type SyncStatus =
+  | { state: 'idle' }
+  | { state: 'syncing'; message: string }
+  | { state: 'success'; message: string }
+  | { state: 'error'; message: string; canRetry: boolean };
+
+export const syncStatus = writable<SyncStatus>({ state: 'idle' });
 
 const FLUSH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes safety net
 

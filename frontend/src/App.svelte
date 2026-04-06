@@ -28,8 +28,7 @@
   } from './lib/api';
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, isOnline, type AuthState } from './lib/stores';
-  import { syncStatus, type SyncStatus } from './lib/sync';
-  import { startEventSync, stopEventSync, flushPendingEvents } from './lib/event-sync';
+  import { syncStatus, type SyncStatus, startEventSync, stopEventSync, flushPendingEvents } from './lib/event-sync';
   import { saveToken, clearToken } from './lib/token-storage';
   import { clearLocalData, initStorage } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';

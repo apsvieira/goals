@@ -8,7 +8,7 @@ import {
   getSyncEvents,
   saveLocalGoal,
 } from '../storage';
-import { syncStatus } from '../sync';
+import { syncStatus } from '../event-sync';
 import type { SyncEvent } from '../events';
 
 // Mock @capacitor/core to avoid native platform detection
@@ -22,12 +22,13 @@ vi.mock('../token-storage', () => ({
 }));
 
 // Mock stores — default to authenticated
-const mockAuthStore = {
+// Use vi.hoisted so mockAuthStore is available when the hoisted vi.mock runs
+const mockAuthStore = vi.hoisted(() => ({
   subscribe: vi.fn((cb: (v: unknown) => void) => {
     cb({ type: 'authenticated', user: { id: 'u1', email: 'test@test.com', created_at: '' } });
     return () => {};
   }),
-};
+}));
 
 vi.mock('../stores', () => ({
   authStore: mockAuthStore,
