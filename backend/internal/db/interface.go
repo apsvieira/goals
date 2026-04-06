@@ -58,6 +58,11 @@ type Database interface {
 	// Account
 	DeleteAccount(userID string) error
 
+	// Event idempotency
+	IsEventProcessed(eventID string) (bool, error)
+	MarkEventProcessed(eventID string) error
+	PruneProcessedEvents(olderThan time.Time) error
+
 	// Lifecycle
 	Migrate() error
 	Close() error

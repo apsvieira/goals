@@ -166,6 +166,12 @@ func (s *Server) setupRoutes() {
 				r.Post("/", s.handleSync)
 			})
 
+			// Events endpoint with moderate rate limiting (like sync)
+			r.Route("/events", func(r chi.Router) {
+				r.Use(RateLimitMiddleware(s.syncRateLimiter))
+				r.Post("/", s.handleEvents)
+			})
+
 			// Data endpoints with generous rate limiting (100/min - normal API use)
 			r.Group(func(r chi.Router) {
 				r.Use(RateLimitMiddleware(s.apiRateLimiter))

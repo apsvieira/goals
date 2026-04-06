@@ -1081,6 +1081,34 @@ func (d *PostgresDB) UpdateDeviceTokenLastUsed(tokenID string) error {
 	return nil
 }
 
+func (d *PostgresDB) IsEventProcessed(eventID string) (bool, error) {
+	var count int
+	err := d.QueryRow(`SELECT COUNT(*) FROM processed_events WHERE event_id = $1`, eventID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("check processed event: %w", err)
+	}
+	return count > 0, nil
+}
+
+func (d *PostgresDB) MarkEventProcessed(eventID string) error {
+	_, err := d.Exec(
+		`INSERT INTO processed_events (event_id, processed_at) VALUES ($1, $2) ON CONFLICT (event_id) DO NOTHING`,
+		eventID, time.Now().UTC(),
+	)
+	if err != nil {
+		return fmt.Errorf("mark event processed: %w", err)
+	}
+	return nil
+}
+
+func (d *PostgresDB) PruneProcessedEvents(olderThan time.Time) error {
+	_, err := d.Exec(`DELETE FROM processed_events WHERE processed_at < $1`, olderThan)
+	if err != nil {
+		return fmt.Errorf("prune processed events: %w", err)
+	}
+	return nil
+}
+
 func (d *PostgresDB) DeleteAccount(userID string) error {
 	tx, err := d.Begin()
 	if err != nil {
