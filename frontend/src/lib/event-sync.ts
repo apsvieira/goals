@@ -109,12 +109,6 @@ export async function flushPendingEvents(): Promise<void> {
   syncStatus.set({ state: 'idle' });
 }
 
-// --- Migration (no-op, kept for one release cycle) ---
-
-export async function migrateOldQueue(): Promise<void> {
-  // No-op: kept for one release cycle so callers don't break, then removable.
-}
-
 // --- Lifecycle: online listener + periodic flush ---
 
 let flushIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -124,17 +118,10 @@ function onOnline(): void {
 }
 
 /**
- * Start the event sync system: migrate old queue entries, flush immediately,
+ * Start the event sync system: flush immediately,
  * listen for online events, and set up a periodic flush interval as a safety net.
  */
 export async function startEventSync(): Promise<void> {
-  // One-time migration (no-op, kept for one release cycle)
-  try {
-    await migrateOldQueue();
-  } catch (err) {
-    console.error('Migration of old queue failed:', err);
-  }
-
   // Flush any events that accumulated while offline / between sessions
   flushPendingEvents().catch(console.error);
 
