@@ -23,9 +23,12 @@
     logout,
     getAllCompletions,
     getCurrentPeriodCompletions,
+    getCompletionsInRange,
     type Goal,
     type Completion,
   } from './lib/api';
+  import { buildMonthGrid, type CalendarCell } from './lib/calendar';
+  import WeekdayHeader from './lib/components/WeekdayHeader.svelte';
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, isOnline, type AuthState } from './lib/stores';
   import { syncStatus, type SyncStatus, startEventSync, stopEventSync, flushPendingEvents } from './lib/event-sync';
@@ -109,12 +112,18 @@
   let draggedGoalId: string | null = null;
   let dragOverGoalId: string | null = null;
 
-  // Compute days in current month
+  // Compute days in current month (used by keyboard shortcuts to validate input)
   $: {
     const [year, month] = currentMonth.split('-').map(Number);
     daysInMonth = new Date(year, month, 0).getDate();
   }
   let daysInMonth: number;
+
+  // Compute the 42-cell weekday-aligned grid for the currently visible month
+  $: cells = (() => {
+    const [year, month] = currentMonth.split('-').map(Number);
+    return buildMonthGrid(year, month);
+  })();
 
   // Compute currentDay for disabling future dates
   // If viewing current month: currentDay = today's day number
@@ -131,13 +140,15 @@
   }
   let currentDay: number;
 
-  // Map completions by goal
+  // Map completions by goal, keyed by full YYYY-MM-DD date string so leading
+  // adjacent-month cells can look themselves up without day-number collisions.
+  // The backend returns `date` as a full ISO timestamp (e.g. "2026-04-08T00:00:00Z"),
+  // so slice to the first 10 chars to match the format produced by buildMonthGrid.
   $: completionsByGoal = (completions ?? []).reduce((acc, c) => {
-    const day = parseInt(c.date.split('-')[2], 10);
     if (!acc[c.goal_id]) acc[c.goal_id] = new Map();
-    acc[c.goal_id].set(day, c.id);
+    acc[c.goal_id].set(c.date.slice(0, 10), c.id);
     return acc;
-  }, {} as Record<string, Map<number, string>>);
+  }, {} as Record<string, Map<string, string>>);
 
   // Auto-assign colors to goals based on their index
   $: goalsWithColors = (goals ?? []).map((goal, index) => ({
@@ -180,21 +191,53 @@
     }, {} as Record<string, number>);
   })(periodCompletions ?? [], goals ?? []);
 
+  // Compute the [from, to] date range covering the last 7 days of the
+  // previous month — these dates back the leading adjacent-month cells in
+  // the weekday-aligned grid and may still be toggleable under the 7-day
+  // lockout when viewing the current month.
+  function prevMonthTailRange(month: string): { from: string; to: string } {
+    const [year, monthNum] = month.split('-').map(Number);
+    // Last day of previous month
+    const prevLastDay = new Date(year, monthNum - 1, 0);
+    const prevStart = new Date(prevLastDay);
+    prevStart.setDate(prevLastDay.getDate() - 6); // 7 day window inclusive
+    const toIso = `${prevLastDay.getFullYear()}-${String(prevLastDay.getMonth() + 1).padStart(2, '0')}-${String(prevLastDay.getDate()).padStart(2, '0')}`;
+    const fromIso = `${prevStart.getFullYear()}-${String(prevStart.getMonth() + 1).padStart(2, '0')}-${String(prevStart.getDate()).padStart(2, '0')}`;
+    return { from: fromIso, to: toIso };
+  }
+
   async function loadData() {
     loading = true;
     error = '';
     try {
-      // Fetch both calendar data and period completions before setting state
-      // This prevents the periodCompletionsMap reactive from running with stale data
-      const [data, periodData] = await Promise.all([
+      // Fetch calendar data for the visible month, period completions for
+      // the progress bars, and the last 7 days of the previous month (to
+      // populate leading adjacent-month cells) in parallel.
+      const { from: prevFrom, to: prevTo } = prevMonthTailRange(currentMonth);
+      const [data, periodData, prevTailCompletions] = await Promise.all([
         getCalendar(currentMonth),
-        getCurrentPeriodCompletions()
+        getCurrentPeriodCompletions(),
+        getCompletionsInRange(prevFrom, prevTo).catch((err) => {
+          console.warn('[loadData] failed to load prev-month tail completions:', err);
+          return [] as Completion[];
+        }),
       ]);
 
       // Set periodCompletions FIRST so the reactive has data when goals triggers it
       periodCompletions = periodData;
       goals = data.goals ?? [];
-      completions = data.completions ?? [];
+      // Merge current-month completions with the prev-month tail. Dedupe by id
+      // so overlapping ranges (shouldn't happen here, but cheap insurance) don't
+      // produce duplicate map entries downstream.
+      const merged: Completion[] = [...(data.completions ?? [])];
+      const seen = new Set(merged.map(c => c.id));
+      for (const c of prevTailCompletions) {
+        if (!seen.has(c.id)) {
+          merged.push(c);
+          seen.add(c.id);
+        }
+      }
+      completions = merged;
     } catch (e) {
       console.error('[loadData] error:', e);
       error = getUserFriendlyMessage(e);
@@ -243,12 +286,9 @@
     }
   }
 
-  async function handleToggle(goalId: string, day: number) {
-    const [year, month] = currentMonth.split('-');
-    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-
+  async function handleToggle(goalId: string, date: string) {
     const goalCompletions = completionsByGoal[goalId];
-    const existingId = goalCompletions?.get(day);
+    const existingId = goalCompletions?.get(date);
 
     try {
       if (existingId) {
@@ -560,7 +600,9 @@
       if (day !== null && day >= 1 && day <= daysInMonth) {
         // Check if day is in the past or today (not future)
         if (currentDay === 0 || (currentDay > 0 && day <= currentDay)) {
-          handleToggle(goals[focusedGoalIndex].id, day);
+          const [year, monthStr] = currentMonth.split('-');
+          const date = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
+          handleToggle(goals[focusedGoalIndex].id, date);
           e.preventDefault();
         }
       }
@@ -733,15 +775,17 @@
         </div>
       {:else}
         <div class="goals" role="list">
+          <div class="weekday-header-row">
+            <div class="weekday-header-spacer" aria-hidden="true"></div>
+            <WeekdayHeader />
+          </div>
           {#each goalsWithColors as goal, index (goal.id)}
             <GoalRow
               {goal}
-              {daysInMonth}
-              {currentDay}
-              month={currentMonth}
-              completedDays={completionsByGoal[goal.id] ? new Set(completionsByGoal[goal.id].keys()) : new Set()}
+              {cells}
+              completedDates={completionsByGoal[goal.id] ?? new Map()}
               periodCompletions={periodCompletionsMap[goal.id] ?? 0}
-              onToggle={(day) => handleToggle(goal.id, day)}
+              onToggle={(date) => handleToggle(goal.id, date)}
               onEdit={() => handleEditGoal(goal)}
               onDragStart={(e) => handleDragStart(goal.id, e)}
               onDragOver={(e) => handleDragOver(goal.id, e)}
@@ -789,6 +833,11 @@
     --space-md: 1rem;           /* 16px at 16px base, 24px at 24px base */
     --space-lg: 1.5rem;         /* 24px at 16px base, 36px at 24px base */
     --space-xl: 2rem;           /* 32px at 16px base, 48px at 24px base */
+
+    /* Layout: width of the goal-info column inside GoalRow. The weekday
+       header spacer in App.svelte mirrors this so the header aligns with
+       the day grid. Keep these in sync by always reading this variable. */
+    --goal-info-width: 8.75rem;
   }
 
   :global(body) {
@@ -832,6 +881,25 @@
 
   .goals {
     width: 100%;
+  }
+
+  /* Align the sticky weekday header with each goal row's DayGrid by
+     mirroring the goal-info column width + gap used inside GoalRow. */
+  .weekday-header-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin: 0 0.3125rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-primary);
+  }
+
+  .weekday-header-spacer {
+    flex-shrink: 0;
+    min-width: 7.5rem;
+    width: var(--goal-info-width);
   }
 
   .loading-container {

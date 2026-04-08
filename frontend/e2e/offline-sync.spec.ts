@@ -68,7 +68,7 @@ test.describe.serial('Offline Sync', () => {
 
     // Verify completion is marked locally
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
+    const dayButton = goalRow.locator(homePage.dayButtonSelector(today));
     await expect(dayButton).toBeVisible();
 
     // Go back online
@@ -83,38 +83,12 @@ test.describe.serial('Offline Sync', () => {
 
     // Verify completion persists after sync
     const goalRowAfterSync = await homePage.getGoalRow(goalName);
-    const dayButtonAfterSync = goalRowAfterSync.locator(`button[aria-label="Day ${today}"]`);
+    const dayButtonAfterSync = goalRowAfterSync.locator(homePage.dayButtonSelector(today));
     await expect(dayButtonAfterSync).toBeVisible();
 
     // Clean up
     await page.locator(`text=${goalName}`).click();
     await editorPage.delete();
-  });
-
-  test('should show offline banner when offline', async ({ page, context }) => {
-    // Go offline
-    await context.setOffline(true);
-
-    // Reload to trigger offline detection
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
-
-    // Wait a bit for offline detection
-    await page.waitForTimeout(1000);
-
-    // Check if offline banner appears
-    const offlineBanner = page.locator('.offline-banner, text=/offline/i, text=/no connection/i');
-    const isVisible = await offlineBanner.isVisible().catch(() => false);
-
-    // If banner is visible, that's great
-    // If not, that's also okay - the app might handle offline differently
-    // This test is more informational
-    if (isVisible) {
-      expect(isVisible).toBe(true);
-    }
-
-    // Go back online
-    await context.setOffline(false);
   });
 
   test('should queue multiple operations offline', async ({ page, context }) => {

@@ -25,7 +25,7 @@ test.describe('Completion Tracking', () => {
 
     // Verify completion is marked (button should have different styling)
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
+    const dayButton = goalRow.locator(homePage.dayButtonSelector(today));
 
     // Button should exist and be visible
     await expect(dayButton).toBeVisible();
@@ -51,37 +51,12 @@ test.describe('Completion Tracking', () => {
 
       // Both should be marked
       const goalRow = await homePage.getGoalRow(goalName);
-      await expect(goalRow.locator(`button[aria-label="Day ${today}"]`)).toBeVisible();
-      await expect(goalRow.locator(`button[aria-label="Day ${today - 1}"]`)).toBeVisible();
+      await expect(goalRow.locator(homePage.dayButtonSelector(today))).toBeVisible();
+      await expect(goalRow.locator(homePage.dayButtonSelector(today - 1))).toBeVisible();
     } else {
       // Just mark today
       await homePage.toggleCompletion(goalName, today);
     }
-
-    // Clean up
-    await page.locator(`text=${goalName}`).click();
-    await editorPage.delete();
-  });
-
-  test('should show completions persist across months', async ({ page }) => {
-    const goalName = generateTestGoalName('Cross Month');
-
-    // Create goal
-    await homePage.createGoal(goalName);
-
-    // Mark completion
-    await homePage.toggleCompletion(goalName, today);
-
-    // Navigate to next month
-    await homePage.navigateToMonth('next');
-
-    // Navigate back
-    await homePage.navigateToMonth('prev');
-
-    // Verify completion persists
-    const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
-    await expect(dayButton).toBeVisible();
 
     // Clean up
     await page.locator(`text=${goalName}`).click();

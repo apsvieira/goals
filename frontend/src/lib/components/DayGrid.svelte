@@ -1,14 +1,11 @@
 <script lang="ts">
   import DaySquare from './DaySquare.svelte';
+  import type { CalendarCell } from '../calendar';
 
-  export let daysInMonth: number;
+  export let cells: CalendarCell[];
   export let color: string;
-  export let completedDays: Set<number>;
-  export let onToggle: (day: number) => void;
-  export let currentDay: number = 0;
-  export let month: string = ''; // YYYY-MM format
-
-  $: days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  export let completedDates: Map<string, string>;
+  export let onToggle: (dateString: string) => void;
 
   // Calculate the cutoff date (7 days ago from today)
   $: sevenDaysAgo = (() => {
@@ -19,31 +16,36 @@
     return cutoff;
   })();
 
-  // Check if a day is disabled (either future or older than 7 days)
-  function isDayDisabled(day: number): boolean {
-    // Future days are disabled (existing behavior)
-    if (day > currentDay && currentDay > 0) {
+  $: today = (() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  })();
+
+  // Future dates and dates older than the 7-day lockout window are disabled.
+  function isCellDisabled(cell: CalendarCell): boolean {
+    const cellDate = new Date(cell.dateString + 'T00:00:00');
+    cellDate.setHours(0, 0, 0, 0);
+    if (cellDate > today) {
       return true;
     }
-    // Days older than 7 days are disabled
-    if (month) {
-      const [year, monthNum] = month.split('-').map(Number);
-      const dayDate = new Date(year, monthNum - 1, day);
-      dayDate.setHours(0, 0, 0, 0);
-      return dayDate < sevenDaysAgo;
+    if (cellDate < sevenDaysAgo) {
+      return true;
     }
     return false;
   }
 </script>
 
 <div class="day-grid">
-  {#each days as day}
+  {#each cells as cell (cell.dateString)}
     <DaySquare
-      {day}
+      day={cell.dayNumber}
+      dateString={cell.dateString}
+      outsideMonth={!cell.isCurrentMonth}
       {color}
-      filled={completedDays.has(day)}
-      onClick={() => onToggle(day)}
-      disabled={isDayDisabled(day)}
+      filled={completedDates.has(cell.dateString)}
+      onClick={() => onToggle(cell.dateString)}
+      disabled={isCellDisabled(cell)}
     />
   {/each}
 </div>
@@ -51,16 +53,9 @@
 <style>
   .day-grid {
     display: grid;
-    grid-template-columns: repeat(31, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     flex: 1;
     min-width: 0;
-  }
-
-  /* Small screens: 5 rows (7 per row) */
-  @media (max-width: 500px) {
-    .day-grid {
-      grid-template-columns: repeat(7, 1fr);
-    }
   }
 </style>

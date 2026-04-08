@@ -56,9 +56,18 @@ export class HomePage {
     // Find the goal row
     const goalRow = this.page.locator('.goal-row').filter({ hasText: goalName });
 
-    // Find the day button using aria-label for exact matching
-    const dayButton = goalRow.locator(`button[aria-label="Day ${day}"]`);
+    // Build the full YYYY-MM-DD date from today's month so we can target
+    // the correct in-month cell — the 7x6 grid also renders leading and
+    // trailing adjacent-month cells with duplicate day numbers.
+    const dayButton = goalRow.locator(this.dayButtonSelector(day));
     await dayButton.click();
+  }
+
+  /** Build a data-date selector for a day-number in the current month's grid. */
+  dayButtonSelector(day: number): string {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return `button[data-date="${date}"][data-outside-month="false"]`;
   }
 
   async navigateToMonth(direction: 'prev' | 'next') {

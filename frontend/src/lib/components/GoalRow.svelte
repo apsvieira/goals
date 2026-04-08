@@ -3,20 +3,19 @@
   import DayGrid from './DayGrid.svelte';
   import ProgressBar from './ProgressBar.svelte';
   import type { Goal } from '../api';
+  import type { CalendarCell } from '../calendar';
 
   export let goal: Goal;
-  export let daysInMonth: number;
-  export let completedDays: Set<number>;
-  export let onToggle: (day: number) => void;
+  export let cells: CalendarCell[];
+  export let completedDates: Map<string, string>;
+  export let onToggle: (dateString: string) => void;
   export let onEdit: () => void;
   export let onDragStart: (e: DragEvent) => void;
   export let onDragOver: (e: DragEvent) => void;
   export let onDrop: (e: DragEvent) => void;
   export let isDragOver = false;
   export let isFocused = false;
-  export let currentDay: number = 0;
   export let periodCompletions: number = 0; // Completions in current period (week/month)
-  export let month: string = ''; // YYYY-MM format for 7-day limit
 
   $: hasTarget = goal.target_count && goal.target_period;
 </script>
@@ -51,12 +50,10 @@
     {/if}
   </div>
   <DayGrid
-    {daysInMonth}
+    {cells}
     color={goal.color}
-    {completedDays}
+    {completedDates}
     {onToggle}
-    {currentDay}
-    {month}
   />
 </div>
 
@@ -82,7 +79,7 @@
   .goal-info {
     flex-shrink: 0;
     min-width: 7.5rem;
-    width: 8.75rem;
+    width: var(--goal-info-width);
     display: flex;
     flex-direction: column;
     gap: 0.25rem;

@@ -4,8 +4,49 @@
   export let filled = false;
   export let color = '#4CAF50';
   export let day: number;
+  export let dateString: string = ''; // "YYYY-MM-DD"
+  export let outsideMonth: boolean = false;
   export let onClick: () => void = () => {};
   export let disabled = false;
+
+  const WEEKDAY_LONG_KEYS = [
+    'weekday.sun_long',
+    'weekday.mon_long',
+    'weekday.tue_long',
+    'weekday.wed_long',
+    'weekday.thu_long',
+    'weekday.fri_long',
+    'weekday.sat_long',
+  ];
+  const MONTH_KEYS = [
+    'month.jan',
+    'month.feb',
+    'month.mar',
+    'month.apr',
+    'month.may',
+    'month.jun',
+    'month.jul',
+    'month.aug',
+    'month.sep',
+    'month.oct',
+    'month.nov',
+    'month.dec',
+  ];
+
+  // Localized "Weekday, Mon D, completed" label (e.g. "Sunday, Mar 29, completed").
+  // Reactive on `filled` so toggling updates the accessible label.
+  $: completionSuffix = filled
+    ? $_('aria.dayCompleted')
+    : $_('aria.dayNotCompleted');
+  $: ariaDate = (() => {
+    if (!dateString) {
+      return `${$_('aria.day', { values: { day } })}, ${completionSuffix}`;
+    }
+    const d = new Date(dateString + 'T00:00:00');
+    const weekday = $_(WEEKDAY_LONG_KEYS[d.getDay()]);
+    const monthLabel = $_(MONTH_KEYS[d.getMonth()]);
+    return `${weekday}, ${monthLabel} ${d.getDate()}, ${completionSuffix}`;
+  })();
 
   function handleClick() {
     if (!disabled) {
@@ -18,10 +59,13 @@
   class="day-square"
   class:filled
   class:disabled
+  class:outside-month={outsideMonth}
   style="--day-color: {color}"
+  data-date={dateString}
+  data-outside-month={outsideMonth ? 'true' : 'false'}
   on:click={handleClick}
-  aria-label={$_('aria.day', { values: { day }})}
-  title={$_('tooltip.day', { values: { day }})}
+  aria-label={ariaDate}
+  title={ariaDate}
 >
   {day}
 </button>
@@ -63,5 +107,18 @@
   .day-square.disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  .day-square.outside-month {
+    opacity: 0.35;
+    border-style: dashed;
+  }
+
+  .day-square.outside-month.filled {
+    opacity: 0.6;
+  }
+
+  .day-square.outside-month.disabled {
+    opacity: 0.25;
   }
 </style>
