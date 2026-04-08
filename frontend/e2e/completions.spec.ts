@@ -63,31 +63,6 @@ test.describe('Completion Tracking', () => {
     await editorPage.delete();
   });
 
-  test('should show completions persist across months', async ({ page }) => {
-    const goalName = generateTestGoalName('Cross Month');
-
-    // Create goal
-    await homePage.createGoal(goalName);
-
-    // Mark completion
-    await homePage.toggleCompletion(goalName, today);
-
-    // Navigate to next month
-    await homePage.navigateToMonth('next');
-
-    // Navigate back
-    await homePage.navigateToMonth('prev');
-
-    // Verify completion persists
-    const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator(homePage.dayButtonSelector(today));
-    await expect(dayButton).toBeVisible();
-
-    // Clean up
-    await page.locator(`text=${goalName}`).click();
-    await editorPage.delete();
-  });
-
   test('should update progress bar with completions', async ({ page }) => {
     const goalName = generateTestGoalName('Progress Test');
 

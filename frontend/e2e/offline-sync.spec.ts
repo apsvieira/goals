@@ -91,32 +91,6 @@ test.describe.serial('Offline Sync', () => {
     await editorPage.delete();
   });
 
-  test('should show offline banner when offline', async ({ page, context }) => {
-    // Go offline
-    await context.setOffline(true);
-
-    // Reload to trigger offline detection
-    await page.reload();
-    await page.waitForLoadState('domcontentloaded');
-
-    // Wait a bit for offline detection
-    await page.waitForTimeout(1000);
-
-    // Check if offline banner appears
-    const offlineBanner = page.locator('.offline-banner, text=/offline/i, text=/no connection/i');
-    const isVisible = await offlineBanner.isVisible().catch(() => false);
-
-    // If banner is visible, that's great
-    // If not, that's also okay - the app might handle offline differently
-    // This test is more informational
-    if (isVisible) {
-      expect(isVisible).toBe(true);
-    }
-
-    // Go back online
-    await context.setOffline(false);
-  });
-
   test('should queue multiple operations offline', async ({ page, context }) => {
     const goal1 = generateTestGoalName('Offline 1');
     const goal2 = generateTestGoalName('Offline 2');
