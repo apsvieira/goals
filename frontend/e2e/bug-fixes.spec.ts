@@ -24,7 +24,7 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
 
     // Verify it's marked (button should have .filled class)
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayButton = goalRow.locator(`button[aria-label="Day ${today}"]`);
+    const dayButton = goalRow.locator(homePage.dayButtonSelector(today));
     await expect(dayButton).toHaveClass(/filled/);
 
     // Undo: toggle off
@@ -39,7 +39,7 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
     await page.waitForLoadState('networkidle', { timeout: 10000 });
     await page.waitForSelector('.goal-row', { timeout: 10000 });
     const rowAfterReload = await homePage.getGoalRow(goalName);
-    const btnAfterReload = rowAfterReload.locator(`button[aria-label="Day ${today}"]`);
+    const btnAfterReload = rowAfterReload.locator(homePage.dayButtonSelector(today));
     await expect(btnAfterReload).not.toHaveClass(/filled/);
 
     // Clean up
@@ -68,7 +68,7 @@ test.describe('Bug fixes: undo completion & progress tracking', () => {
 
     // Verify the completion is shown in the calendar
     const goalRow = await homePage.getGoalRow(goalName);
-    const dayBtn = goalRow.locator(`button[aria-label="Day ${today}"]`);
+    const dayBtn = goalRow.locator(homePage.dayButtonSelector(today));
     await expect(dayBtn).toHaveClass(/filled/, { timeout: 10000 });
 
     // Verify progress bar shows 1/3, not 0/3

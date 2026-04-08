@@ -57,6 +57,8 @@
   class:disabled
   class:outside-month={outsideMonth}
   style="--day-color: {color}"
+  data-date={dateString}
+  data-outside-month={outsideMonth ? 'true' : 'false'}
   on:click={handleClick}
   aria-label={ariaDate}
   title={ariaDate}
