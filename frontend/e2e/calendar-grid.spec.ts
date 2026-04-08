@@ -97,13 +97,16 @@ test.describe('Weekday-aligned calendar grid', () => {
   });
 
   test('toggling a leading-adjacent M-1 cell within the 7-day window persists across reload', async ({ page }) => {
-    // Skip if today is too early in the month for there to be a leading M-1
-    // cell within the 7-day window.
+    // The interactive window in DayGrid.svelte is [today-6, today] (7 days
+    // inclusive). A prev-month day only falls inside that window when
+    // today-6 <= 0, i.e. todayDayOfMonth <= 6. On the 7th, today-6 is the
+    // 1st of the current month, so no prev-month days are in the window
+    // and this test is meaningless — skip it.
     const now = new Date();
     const todayDayOfMonth = now.getDate();
     test.skip(
-      todayDayOfMonth > 7,
-      'Only meaningful early in the month when prev-month days are still within the 7-day window'
+      todayDayOfMonth > 6,
+      'Only meaningful when today <= 6 so prev-month days fall inside the [today-6, today] 7-day window'
     );
 
     // Pick a date from the previous month that is still within the 7-day
