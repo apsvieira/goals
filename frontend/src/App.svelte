@@ -142,9 +142,11 @@
 
   // Map completions by goal, keyed by full YYYY-MM-DD date string so leading
   // adjacent-month cells can look themselves up without day-number collisions.
+  // The backend returns `date` as a full ISO timestamp (e.g. "2026-04-08T00:00:00Z"),
+  // so slice to the first 10 chars to match the format produced by buildMonthGrid.
   $: completionsByGoal = (completions ?? []).reduce((acc, c) => {
     if (!acc[c.goal_id]) acc[c.goal_id] = new Map();
-    acc[c.goal_id].set(c.date, c.id);
+    acc[c.goal_id].set(c.date.slice(0, 10), c.id);
     return acc;
   }, {} as Record<string, Map<string, string>>);
 
