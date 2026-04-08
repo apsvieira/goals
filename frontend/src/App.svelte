@@ -215,7 +215,10 @@
       const [data, periodData, prevTailCompletions] = await Promise.all([
         getCalendar(currentMonth),
         getCurrentPeriodCompletions(),
-        getCompletionsInRange(prevFrom, prevTo).catch(() => [] as Completion[]),
+        getCompletionsInRange(prevFrom, prevTo).catch((err) => {
+          console.warn('[loadData] failed to load prev-month tail completions:', err);
+          return [] as Completion[];
+        }),
       ]);
 
       // Set periodCompletions FIRST so the reactive has data when goals triggers it
