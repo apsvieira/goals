@@ -125,6 +125,8 @@
     "progressWeekly": "semanal",
     "progressMonthly": "mensal",
     "day": "Dia {day}",
+    "dayCompleted": "concluído",
+    "dayNotCompleted": "não concluído",
     "userMenu": "Menu do usuário"
   },
   "tooltip": {

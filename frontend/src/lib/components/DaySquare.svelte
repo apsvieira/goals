@@ -33,15 +33,19 @@
     'month.dec',
   ];
 
-  // Localized "Weekday, Mon D" label (e.g. "Sunday, Mar 29").
+  // Localized "Weekday, Mon D, completed" label (e.g. "Sunday, Mar 29, completed").
+  // Reactive on `filled` so toggling updates the accessible label.
+  $: completionSuffix = filled
+    ? $_('aria.dayCompleted')
+    : $_('aria.dayNotCompleted');
   $: ariaDate = (() => {
     if (!dateString) {
-      return $_('aria.day', { values: { day } });
+      return `${$_('aria.day', { values: { day } })}, ${completionSuffix}`;
     }
     const d = new Date(dateString + 'T00:00:00');
     const weekday = $_(WEEKDAY_LONG_KEYS[d.getDay()]);
     const monthLabel = $_(MONTH_KEYS[d.getMonth()]);
-    return `${weekday}, ${monthLabel} ${d.getDate()}`;
+    return `${weekday}, ${monthLabel} ${d.getDate()}, ${completionSuffix}`;
   })();
 
   function handleClick() {
