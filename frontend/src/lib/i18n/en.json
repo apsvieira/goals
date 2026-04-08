@@ -27,6 +27,22 @@
     "nov": "Nov",
     "dec": "Dec"
   },
+  "weekday": {
+    "sun": "S",
+    "mon": "M",
+    "tue": "T",
+    "wed": "W",
+    "thu": "T",
+    "fri": "F",
+    "sat": "S",
+    "sun_long": "Sunday",
+    "mon_long": "Monday",
+    "tue_long": "Tuesday",
+    "wed_long": "Wednesday",
+    "thu_long": "Thursday",
+    "fri_long": "Friday",
+    "sat_long": "Saturday"
+  },
   "menu": {
     "profile": "Profile",
     "language": "Language",
