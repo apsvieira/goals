@@ -384,6 +384,19 @@ export async function getAllCompletions(): Promise<Completion[]> {
   }
 }
 
+// Get completions for an arbitrary date range. Used to fetch the last few
+// days of the previous month for the weekday-aligned calendar view (the
+// leading adjacent-month cells displayed above each goal row).
+export async function getCompletionsInRange(from: string, to: string): Promise<Completion[]> {
+  await ensureStorageInitialized();
+  try {
+    return await request<Completion[]>(`/completions?from=${from}&to=${to}`);
+  } catch (e) {
+    // Offline: use local cache
+    return getLocalCompletionsForRange(from, to);
+  }
+}
+
 // Get completions for the current period (week and month) for progress bar calculations
 export async function getCurrentPeriodCompletions(): Promise<Completion[]> {
   await ensureStorageInitialized();
