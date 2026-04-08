@@ -45,13 +45,13 @@ test.describe('Weekday-aligned calendar grid', () => {
     const header = page.locator('.weekday-header');
     await expect(header).toBeInViewport();
 
-    // Clean up
-    for (const row of await page.locator('.goal-row').all()) {
-      const name = await row.locator('.goal-name').textContent();
-      if (name && name.includes('Scroll ')) {
-        await row.locator('.goal-name').click();
-        await editorPage.delete();
-      }
+    // Clean up. Deleting rows invalidates earlier locators, so re-query the
+    // list each iteration and always delete the first match.
+    while (true) {
+      const scrollRow = page.locator('.goal-row').filter({ hasText: 'Scroll ' }).first();
+      if ((await scrollRow.count()) === 0) break;
+      await scrollRow.locator('.goal-name').click();
+      await editorPage.delete();
     }
   });
 
@@ -175,7 +175,9 @@ test.describe('Weekday-aligned calendar grid', () => {
       '.goal-row button.day-square[data-outside-month="true"]'
     ).first();
     await expect(cell).toBeVisible();
-    await expect(cell).toBeDisabled();
+    // DaySquare renders its "not interactive" state as a `disabled` CSS class
+    // rather than the HTML `disabled` attribute, so assert on the class.
+    await expect(cell).toHaveClass(/disabled/);
 
     if (cleanupName) {
       await homePage.navigateToMonth('next');
@@ -209,7 +211,9 @@ test.describe('Weekday-aligned calendar grid', () => {
       : row.locator('button[data-outside-month="true"]').last();
 
     await expect(cell).toBeVisible();
-    await expect(cell).toBeDisabled();
+    // DaySquare renders its "not interactive" state as a `disabled` CSS class
+    // rather than the HTML `disabled` attribute, so assert on the class.
+    await expect(cell).toHaveClass(/disabled/);
 
     // Clean up
     await page.locator(`text=${goalName}`).click();
