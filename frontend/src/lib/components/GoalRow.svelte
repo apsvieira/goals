@@ -79,7 +79,7 @@
   .goal-info {
     flex-shrink: 0;
     min-width: 7.5rem;
-    width: 8.75rem;
+    width: var(--goal-info-width);
     display: flex;
     flex-direction: column;
     gap: 0.25rem;

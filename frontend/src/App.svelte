@@ -828,6 +828,11 @@
     --space-md: 1rem;           /* 16px at 16px base, 24px at 24px base */
     --space-lg: 1.5rem;         /* 24px at 16px base, 36px at 24px base */
     --space-xl: 2rem;           /* 32px at 16px base, 48px at 24px base */
+
+    /* Layout: width of the goal-info column inside GoalRow. The weekday
+       header spacer in App.svelte mirrors this so the header aligns with
+       the day grid. Keep these in sync by always reading this variable. */
+    --goal-info-width: 8.75rem;
   }
 
   :global(body) {
@@ -889,7 +894,7 @@
   .weekday-header-spacer {
     flex-shrink: 0;
     min-width: 7.5rem;
-    width: 8.75rem;
+    width: var(--goal-info-width);
   }
 
   .loading-container {
