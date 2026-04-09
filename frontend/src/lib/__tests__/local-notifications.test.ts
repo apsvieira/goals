@@ -45,7 +45,14 @@ vi.mock('@capacitor/local-notifications', () => ({
   LocalNotifications: localNotificationsMock,
 }));
 
-// svelte-i18n: make $_ a passthrough returning the translation key
+// svelte-i18n: make $_ a passthrough returning the translation key, and
+// expose a controllable `locale` store that mimics svelte/store writable
+// semantics (fires once on subscribe with the current value, then again
+// on every `set()`).
+const localeState = vi.hoisted(() => ({
+  value: 'en',
+  subscribers: new Set<(v: string) => void>(),
+}));
 vi.mock('svelte-i18n', () => {
   const _store = {
     subscribe: (fn: (t: (k: string) => string) => void) => {
@@ -55,8 +62,15 @@ vi.mock('svelte-i18n', () => {
   };
   const localeStore = {
     subscribe: (fn: (v: string) => void) => {
-      fn('en');
-      return () => {};
+      localeState.subscribers.add(fn);
+      fn(localeState.value);
+      return () => {
+        localeState.subscribers.delete(fn);
+      };
+    },
+    set: (v: string) => {
+      localeState.value = v;
+      for (const fn of localeState.subscribers) fn(v);
     },
   };
   return { _: _store, locale: localeStore };
@@ -71,7 +85,10 @@ async function freshImport() {
   vi.resetModules();
   const localNotifications = await import('../local-notifications');
   const notificationSettings = await import('../notification-settings');
-  return { localNotifications, notificationSettings };
+  const i18n = (await import('svelte-i18n')) as unknown as {
+    locale: { set: (v: string) => void };
+  };
+  return { localNotifications, notificationSettings, i18n };
 }
 
 describe('local-notifications applySettings', () => {
@@ -87,6 +104,10 @@ describe('local-notifications applySettings', () => {
     capState.isNative = true;
     notifState.permission = 'granted';
     notifState.requestPermission = 'granted';
+    // Reset locale subscribers between tests (new fresh-import creates new
+    // module-level subscribers; drop any leftovers from the previous run).
+    localeState.value = 'en';
+    localeState.subscribers.clear();
     localNotificationsMock.checkPermissions.mockImplementation(async () => ({
       display: notifState.permission,
     }));
@@ -220,5 +241,30 @@ describe('local-notifications applySettings', () => {
     expect(result).toBe(true);
     expect(localNotificationsMock.cancel).not.toHaveBeenCalled();
     expect(localNotificationsMock.schedule).not.toHaveBeenCalled();
+  });
+
+  it('initLocalNotifications skips the initial locale emission and re-registers on later changes', async () => {
+    // Seed persisted settings so applySettings actually schedules.
+    prefStore.set(
+      'notification_settings',
+      JSON.stringify({ frequency: 'daily', time: '08:00', weekday: 0 }),
+    );
+    const { localNotifications, i18n } = await freshImport();
+
+    await localNotifications.initLocalNotifications();
+
+    // The initial locale emission is skipped by the guard, so only the
+    // top-level init path calls registerActionTypes (once), and applySettings
+    // is invoked once to re-sync the persisted settings.
+    expect(localNotificationsMock.registerActionTypes).toHaveBeenCalledTimes(1);
+    expect(localNotificationsMock.schedule).toHaveBeenCalledTimes(1);
+
+    // A subsequent locale change should trigger re-registration + re-apply.
+    i18n.locale.set('pt-BR');
+    // Allow any microtasks queued by the async subscriber callback to settle.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(localNotificationsMock.registerActionTypes).toHaveBeenCalledTimes(2);
+    expect(localNotificationsMock.schedule).toHaveBeenCalledTimes(2);
   });
 });
