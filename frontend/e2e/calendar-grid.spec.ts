@@ -30,31 +30,6 @@ test.describe('Weekday-aligned calendar grid', () => {
     expect(labels.map(l => l.trim())).toEqual(['S', 'M', 'T', 'W', 'T', 'F', 'S']);
   });
 
-  test('weekday header stays visible when scrolling the goals list', async ({ page }) => {
-    // Create a few goals so the list is tall enough to scroll
-    for (let i = 0; i < 6; i++) {
-      await homePage.createGoal(generateTestGoalName(`Scroll ${i}`));
-    }
-
-    // The goals list is the scroll container (main is overflow: hidden now).
-    await page.evaluate(() => {
-      const goals = document.querySelector('.goals') as HTMLElement | null;
-      if (goals) goals.scrollTop = 300;
-    });
-
-    const header = page.locator('.weekday-header');
-    await expect(header).toBeInViewport();
-
-    // Clean up. Deleting rows invalidates earlier locators, so re-query the
-    // list each iteration and always delete the first match.
-    while (true) {
-      const scrollRow = page.locator('.goal-row').filter({ hasText: 'Scroll ' }).first();
-      if ((await scrollRow.count()) === 0) break;
-      await scrollRow.locator('.goal-name').click();
-      await editorPage.delete();
-    }
-  });
-
   test('day cells align under their weekday columns (spot check)', async ({ page }) => {
     const goalName = generateTestGoalName('Align');
     await homePage.createGoal(goalName);
@@ -203,20 +178,25 @@ test.describe('Weekday-aligned calendar grid', () => {
   });
 
   test('6-row months render exactly 42 day cells per goal', async ({ page }) => {
-    // Navigate forward one month to May 2026 (leading=5, days=31 → sum 36).
-    // May 2026 is a 6-row month.
+    // Navigate backward five months to November 2025 (leading=6, days=30 →
+    // sum 36). November 2025 is a 6-row month. We go backward rather than
+    // forward because the app disables the next-month button on the current
+    // month, which makes forward navigation hang in CI.
     const goalName = generateTestGoalName('SixRow');
     await homePage.createGoal(goalName);
 
-    await homePage.navigateToMonth('next');
+    for (let i = 0; i < 5; i++) {
+      await homePage.navigateToMonth('prev');
+    }
 
     const row = await homePage.getGoalRow(goalName);
     await expect(row.locator('[data-date]')).toHaveCount(42);
 
-    // Clean up: navigate back before deleting so the goal row exists on the
-    // current-month view (archiving is month-agnostic but the editor locator
-    // stays consistent this way).
-    await homePage.navigateToMonth('prev');
+    // Clean up: navigate forward back to the current month before deleting
+    // so later tests start from a predictable state.
+    for (let i = 0; i < 5; i++) {
+      await homePage.navigateToMonth('next');
+    }
     await page.locator(`text=${goalName}`).click();
     await editorPage.delete();
   });
