@@ -57,7 +57,12 @@ export async function hydrateNotificationSettings(): Promise<NotificationSetting
 }
 
 // Fire-and-forget hydration so web and native UIs see the persisted value ASAP.
-void hydrateNotificationSettings();
+// Skipped under Vitest (`MODE === 'test'`) to avoid implicit side effects on
+// module import in tests; test files invoke `hydrateNotificationSettings()`
+// explicitly when they need it.
+if (import.meta.env.MODE !== 'test') {
+  void hydrateNotificationSettings();
+}
 
 export async function updateNotificationSettings(
   patch: Partial<NotificationSettings>,

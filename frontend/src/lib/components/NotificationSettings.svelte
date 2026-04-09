@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
-  import { Capacitor } from '@capacitor/core';
+  import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
+  import { App as CapApp } from '@capacitor/app';
   import {
     notificationSettings,
     updateNotificationSettings,
@@ -9,13 +10,12 @@
     type NotificationSettings,
     type NotificationFrequency,
   } from '../notification-settings';
-  import { applySettings } from '../local-notifications';
+  import { applySettings, checkPermissionGranted } from '../local-notifications';
 
   let settings: NotificationSettings = { ...DEFAULT_NOTIFICATION_SETTINGS };
   const unsubscribe = notificationSettings.subscribe((s) => {
     settings = s;
   });
-  onDestroy(unsubscribe);
 
   const WEEKDAY_KEYS = [
     'weekday.sun_long',
@@ -79,6 +79,37 @@
     const updated = await updateNotificationSettings({ weekday: next });
     await trySchedule(updated);
   }
+
+  // When the user grants permission in OS settings and returns to the app,
+  // we want the banner to clear and a schedule to be (re)installed without
+  // requiring them to toggle the control again. Listen for App 'resume' on
+  // native platforms and re-check permission state.
+  let resumeListener: PluginListenerHandle | null = null;
+
+  onMount(async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      resumeListener = await CapApp.addListener('resume', async () => {
+        if (!settings.permissionDeniedAt) return;
+        const granted = await checkPermissionGranted();
+        if (!granted) return;
+        // Permission was restored — clear the denial marker and re-schedule.
+        const updated = await updateNotificationSettings({ permissionDeniedAt: undefined });
+        await trySchedule(updated);
+      });
+    } catch (err) {
+      console.error('[NotificationSettings] Failed to register resume listener:', err);
+    }
+  });
+
+  onDestroy(() => {
+    unsubscribe();
+    if (timeDebounceTimer) clearTimeout(timeDebounceTimer);
+    if (resumeListener) {
+      void resumeListener.remove();
+      resumeListener = null;
+    }
+  });
 </script>
 
 {#if Capacitor.isNativePlatform()}
@@ -227,6 +258,9 @@
     margin: 0.75rem 0 0 0;
     padding: 0.625rem 0.75rem;
     border-radius: 0.375rem;
+    /* TODO: move to CSS variables when dark mode lands — no warning-themed
+       CSS custom properties exist in the current palette (only --accent,
+       --error, --error-bg). */
     background: rgba(217, 119, 6, 0.12);
     border: 1px solid rgba(217, 119, 6, 0.4);
     color: #b45309;

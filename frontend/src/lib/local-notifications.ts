@@ -12,6 +12,9 @@ import { saveReminderEvent } from './storage';
 export const REMINDER_NOTIFICATION_ID = 1001;
 export const ACTION_TYPE_ID = 'REMINDER_ACTIONS';
 
+// Module-level idempotency guards for the long-lived startup path.
+// These are intentionally not exposed via a reset helper — tests get a clean
+// slate through `vi.resetModules()` + fresh dynamic import instead.
 let listenersRegistered = false;
 let localeSubscribed = false;
 let initialLocaleEmission = true;
@@ -39,6 +42,19 @@ async function registerReminderActionTypes(): Promise<void> {
 export async function requestPermission(): Promise<boolean> {
   const result = await LocalNotifications.requestPermissions();
   return result.display === 'granted';
+}
+
+export async function checkPermissionGranted(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) {
+    return false;
+  }
+  try {
+    const result = await LocalNotifications.checkPermissions();
+    return result.display === 'granted';
+  } catch (err) {
+    console.error('[Notifications] checkPermissions failed:', err);
+    return false;
+  }
 }
 
 export async function applySettings(s: NotificationSettings): Promise<boolean> {
