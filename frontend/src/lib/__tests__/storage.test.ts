@@ -8,6 +8,9 @@ import {
   getLocalGoals,
   saveSyncEvent,
   getSyncEvents,
+  saveReminderEvent,
+  getReminderEvents,
+  type ReminderEvent,
 } from '../storage';
 
 describe('Storage Initialization', () => {
@@ -95,11 +98,22 @@ describe('Storage clearLocalData', () => {
       payload: { id: 'goal-1', name: 'Test Goal', color: '#5B8C5A', position: 1 },
     });
 
+    // Add a reminder event
+    await saveReminderEvent({
+      id: 'rem-1',
+      timestamp: new Date().toISOString(),
+      action: 'already_done',
+      mode: 'daily',
+      fired_at: new Date().toISOString(),
+    });
+
     // Verify data is present
     let goals = await getLocalGoals();
     expect(goals).toHaveLength(1);
     let events = await getSyncEvents();
     expect(events).toHaveLength(1);
+    let reminders = await getReminderEvents();
+    expect(reminders).toHaveLength(1);
 
     // Clear all data
     await clearLocalData();
@@ -109,6 +123,82 @@ describe('Storage clearLocalData', () => {
     expect(goals).toHaveLength(0);
     events = await getSyncEvents();
     expect(events).toHaveLength(0);
+    reminders = await getReminderEvents();
+    expect(reminders).toHaveLength(0);
+  }, 10000);
+});
+
+describe('Reminder events storage', () => {
+  beforeEach(() => {
+    resetDB();
+  });
+
+  afterEach(async () => {
+    resetDB();
+    try {
+      await deleteDB('goal-tracker');
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should save and retrieve reminder events', async () => {
+    await initStorage();
+
+    const reminder: ReminderEvent = {
+      id: 'rem-1',
+      timestamp: '2026-04-09T20:00:00.000Z',
+      action: 'already_done',
+      mode: 'daily',
+      fired_at: '2026-04-09T20:00:00.000Z',
+    };
+    await saveReminderEvent(reminder);
+
+    const list = await getReminderEvents();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toEqual(reminder);
+  }, 10000);
+
+  it('should overwrite reminder events with the same id (put semantics)', async () => {
+    await initStorage();
+
+    const base: ReminderEvent = {
+      id: 'rem-1',
+      timestamp: '2026-04-09T20:00:00.000Z',
+      action: 'already_done',
+      mode: 'daily',
+      fired_at: '2026-04-09T20:00:00.000Z',
+    };
+    await saveReminderEvent(base);
+    await saveReminderEvent({ ...base, action: 'opened_app' });
+
+    const list = await getReminderEvents();
+    expect(list).toHaveLength(1);
+    expect(list[0].action).toBe('opened_app');
+  }, 10000);
+
+  it('should return multiple reminder events', async () => {
+    await initStorage();
+
+    await saveReminderEvent({
+      id: 'rem-1',
+      timestamp: '2026-04-09T20:00:00.000Z',
+      action: 'already_done',
+      mode: 'daily',
+      fired_at: '2026-04-09T20:00:00.000Z',
+    });
+    await saveReminderEvent({
+      id: 'rem-2',
+      timestamp: '2026-04-10T20:00:00.000Z',
+      action: 'opened_app',
+      mode: 'weekly',
+      fired_at: '2026-04-10T20:00:00.000Z',
+    });
+
+    const list = await getReminderEvents();
+    expect(list).toHaveLength(2);
+    const ids = list.map((r) => r.id).sort();
+    expect(ids).toEqual(['rem-1', 'rem-2']);
   }, 10000);
 });
 

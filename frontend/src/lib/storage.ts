@@ -2,6 +2,14 @@ import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Goal, Completion } from './api';
 import type { SyncEvent } from './events';
 
+export interface ReminderEvent {
+  id: string;
+  timestamp: string;
+  action: 'already_done' | 'opened_app';
+  mode: 'daily' | 'weekly';
+  fired_at: string;
+}
+
 interface GoalTrackerDB extends DBSchema {
   goals: {
     key: string;
@@ -22,10 +30,15 @@ interface GoalTrackerDB extends DBSchema {
     value: SyncEvent;
     indexes: { 'by-timestamp': string };
   };
+  reminder_events: {
+    key: string;
+    value: ReminderEvent;
+    indexes: { 'by-timestamp': string };
+  };
 }
 
 const DB_NAME = 'goal-tracker';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 let db: IDBPDatabase<GoalTrackerDB> | null = null;
 
@@ -76,6 +89,12 @@ export async function initStorage(): Promise<void> {
             database.deleteObjectStore('operations');
           }
         }
+
+        // Add reminder_events store in version 5
+        if (oldVersion < 5) {
+          const reminderEventsStore = database.createObjectStore('reminder_events', { keyPath: 'id' });
+          reminderEventsStore.createIndex('by-timestamp', 'timestamp');
+        }
       },
     });
   } catch (error) {
@@ -123,6 +142,12 @@ export async function initStorage(): Promise<void> {
             if (database.objectStoreNames.contains('operations')) {
               database.deleteObjectStore('operations');
             }
+          }
+
+          // Add reminder_events store in version 5
+          if (oldVersion < 5) {
+            const reminderEventsStore = database.createObjectStore('reminder_events', { keyPath: 'id' });
+            reminderEventsStore.createIndex('by-timestamp', 'timestamp');
           }
         },
       });
@@ -196,6 +221,18 @@ export async function clearLocalData(): Promise<void> {
   await database.clear('completions');
   await database.clear('meta');
   await database.clear('events');
+  await database.clear('reminder_events');
+}
+
+// Reminder event operations
+export async function saveReminderEvent(event: ReminderEvent): Promise<void> {
+  const database = getDB();
+  await database.put('reminder_events', event);
+}
+
+export async function getReminderEvents(): Promise<ReminderEvent[]> {
+  const database = getDB();
+  return database.getAll('reminder_events');
 }
 
 // Get max position for new goals
