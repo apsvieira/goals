@@ -27,7 +27,7 @@
     flex: 1;
     min-width: 0;
     background: var(--bg-primary);
-    padding: 0.25rem 0;
+    padding: 0.125rem 0;
   }
 
   .weekday-cell {

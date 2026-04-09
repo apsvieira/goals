@@ -62,7 +62,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.375rem 0;
+    padding: 0.25rem 0;
     margin: 0 0.3125rem;
   }
 

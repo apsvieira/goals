@@ -851,16 +851,21 @@
   .app-container {
     display: grid;
     grid-template-rows: auto 1fr auto;
-    min-height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     box-sizing: border-box;
   }
 
   main {
-    padding: var(--space-lg) 0;
+    padding: var(--space-md) 0;
     width: 100%;
     box-sizing: border-box;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .error {
@@ -881,6 +886,10 @@
 
   .goals {
     width: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   /* Align the sticky weekday header with each goal row's DayGrid by
