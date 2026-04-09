@@ -119,7 +119,7 @@
   }
   let daysInMonth: number;
 
-  // Compute the 42-cell weekday-aligned grid for the currently visible month
+  // Compute the weekday-aligned grid for the currently visible month (35 or 42 cells)
   $: cells = (() => {
     const [year, month] = currentMonth.split('-').map(Number);
     return buildMonthGrid(year, month);

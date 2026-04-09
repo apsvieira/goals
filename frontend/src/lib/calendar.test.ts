@@ -2,21 +2,47 @@ import { describe, it, expect } from 'vitest';
 import { buildMonthGrid } from './calendar';
 
 describe('buildMonthGrid', () => {
-  it('returns exactly 42 cells for any input', () => {
-    // Spot-check a handful of months across different shapes
+  it('returns 35 cells when the month fits in 5 rows', () => {
+    // Each month here has leadingCount + daysInMonth <= 35.
+    //   Feb 2026: 0 + 28 = 28
+    //   Feb 2024 (leap): 4 + 29 = 33
+    //   Apr 2026: 3 + 30 = 33
+    //   Sep 2024 (Sun-start): 0 + 30 = 30
+    //   Jun 2025: 0 + 30 = 30
     const months: Array<[number, number]> = [
-      [2024, 1],
-      [2024, 2], // leap Feb
-      [2025, 2],
-      [2026, 2], // 28-day Feb
+      [2026, 2],
+      [2024, 2],
       [2026, 4],
-      [2024, 12],
+      [2024, 9],
       [2025, 6],
+    ];
+    for (const [year, month] of months) {
+      const cells = buildMonthGrid(year, month);
+      expect(cells.length).toBe(35);
+    }
+  });
+
+  it('returns 42 cells when the month needs 6 rows', () => {
+    // Each month here has leadingCount + daysInMonth > 35.
+    //   Aug 2026 (Sat-start): 6 + 31 = 37
+    //   May 2026: 5 + 31 = 36
+    const months: Array<[number, number]> = [
+      [2026, 8],
+      [2026, 5],
     ];
     for (const [year, month] of months) {
       const cells = buildMonthGrid(year, month);
       expect(cells.length).toBe(42);
     }
+  });
+
+  it('boundary: leading + days === 35 yields 35 cells, === 36 yields 42', () => {
+    // Oct 2020: leading=4 (Thu-start), days=31 → sum 35, fits in 5 rows.
+    const fiveRow = buildMonthGrid(2020, 10);
+    expect(fiveRow.length).toBe(35);
+    // Jan 2021: leading=5 (Fri-start), days=31 → sum 36, needs 6 rows.
+    const sixRow = buildMonthGrid(2021, 1);
+    expect(sixRow.length).toBe(42);
   });
 
   it('first cell is always a Sunday (JS getDay() === 0)', () => {
@@ -131,8 +157,8 @@ describe('buildMonthGrid', () => {
     expect(cells[0].dateString).toBe('2025-11-30');
     expect(cells[1].dateString).toBe('2025-12-01');
     expect(cells[1].isCurrentMonth).toBe(true);
-    // Last cells should be January 2026
-    const lastCell = cells[41];
+    // Last cell should be in January 2026 (Dec 2025 is a 5-row month).
+    const lastCell = cells[cells.length - 1];
     expect(lastCell.isCurrentMonth).toBe(false);
     expect(lastCell.dateString.startsWith('2026-01')).toBe(true);
   });
