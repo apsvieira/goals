@@ -36,10 +36,10 @@ test.describe('Weekday-aligned calendar grid', () => {
       await homePage.createGoal(generateTestGoalName(`Scroll ${i}`));
     }
 
-    // Scroll the main container
+    // The goals list is the scroll container (main is overflow: hidden now).
     await page.evaluate(() => {
-      const main = document.querySelector('main');
-      if (main) main.scrollTop = 300;
+      const goals = document.querySelector('.goals') as HTMLElement | null;
+      if (goals) goals.scrollTop = 300;
     });
 
     const header = page.locator('.weekday-header');
@@ -79,7 +79,7 @@ test.describe('Weekday-aligned calendar grid', () => {
     // the cell is placed by auto-flow; compare its DOM index within its grid
     // row instead.
     if (col === 'auto' || col === '') {
-      // Fallback: the first-of-month cell's index within the 42 cells
+      // Fallback: the first-of-month cell's index within the grid
       // should equal the leading-cell count (which equals firstOfMonth.getDay()).
       const idx = await cell.evaluate((el) => {
         const parent = el.parentElement;
@@ -183,6 +183,105 @@ test.describe('Weekday-aligned calendar grid', () => {
       await homePage.navigateToMonth('next');
       await homePage.navigateToMonth('next');
       await page.locator(`text=${cleanupName}`).click();
+      await editorPage.delete();
+    }
+  });
+
+  test('5-row months render exactly 35 day cells per goal', async ({ page }) => {
+    // April 2026 is a 5-row month (leading=3, days=30 → sum 33).
+    // The current date in these tests is 2026-04-08, so we're already on
+    // April. buildMonthGrid should produce 35 cells.
+    const goalName = generateTestGoalName('FiveRow');
+    await homePage.createGoal(goalName);
+
+    const row = await homePage.getGoalRow(goalName);
+    await expect(row.locator('[data-date]')).toHaveCount(35);
+
+    // Clean up
+    await page.locator(`text=${goalName}`).click();
+    await editorPage.delete();
+  });
+
+  test('6-row months render exactly 42 day cells per goal', async ({ page }) => {
+    // Navigate forward one month to May 2026 (leading=5, days=31 → sum 36).
+    // May 2026 is a 6-row month.
+    const goalName = generateTestGoalName('SixRow');
+    await homePage.createGoal(goalName);
+
+    await homePage.navigateToMonth('next');
+
+    const row = await homePage.getGoalRow(goalName);
+    await expect(row.locator('[data-date]')).toHaveCount(42);
+
+    // Clean up: navigate back before deleting so the goal row exists on the
+    // current-month view (archiving is month-agnostic but the editor locator
+    // stays consistent this way).
+    await homePage.navigateToMonth('prev');
+    await page.locator(`text=${goalName}`).click();
+    await editorPage.delete();
+  });
+
+  test('root document has no scroll on a typical desktop viewport', async ({ page }) => {
+    // Standard desktop viewport with a handful of goals — the app should lock
+    // to 100dvh and never produce a document-level scrollbar.
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    const goalNames: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const name = generateTestGoalName(`Viewport ${i}`);
+      await homePage.createGoal(name);
+      goalNames.push(name);
+    }
+
+    const { scrollH, clientH } = await page.evaluate(() => ({
+      scrollH: document.documentElement.scrollHeight,
+      clientH: document.documentElement.clientHeight,
+    }));
+    expect(scrollH).toBe(clientH);
+
+    // Clean up
+    while (true) {
+      const row = page.locator('.goal-row').filter({ hasText: 'Viewport ' }).first();
+      if ((await row.count()) === 0) break;
+      await row.locator('.goal-name').click();
+      await editorPage.delete();
+    }
+  });
+
+  test('many goals cause internal .goals scroll while weekday header stays visible', async ({ page }) => {
+    // Force a smaller viewport so a dozen goals comfortably overflow .goals.
+    await page.setViewportSize({ width: 1024, height: 600 });
+
+    const goalNames: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      const name = generateTestGoalName(`Many ${i}`);
+      await homePage.createGoal(name);
+      goalNames.push(name);
+    }
+
+    // .goals must have an internal scrollbar (scrollHeight > clientHeight).
+    const { scrollH, clientH } = await page.evaluate(() => {
+      const goals = document.querySelector('.goals') as HTMLElement | null;
+      if (!goals) return { scrollH: 0, clientH: 0 };
+      return { scrollH: goals.scrollHeight, clientH: goals.clientHeight };
+    });
+    expect(scrollH).toBeGreaterThan(clientH);
+
+    // Scroll the goals list and confirm the sticky weekday header remains
+    // in the viewport (it's inside .goals, so sticky should hold it pinned).
+    await page.evaluate(() => {
+      const goals = document.querySelector('.goals') as HTMLElement | null;
+      if (goals) goals.scrollTop = 200;
+    });
+
+    const header = page.locator('.weekday-header');
+    await expect(header).toBeInViewport();
+
+    // Clean up
+    while (true) {
+      const row = page.locator('.goal-row').filter({ hasText: 'Many ' }).first();
+      if ((await row.count()) === 0) break;
+      await row.locator('.goal-name').click();
       await editorPage.delete();
     }
   });
