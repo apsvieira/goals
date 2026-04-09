@@ -27,7 +27,6 @@
     flex: 1;
     min-width: 0;
     background: var(--bg-primary);
-    border-bottom: 1px solid var(--border);
     padding: 0.25rem 0;
   }
 
