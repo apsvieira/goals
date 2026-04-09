@@ -862,6 +862,10 @@
     padding: var(--space-md) 0;
     width: 100%;
     box-sizing: border-box;
+    /* Lets the 1fr grid track shrink below its content's intrinsic height
+       (grid-flex escape hatch). Critical for the 100dvh viewport lock —
+       without it, a tall goals list pushes main beyond the viewport and
+       reintroduces document-level scroll. */
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -887,6 +891,8 @@
   .goals {
     width: 100%;
     flex: 1;
+    /* Same grid-flex escape hatch as main — the flex child needs this so it
+       can be shorter than its intrinsic content and scroll internally. */
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
