@@ -155,5 +155,27 @@
   },
   "fallback": {
     "user": "User"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Get reminded to log your completions.",
+    "frequencyLabel": "Frequency",
+    "frequency": {
+      "off": "Off",
+      "daily": "Daily",
+      "weekly": "Weekly"
+    },
+    "time": "Time",
+    "dayOfWeek": "Day of week",
+    "permissionDenied": "Notifications are blocked in system settings.",
+    "reminderTitle": {
+      "daily": "Time to track your day",
+      "weekly": "Weekly check-in"
+    },
+    "reminderBody": {
+      "daily": "Don't forget to log your completions.",
+      "weekly": "How did your habits go this week?"
+    },
+    "actionAlreadyDone": "Already did it!"
   }
 }

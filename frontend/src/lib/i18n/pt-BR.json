@@ -155,5 +155,27 @@
   },
   "fallback": {
     "user": "Usuário"
+  },
+  "notifications": {
+    "title": "Notificações",
+    "description": "Receba lembretes para registrar suas conclusões.",
+    "frequencyLabel": "Frequência",
+    "frequency": {
+      "off": "Desligado",
+      "daily": "Diário",
+      "weekly": "Semanal"
+    },
+    "time": "Horário",
+    "dayOfWeek": "Dia da semana",
+    "permissionDenied": "As notificações estão bloqueadas nas configurações do sistema.",
+    "reminderTitle": {
+      "daily": "Hora de registrar seu dia",
+      "weekly": "Revisão semanal"
+    },
+    "reminderBody": {
+      "daily": "Não esqueça de registrar suas conclusões.",
+      "weekly": "Como foram seus hábitos esta semana?"
+    },
+    "actionAlreadyDone": "Já fiz!"
   }
 }

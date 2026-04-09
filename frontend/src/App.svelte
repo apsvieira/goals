@@ -35,6 +35,7 @@
   import { saveToken, clearToken } from './lib/token-storage';
   import { clearLocalData, initStorage } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
+  import { initLocalNotifications } from './lib/local-notifications';
   import { startMobileOAuth } from './lib/mobile-auth';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
@@ -431,6 +432,7 @@
 
         // Initialize push notifications
         await initPushNotifications();
+        await initLocalNotifications();
         return;
       }
     } catch (e) {
