@@ -53,7 +53,7 @@
     const ok = await trySchedule(updated);
     if (!ok && wasOff) {
       // Permission was denied on the Off → enabled transition. Snap back to Off
-      // so the segmented control reflects reality (nothing is scheduled).
+      // so the frequency selector reflects reality (nothing is scheduled).
       // applySettings has already recorded permissionDeniedAt, so the banner
       // still shows via the store's permissionDeniedAt field.
       await updateNotificationSettings({ frequency: 'off' });
@@ -116,29 +116,35 @@
     <h2 class="section-title">{$_('notifications.title')}</h2>
     <p class="description">{$_('notifications.description')}</p>
 
-    <div class="row">
-      <span class="row-label">{$_('notifications.frequencyLabel')}</span>
-      <div class="segmented" role="group">
+    <div class="frequency-group">
+      <span class="group-label">{$_('notifications.frequencyLabel')}</span>
+      <div class="option-list" role="radiogroup" aria-label={$_('notifications.frequencyLabel')}>
         <button
           type="button"
-          class="segment"
-          class:active={settings.frequency === 'off'}
+          class="option"
+          class:selected={settings.frequency === 'off'}
+          role="radio"
+          aria-checked={settings.frequency === 'off'}
           on:click={() => handleFrequencyClick('off')}
         >
           {$_('notifications.frequency.off')}
         </button>
         <button
           type="button"
-          class="segment"
-          class:active={settings.frequency === 'daily'}
+          class="option"
+          class:selected={settings.frequency === 'daily'}
+          role="radio"
+          aria-checked={settings.frequency === 'daily'}
           on:click={() => handleFrequencyClick('daily')}
         >
           {$_('notifications.frequency.daily')}
         </button>
         <button
           type="button"
-          class="segment"
-          class:active={settings.frequency === 'weekly'}
+          class="option"
+          class:selected={settings.frequency === 'weekly'}
+          role="radio"
+          aria-checked={settings.frequency === 'weekly'}
           on:click={() => handleFrequencyClick('weekly')}
         >
           {$_('notifications.frequency.weekly')}
@@ -211,33 +217,48 @@
     color: var(--text-secondary);
   }
 
-  .segmented {
-    display: inline-flex;
+  .frequency-group {
+    margin-bottom: 1rem;
+  }
+
+  .group-label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  .option-list {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--border);
-    border-radius: 0.375rem;
+    border-radius: 0.5rem;
     overflow: hidden;
     background: var(--bg-secondary);
   }
 
-  .segment {
-    padding: 0.375rem 0.75rem;
+  .option {
+    display: block;
+    width: 100%;
+    padding: 0.625rem 0.875rem;
     border: none;
     background: transparent;
     color: var(--text-secondary);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
+    text-align: left;
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;
   }
 
-  .segment + .segment {
-    border-left: 1px solid var(--border);
+  .option + .option {
+    border-top: 1px solid var(--border);
   }
 
-  .segment:hover {
+  .option:hover {
     background: var(--bg-tertiary);
   }
 
-  .segment.active {
+  .option.selected {
     background: var(--accent);
     color: white;
   }
