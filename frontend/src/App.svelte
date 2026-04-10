@@ -91,6 +91,7 @@
 
   // Notification prompt state
   let showNotificationPrompt = false;
+  let notificationPromptPending = false;
 
   // Route state for legal pages
   type Route = 'home' | 'privacy' | 'notifications';
@@ -336,6 +337,10 @@
           data.target_period
         );
         goals = [...goals, goal];
+        if (notificationPromptPending) {
+          notificationPromptPending = false;
+          setTimeout(() => { showNotificationPrompt = true; }, 1000);
+        }
       } else {
         const updated = await updateGoal(editorState.goal.id, {
           name: data.name,
@@ -439,8 +444,10 @@
 
         // Initialize notifications — local first so custom prompt appears before OS dialog
         const { needsPrompt } = await initLocalNotifications();
-        if (needsPrompt) {
-          showNotificationPrompt = true;
+        if (needsPrompt && goals.length > 0) {
+          setTimeout(() => { showNotificationPrompt = true; }, 1000);
+        } else if (needsPrompt) {
+          notificationPromptPending = true;
         } else {
           await initPushNotifications();
         }
