@@ -11,8 +11,8 @@ export interface NotificationSettings {
 }
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  frequency: 'off',
-  time: '20:00',
+  frequency: 'daily',
+  time: '19:00',
   weekday: 0,
 };
 

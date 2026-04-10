@@ -33,8 +33,8 @@ describe('notification-settings', () => {
   it('loadNotificationSettings returns defaults on first read', async () => {
     const mod = await freshImport();
     const loaded = await mod.loadNotificationSettings();
-    expect(loaded.frequency).toBe('off');
-    expect(loaded.time).toBe('20:00');
+    expect(loaded.frequency).toBe('daily');
+    expect(loaded.time).toBe('19:00');
     expect(loaded.weekday).toBe(0);
     expect(loaded.permissionDeniedAt).toBeUndefined();
   });
@@ -46,8 +46,8 @@ describe('notification-settings', () => {
     expect(prefStore.has('notification_settings')).toBe(true);
     const raw = prefStore.get('notification_settings')!;
     const parsed = JSON.parse(raw);
-    expect(parsed.frequency).toBe('off');
-    expect(parsed.time).toBe('20:00');
+    expect(parsed.frequency).toBe('daily');
+    expect(parsed.time).toBe('19:00');
     expect(parsed.weekday).toBe(0);
   });
 
@@ -90,7 +90,7 @@ describe('notification-settings', () => {
     const mod = await freshImport();
     const loaded = await mod.loadNotificationSettings();
     expect(loaded.frequency).toBe('daily');
-    expect(loaded.time).toBe('20:00');
+    expect(loaded.time).toBe('19:00');
     expect(loaded.weekday).toBe(0);
   });
 
@@ -103,7 +103,7 @@ describe('notification-settings', () => {
     });
     expect(updated.frequency).toBe('weekly');
     expect(updated.weekday).toBe(5);
-    expect(updated.time).toBe('20:00');
+    expect(updated.time).toBe('19:00');
 
     const reloaded = await mod.loadNotificationSettings();
     expect(reloaded.frequency).toBe('weekly');
