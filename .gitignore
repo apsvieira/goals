@@ -33,3 +33,8 @@ infra/terraform.tfstate
 infra/terraform.tfstate.backup
 
 .worktrees/
+
+# Auto-generated stuff
+node_modules/
+.playwright-mcp/
+.claude
