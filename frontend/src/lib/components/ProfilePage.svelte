@@ -2,8 +2,6 @@
   import type { User } from '../stores';
   import type { Goal, Completion } from '../api';
   import { _, locale } from 'svelte-i18n';
-  import NotificationSettings from './NotificationSettings.svelte';
-
   export let user: User | null;
   export let goals: Goal[] = [];
   export let completions: Completion[] = [];
@@ -351,10 +349,6 @@
         </div>
       {/if}
     </div>
-
-    <div class="divider"></div>
-
-    <NotificationSettings />
 
     <div class="divider"></div>
 
