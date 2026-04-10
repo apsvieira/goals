@@ -64,6 +64,17 @@ if (import.meta.env.MODE !== 'test') {
   void hydrateNotificationSettings();
 }
 
+const PROMPT_SEEN_KEY = 'notification_prompt_seen';
+
+export async function isNotificationPromptSeen(): Promise<boolean> {
+  const { value } = await Preferences.get({ key: PROMPT_SEEN_KEY });
+  return value === 'true';
+}
+
+export async function markNotificationPromptSeen(): Promise<void> {
+  await Preferences.set({ key: PROMPT_SEEN_KEY, value: 'true' });
+}
+
 export async function updateNotificationSettings(
   patch: Partial<NotificationSettings>,
 ): Promise<NotificationSettings> {

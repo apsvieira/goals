@@ -124,4 +124,15 @@ describe('notification-settings', () => {
     expect(last.frequency).toBe('daily');
     expect(last.time).toBe('09:15');
   });
+
+  it('isNotificationPromptSeen returns false when no key exists', async () => {
+    const mod = await freshImport();
+    expect(await mod.isNotificationPromptSeen()).toBe(false);
+  });
+
+  it('isNotificationPromptSeen returns true after markNotificationPromptSeen', async () => {
+    const mod = await freshImport();
+    await mod.markNotificationPromptSeen();
+    expect(await mod.isNotificationPromptSeen()).toBe(true);
+  });
 });
