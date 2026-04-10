@@ -45,6 +45,7 @@
   },
   "menu": {
     "profile": "Profile",
+    "notifications": "Notifications",
     "language": "Language",
     "logOut": "Log Out"
   },
@@ -59,7 +60,8 @@
     "featureTargetsDesc": "Optional weekly/monthly targets with progress bars",
     "featureSwipe": "Swipe to navigate",
     "featureSwipeDesc": "View past months",
-    "cta": "Create Your First Goal"
+    "cta": "Create Your First Goal",
+    "notificationLink": "Configure your reminder settings"
   },
   "offline": {
     "message": "You're offline. Changes will be saved locally."
@@ -176,6 +178,13 @@
       "daily": "Don't forget to log your completions.",
       "weekly": "How did your habits go this week?"
     },
-    "actionAlreadyDone": "Already did it!"
+    "actionAlreadyDone": "Already did it!",
+    "prompt": {
+      "title": "Stay on track",
+      "body": "We'll send you a daily reminder at 19:00 to check in on your goals.",
+      "enable": "Enable",
+      "notNow": "Not now"
+    },
+    "pageTitle": "Notification Settings"
   }
 }

@@ -45,6 +45,7 @@
   },
   "menu": {
     "profile": "Perfil",
+    "notifications": "Notificações",
     "language": "Idioma",
     "logOut": "Sair"
   },
@@ -59,7 +60,8 @@
     "featureTargetsDesc": "Metas semanais/mensais opcionais com barras de progresso",
     "featureSwipe": "Deslize para navegar",
     "featureSwipeDesc": "Veja meses anteriores",
-    "cta": "Crie Seu Primeiro Objetivo"
+    "cta": "Crie Seu Primeiro Objetivo",
+    "notificationLink": "Configure seus lembretes"
   },
   "offline": {
     "message": "Você está offline. As alterações serão salvas localmente."
@@ -176,6 +178,13 @@
       "daily": "Não esqueça de registrar suas conclusões.",
       "weekly": "Como foram seus hábitos esta semana?"
     },
-    "actionAlreadyDone": "Já fiz!"
+    "actionAlreadyDone": "Já fiz!",
+    "prompt": {
+      "title": "Mantenha o foco",
+      "body": "Enviaremos um lembrete diário às 19:00 para registrar seus objetivos.",
+      "enable": "Ativar",
+      "notNow": "Agora não"
+    },
+    "pageTitle": "Configurações de Notificação"
   }
 }
