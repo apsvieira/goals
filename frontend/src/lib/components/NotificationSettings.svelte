@@ -112,8 +112,7 @@
   });
 </script>
 
-{#if Capacitor.isNativePlatform()}
-  <div class="notifications-section">
+<div class="notifications-section">
     <h2 class="section-title">{$_('notifications.title')}</h2>
     <p class="description">{$_('notifications.description')}</p>
 
@@ -179,8 +178,7 @@
     {#if settings.permissionDeniedAt}
       <p class="permission-banner">{$_('notifications.permissionDenied')}</p>
     {/if}
-  </div>
-{/if}
+</div>
 
 <style>
   .notifications-section {
