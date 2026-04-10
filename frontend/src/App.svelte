@@ -10,6 +10,8 @@
   import AuthPage from './lib/components/AuthPage.svelte';
   import ProfilePage from './lib/components/ProfilePage.svelte';
   import PrivacyPolicy from './lib/components/PrivacyPolicy.svelte';
+  import NotificationsPage from './lib/components/NotificationsPage.svelte';
+  import NotificationPrompt from './lib/components/NotificationPrompt.svelte';
   import Spinner from './lib/components/Spinner.svelte';
   import {
     getCalendar,
@@ -35,7 +37,8 @@
   import { saveToken, clearToken } from './lib/token-storage';
   import { clearLocalData, initStorage } from './lib/storage';
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
-  import { initLocalNotifications } from './lib/local-notifications';
+  import { initLocalNotifications, requestPermission, applySettings } from './lib/local-notifications';
+  import { markNotificationPromptSeen, loadNotificationSettings, updateNotificationSettings } from './lib/notification-settings';
   import { startMobileOAuth } from './lib/mobile-auth';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
@@ -86,13 +89,17 @@
   // Flag to prevent race condition between sync and loadData during initial auth
   let initialAuthInProgress = false;
 
+  // Notification prompt state
+  let showNotificationPrompt = false;
+
   // Route state for legal pages
-  type Route = 'home' | 'privacy';
+  type Route = 'home' | 'privacy' | 'notifications';
   let currentRoute: Route = 'home';
 
   function getRouteFromPath(): Route {
     const path = window.location.pathname;
     if (path === '/privacy') return 'privacy';
+    if (path === '/notifications') return 'notifications';
     return 'home';
   }
 
@@ -432,7 +439,10 @@
 
         // Initialize push notifications
         await initPushNotifications();
-        await initLocalNotifications();
+        const { needsPrompt } = await initLocalNotifications();
+        if (needsPrompt) {
+          showNotificationPrompt = true;
+        }
         return;
       }
     } catch (e) {
@@ -484,6 +494,28 @@
       return;
     }
     window.location.href = '/api/v1/auth/oauth/google';
+  }
+
+  async function handleNotificationPromptEnable() {
+    showNotificationPrompt = false;
+    await markNotificationPromptSeen();
+    const granted = await requestPermission();
+    if (granted) {
+      const settings = await loadNotificationSettings();
+      await applySettings(settings);
+    } else {
+      await updateNotificationSettings({ frequency: 'off', permissionDeniedAt: new Date().toISOString() });
+    }
+  }
+
+  async function handleNotificationPromptDismiss() {
+    showNotificationPrompt = false;
+    await markNotificationPromptSeen();
+    await updateNotificationSettings({ frequency: 'off' });
+  }
+
+  function handleNotificationsClick() {
+    navigateTo('notifications');
   }
 
   // Keyboard navigation state
@@ -704,6 +736,8 @@
 
 {#if currentRoute === 'privacy'}
   <PrivacyPolicy onBack={() => navigateTo('home')} />
+{:else if currentRoute === 'notifications'}
+  <NotificationsPage onBack={() => navigateTo('home')} />
 {:else if authState.type === 'loading'}
   <div class="loading-container">
     <Spinner size="large" />
@@ -742,6 +776,7 @@
         syncing={currentSyncStatus.state === 'syncing'}
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
+        onNotificationsClick={handleNotificationsClick}
         onSignIn={handleSignIn}
       />
 
@@ -774,6 +809,11 @@
           <button class="welcome-cta" on:click={() => editorState = { mode: 'add' }}>
             {$_('welcome.cta')}
           </button>
+          {#if Capacitor.isNativePlatform()}
+            <button class="welcome-notification-link" on:click={handleNotificationsClick}>
+              {$_('welcome.notificationLink')}
+            </button>
+          {/if}
         </div>
       {:else}
         <div class="goals" role="list">
@@ -801,6 +841,13 @@
       </main>
 
       <Footer />
+    {/if}
+
+    {#if showNotificationPrompt}
+      <NotificationPrompt
+        onEnable={handleNotificationPromptEnable}
+        onDismiss={handleNotificationPromptDismiss}
+      />
     {/if}
   </div>
 {/if}
@@ -1015,5 +1062,16 @@
 
   .welcome-cta:hover {
     background: var(--accent-hover);
+  }
+
+  .welcome-notification-link {
+    display: block;
+    margin: 0.75rem auto 0;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: underline;
   }
 </style>
