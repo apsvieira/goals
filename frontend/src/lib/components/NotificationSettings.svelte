@@ -254,6 +254,11 @@
     border-top: 1px solid var(--border);
   }
 
+  .option.selected,
+  .option.selected + .option {
+    border-top: none;
+  }
+
   .option:hover {
     background: var(--bg-tertiary);
   }
