@@ -437,11 +437,12 @@
         initialAuthInProgress = false;
         await loadData();
 
-        // Initialize push notifications
-        await initPushNotifications();
+        // Initialize notifications — local first so custom prompt appears before OS dialog
         const { needsPrompt } = await initLocalNotifications();
         if (needsPrompt) {
           showNotificationPrompt = true;
+        } else {
+          await initPushNotifications();
         }
         return;
       }
@@ -506,12 +507,14 @@
     } else {
       await updateNotificationSettings({ frequency: 'off', permissionDeniedAt: new Date().toISOString() });
     }
+    await initPushNotifications();
   }
 
   async function handleNotificationPromptDismiss() {
     showNotificationPrompt = false;
     await markNotificationPromptSeen();
     await updateNotificationSettings({ frequency: 'off' });
+    await initPushNotifications();
   }
 
   function handleNotificationsClick() {
