@@ -243,8 +243,25 @@ describe('local-notifications applySettings', () => {
     expect(localNotificationsMock.schedule).not.toHaveBeenCalled();
   });
 
+  it('initLocalNotifications returns needsPrompt=true on first launch', async () => {
+    const { localNotifications } = await freshImport();
+    const result = await localNotifications.initLocalNotifications();
+    expect(result).toEqual({ needsPrompt: true });
+    expect(localNotificationsMock.schedule).not.toHaveBeenCalled();
+  });
+
+  it('initLocalNotifications returns needsPrompt=false when prompt already seen', async () => {
+    prefStore.set('notification_prompt_seen', 'true');
+    prefStore.set('notification_settings', JSON.stringify({ frequency: 'daily', time: '19:00', weekday: 0 }));
+    const { localNotifications } = await freshImport();
+    const result = await localNotifications.initLocalNotifications();
+    expect(result).toEqual({ needsPrompt: false });
+    expect(localNotificationsMock.schedule).toHaveBeenCalledTimes(1);
+  });
+
   it('initLocalNotifications skips the initial locale emission and re-registers on later changes', async () => {
     // Seed persisted settings so applySettings actually schedules.
+    prefStore.set('notification_prompt_seen', 'true');
     prefStore.set(
       'notification_settings',
       JSON.stringify({ frequency: 'daily', time: '08:00', weekday: 0 }),

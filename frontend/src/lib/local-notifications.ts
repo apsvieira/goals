@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { get } from 'svelte/store';
 import { _, locale } from 'svelte-i18n';
 import {
+  isNotificationPromptSeen,
   loadNotificationSettings,
   updateNotificationSettings,
   type NotificationSettings,
@@ -124,9 +125,9 @@ export async function applySettings(s: NotificationSettings): Promise<boolean> {
   return true;
 }
 
-export async function initLocalNotifications(): Promise<void> {
+export async function initLocalNotifications(): Promise<{ needsPrompt: boolean }> {
   if (!Capacitor.isNativePlatform()) {
-    return;
+    return { needsPrompt: false };
   }
 
   try {
@@ -163,6 +164,11 @@ export async function initLocalNotifications(): Promise<void> {
       });
     }
 
+    const promptSeen = await isNotificationPromptSeen();
+    if (!promptSeen) {
+      return { needsPrompt: true };
+    }
+
     const current = await loadNotificationSettings();
     await applySettings(current);
 
@@ -182,7 +188,10 @@ export async function initLocalNotifications(): Promise<void> {
         }
       });
     }
+
+    return { needsPrompt: false };
   } catch (err) {
     console.error('[Notifications] init failed:', err);
+    return { needsPrompt: false };
   }
 }
