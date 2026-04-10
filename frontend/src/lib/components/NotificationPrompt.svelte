@@ -35,6 +35,16 @@
 </div>
 
 <style>
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(1rem); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   .backdrop {
     position: fixed;
     inset: 0;
@@ -44,6 +54,7 @@
     justify-content: center;
     z-index: 300;
     padding: 1rem;
+    animation: fadeIn 0.4s ease-out;
   }
 
   .dialog {
@@ -54,6 +65,7 @@
     max-width: 20rem;
     width: 100%;
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.5s ease-out;
   }
 
   .title {
