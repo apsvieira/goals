@@ -231,7 +231,6 @@
   .option-list {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border);
     border-radius: 0.5rem;
     overflow: hidden;
     background: var(--bg-secondary);
@@ -256,7 +255,7 @@
 
   .option.selected,
   .option.selected + .option {
-    border-top: none;
+    border-top-color: transparent;
   }
 
   .option:hover {
