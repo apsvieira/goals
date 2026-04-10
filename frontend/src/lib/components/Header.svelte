@@ -14,6 +14,7 @@
   export let syncing: boolean = false;
   export let onLogout: () => void = () => {};
   export let onProfileClick: () => void = () => {};
+  export let onNotificationsClick: () => void = () => {};
   export let onSignIn: () => void = () => {};
 
   let dropdownOpen = false;
@@ -46,6 +47,11 @@
   function handleProfileClick() {
     closeDropdown();
     onProfileClick();
+  }
+
+  function handleNotificationsClick() {
+    closeDropdown();
+    onNotificationsClick();
   }
 
   function handleLogout() {
@@ -106,6 +112,7 @@
           onClose={closeDropdown}
           onLogout={handleLogout}
           onProfileClick={handleProfileClick}
+          onNotificationsClick={handleNotificationsClick}
           onSignIn={handleSignIn}
         />
       {/if}

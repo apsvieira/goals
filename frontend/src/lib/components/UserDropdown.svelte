@@ -1,12 +1,14 @@
 <script lang="ts">
   import type { User } from '../stores';
   import { _, locale } from 'svelte-i18n';
+  import { Capacitor } from '@capacitor/core';
   import { supportedLocales, saveLocale } from '../i18n';
 
   export let user: User | null;
   export let onClose: () => void;
   export let onLogout: () => void;
   export let onProfileClick: () => void;
+  export let onNotificationsClick: () => void = () => {};
   export let onSignIn: () => void = () => {};
 
   $: displayName = user?.name || $_('fallback.user');
@@ -38,6 +40,16 @@
     </svg>
     <span>{$_('menu.profile')}</span>
   </button>
+
+  {#if Capacitor.isNativePlatform()}
+    <button class="menu-item" on:click={onNotificationsClick} role="menuitem">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span>{$_('menu.notifications')}</span>
+    </button>
+  {/if}
 
   <div class="divider"></div>
   <div class="menu-section">
