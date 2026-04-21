@@ -78,8 +78,11 @@ function snapshot(): Breadcrumb[];  // for shake payload
 
 - Strip `Authorization` / `Cookie` headers from `net` data.
 - Regex-scrub emails → `[email]` and bearer tokens → `[token]` from any string field.
+- Any string containing `authorization:` or `cookie:` (case-insensitive) has the value replaced with `[token]` / `[cookie]`, regardless of field location. This covers the case where a header slips into a free-form `message` rather than a structured `headers` dict.
 - For `action` category: replace `goal_name` with `goal_id`; drop completion notes.
-- OAuth `code=` / `state=` URL params → `[oauth]`.
+- OAuth `code=` / `state=` scrubbed only in URL-separator contexts (after `?`, `&`, `#`, `/`). OAuth codes appearing in free-form text outside a URL are not scrubbed — a `\b`-anchored pass would fire after underscores/hyphens (`status_code=500`, `error_code=ENOENT`) and destroy common diagnostic fields.
+- Scrubbing walks recursively through nested objects and arrays in `data`, so deeply-nested strings are scrubbed with the same rules as top-level ones.
+- Subscriber exceptions are caught so other listeners still receive the crumb, and surfaced via the original `console.error` captured at module load (so Phase 4's console patching can't re-enter the breadcrumb pipeline when a listener throws).
 
 **Sentry forwarder:** a small listener registered separately from the emitter module. Subscribes to `emit()` and calls `Sentry.addBreadcrumb()` with the already-scrubbed data. The emitter has no knowledge of Sentry.
 
@@ -209,10 +212,12 @@ Requires a small addition to `ratelimit.go` to support user-keyed limiting — s
 New migration `0XX_debug_reports.sql`:
 
 ```sql
+-- id/user_id/client_id are TEXT (not UUID) because the existing users.id PK
+-- is TEXT, and FK columns must match the referenced type.
 CREATE TABLE debug_reports (
-    id          UUID PRIMARY KEY,
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    client_id   UUID NOT NULL,
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    client_id   TEXT NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     trigger     TEXT NOT NULL CHECK (trigger IN ('shake','auto')),
     app_version TEXT NOT NULL,

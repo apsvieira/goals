@@ -1,6 +1,6 @@
 # Privacy Policy for tiny tracker
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-04-14
 
 ## Overview
 
@@ -19,6 +19,10 @@ The App stores the goals you create and your daily completion records. This data
 ### Push Notification Tokens
 
 If you enable push notifications, we store a device token provided by Firebase Cloud Messaging (FCM) to deliver notifications.
+
+### Debug Reports (optional)
+
+If you shake your device to report a problem, the App sends us: your user ID, app version, device model, recent technical logs (with goal names replaced by internal identifiers), and your description of the problem. Debug reports are kept for 90 days and then automatically deleted.
 
 ## How We Use Your Data
 
@@ -39,6 +43,7 @@ We do not sell, share, or use your data for advertising.
 - **Google OAuth 2.0:** For sign-in. Subject to [Google's Privacy Policy](https://policies.google.com/privacy).
 - **Firebase Cloud Messaging:** For push notifications. Subject to [Google's Privacy Policy](https://policies.google.com/privacy).
 - **Fly.io:** Server hosting. Subject to [Fly.io's Privacy Policy](https://fly.io/legal/privacy-policy/).
+- **Sentry (sentry.io):** For automated error reporting. When the App encounters an unexpected error, a technical report is sent to Sentry containing: your user ID (a random identifier, not your email), your app version, device model, operating system, and a stack trace of the error. Your goal names, completions, and any personal content are not sent to Sentry. Subject to [Sentry's Privacy Policy](https://sentry.io/privacy/).
 
 ## Data Deletion
 
