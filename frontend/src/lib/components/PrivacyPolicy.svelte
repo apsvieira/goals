@@ -12,7 +12,7 @@
     </button>
 
     <h1>Privacy Policy</h1>
-    <p class="last-updated">Last updated: January 2026</p>
+    <p class="last-updated">Last updated: April 14, 2026</p>
 
     <section>
       <h2>Introduction</h2>
@@ -46,6 +46,15 @@
         If you use the application without signing in, your data is stored locally
         in your browser and is not transmitted to our servers.
       </p>
+
+      <h3>Debug Reports (optional)</h3>
+      <p>
+        If you shake your device to report a problem, the application sends us
+        your user ID, app version, device model, recent technical logs (with
+        goal names replaced by internal identifiers), and your description of
+        the problem. Debug reports are kept for 90 days and then automatically
+        deleted.
+      </p>
     </section>
 
     <section>
@@ -73,6 +82,20 @@
       <p>
         We do not sell, trade, or share your personal information with third parties,
         except as required by law or to protect our rights.
+      </p>
+    </section>
+
+    <section>
+      <h2>Third-Party Services</h2>
+      <h3>Sentry (sentry.io)</h3>
+      <p>
+        For automated error reporting. When the application encounters an
+        unexpected error, a technical report is sent to Sentry containing your
+        user ID (a random identifier, not your email), your app version,
+        device model, operating system, and a stack trace of the error. Your
+        goal names, completions, and any personal content are not sent to
+        Sentry. Subject to
+        <a href="https://sentry.io/privacy/" target="_blank" rel="noopener noreferrer">Sentry's Privacy Policy</a>.
       </p>
     </section>
 

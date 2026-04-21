@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -220,5 +221,236 @@ func TestCreateGoal_PositionsAreSequential(t *testing.T) {
 		if goal.Position != i {
 			t.Errorf("goal %d: expected position %d, got %d", i, i, goal.Position)
 		}
+	}
+}
+
+func TestDebugReports_CreateAndGet(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	now := time.Now().UTC()
+	userID := "dbg-user-1"
+	if err := db.CreateUser(&models.User{ID: userID, Email: "dbg@test.com", Name: "Dbg", CreatedAt: now}); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	report := &models.DebugReport{
+		UserID:      userID,
+		ClientID:    "11111111-1111-1111-1111-111111111111",
+		Trigger:     "shake",
+		AppVersion:  "0.4.1",
+		Platform:    "android",
+		Device:      json.RawMessage(`{"model":"Pixel 8"}`),
+		State:       json.RawMessage(`{"route":"home"}`),
+		Description: "missing completion",
+		Breadcrumbs: json.RawMessage(`[{"ts":1,"category":"log","level":"info","message":"hi"}]`),
+	}
+	if err := db.CreateDebugReport(report); err != nil {
+		t.Fatalf("create debug report: %v", err)
+	}
+	if report.ID == "" {
+		t.Fatal("expected ID to be populated")
+	}
+
+	got, err := db.GetDebugReport(report.ID)
+	if err != nil {
+		t.Fatalf("get debug report: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected report, got nil")
+	}
+	if got.UserID != userID {
+		t.Errorf("user_id: want %q got %q", userID, got.UserID)
+	}
+	if got.Trigger != "shake" {
+		t.Errorf("trigger: want shake got %q", got.Trigger)
+	}
+	if got.Description != "missing completion" {
+		t.Errorf("description: want %q got %q", "missing completion", got.Description)
+	}
+	if string(got.Device) == "" {
+		t.Error("expected device json to round-trip")
+	}
+}
+
+func TestDebugReports_ListFiltersByUserAndSince(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	now := time.Now().UTC()
+	alice := "alice-dbg"
+	bob := "bob-dbg"
+	if err := db.CreateUser(&models.User{ID: alice, Email: "a@t.com", Name: "A", CreatedAt: now}); err != nil {
+		t.Fatalf("create alice: %v", err)
+	}
+	if err := db.CreateUser(&models.User{ID: bob, Email: "b@t.com", Name: "B", CreatedAt: now}); err != nil {
+		t.Fatalf("create bob: %v", err)
+	}
+
+	mk := func(owner, id string, created time.Time) *models.DebugReport {
+		return &models.DebugReport{
+			ID:          id,
+			UserID:      owner,
+			ClientID:    "22222222-2222-2222-2222-222222222222",
+			CreatedAt:   created,
+			Trigger:     "shake",
+			AppVersion:  "0.4.1",
+			Platform:    "android",
+			Device:      json.RawMessage(`{}`),
+			State:       json.RawMessage(`{}`),
+			Breadcrumbs: json.RawMessage(`[]`),
+		}
+	}
+
+	// Alice: 2 reports, one old (10 days ago), one recent (1 hour ago).
+	// Bob: 1 report, recent.
+	aliceOld := mk(alice, "alice-old", now.Add(-10*24*time.Hour))
+	aliceNew := mk(alice, "alice-new", now.Add(-1*time.Hour))
+	bobNew := mk(bob, "bob-new", now.Add(-30*time.Minute))
+	for _, r := range []*models.DebugReport{aliceOld, aliceNew, bobNew} {
+		if err := db.CreateDebugReport(r); err != nil {
+			t.Fatalf("create %s: %v", r.ID, err)
+		}
+	}
+
+	// Filter by alice — both her reports, no bob.
+	aliceAll, err := db.ListDebugReports(DebugReportFilter{UserID: &alice})
+	if err != nil {
+		t.Fatalf("list alice: %v", err)
+	}
+	if len(aliceAll) != 2 {
+		t.Fatalf("expected 2 reports for alice, got %d", len(aliceAll))
+	}
+	// Ordered DESC by created_at — newest first.
+	if aliceAll[0].ID != "alice-new" {
+		t.Errorf("expected alice-new first, got %q", aliceAll[0].ID)
+	}
+
+	// Filter by since — only last day — alice-old drops out.
+	since := now.Add(-24 * time.Hour)
+	recent, err := db.ListDebugReports(DebugReportFilter{Since: &since})
+	if err != nil {
+		t.Fatalf("list since: %v", err)
+	}
+	if len(recent) != 2 {
+		t.Fatalf("expected 2 recent reports, got %d", len(recent))
+	}
+	for _, r := range recent {
+		if r.ID == "alice-old" {
+			t.Errorf("alice-old should have been filtered by since")
+		}
+	}
+
+	// Limit.
+	limited, err := db.ListDebugReports(DebugReportFilter{Limit: 1})
+	if err != nil {
+		t.Fatalf("list limit: %v", err)
+	}
+	if len(limited) != 1 {
+		t.Errorf("expected 1 report with limit=1, got %d", len(limited))
+	}
+}
+
+func TestDebugReports_DeleteOld(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	now := time.Now().UTC()
+	userID := "dbg-cleanup"
+	if err := db.CreateUser(&models.User{ID: userID, Email: "c@t.com", Name: "C", CreatedAt: now}); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	mk := func(id string, created time.Time) *models.DebugReport {
+		return &models.DebugReport{
+			ID:          id,
+			UserID:      userID,
+			ClientID:    "33333333-3333-3333-3333-333333333333",
+			CreatedAt:   created,
+			Trigger:     "auto",
+			AppVersion:  "0.4.1",
+			Platform:    "android",
+			Device:      json.RawMessage(`{}`),
+			State:       json.RawMessage(`{}`),
+			Breadcrumbs: json.RawMessage(`[]`),
+		}
+	}
+
+	// Four reports at 100d, 91d, 89d, 1d old. With a 90-day cutoff, only the
+	// 100d and 91d reports should be deleted.
+	reports := []*models.DebugReport{
+		mk("r-100d", now.Add(-100*24*time.Hour)),
+		mk("r-91d", now.Add(-91*24*time.Hour)),
+		mk("r-89d", now.Add(-89*24*time.Hour)),
+		mk("r-1d", now.Add(-1*24*time.Hour)),
+	}
+	for _, r := range reports {
+		if err := db.CreateDebugReport(r); err != nil {
+			t.Fatalf("create %s: %v", r.ID, err)
+		}
+	}
+
+	cutoff := now.Add(-90 * 24 * time.Hour)
+	n, err := db.DeleteOldDebugReports(cutoff)
+	if err != nil {
+		t.Fatalf("delete old: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("expected 2 rows deleted, got %d", n)
+	}
+
+	remaining, err := db.ListDebugReports(DebugReportFilter{})
+	if err != nil {
+		t.Fatalf("list after delete: %v", err)
+	}
+	if len(remaining) != 2 {
+		t.Fatalf("expected 2 remaining reports, got %d", len(remaining))
+	}
+	seen := map[string]bool{}
+	for _, r := range remaining {
+		seen[r.ID] = true
+	}
+	if seen["r-100d"] || seen["r-91d"] {
+		t.Errorf("old reports not deleted: %+v", seen)
+	}
+	if !seen["r-89d"] || !seen["r-1d"] {
+		t.Errorf("recent reports missing: %+v", seen)
+	}
+}
+
+func TestDebugReports_AccountDeleteCascades(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	now := time.Now().UTC()
+	userID := "dbg-cascade"
+	if err := db.CreateUser(&models.User{ID: userID, Email: "cc@t.com", Name: "CC", CreatedAt: now}); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	report := &models.DebugReport{
+		UserID:      userID,
+		ClientID:    "44444444-4444-4444-4444-444444444444",
+		Trigger:     "shake",
+		AppVersion:  "0.4.1",
+		Platform:    "android",
+		Device:      json.RawMessage(`{}`),
+		State:       json.RawMessage(`{}`),
+		Breadcrumbs: json.RawMessage(`[]`),
+	}
+	if err := db.CreateDebugReport(report); err != nil {
+		t.Fatalf("create report: %v", err)
+	}
+	reportID := report.ID
+
+	if err := db.DeleteAccount(userID); err != nil {
+		t.Fatalf("delete account: %v", err)
+	}
+
+	got, err := db.GetDebugReport(reportID)
+	if err != nil {
+		t.Fatalf("get after delete: %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected cascade delete to remove debug report, still present: %+v", got)
 	}
 }

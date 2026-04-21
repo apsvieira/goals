@@ -1149,6 +1149,116 @@ func (d *PostgresDB) PruneProcessedEvents(olderThan time.Time) error {
 	return nil
 }
 
+// Debug reports
+
+func (d *PostgresDB) CreateDebugReport(r *models.DebugReport) error {
+	if r.ID == "" {
+		r.ID = uuid.New().String()
+	}
+	if r.CreatedAt.IsZero() {
+		r.CreatedAt = time.Now().UTC()
+	}
+	// Ensure JSON fields are at least "null" so NOT NULL columns accept them.
+	device := r.Device
+	if len(device) == 0 {
+		device = []byte(`null`)
+	}
+	state := r.State
+	if len(state) == 0 {
+		state = []byte(`null`)
+	}
+	breadcrumbs := r.Breadcrumbs
+	if len(breadcrumbs) == 0 {
+		breadcrumbs = []byte(`[]`)
+	}
+	var desc sql.NullString
+	if r.Description != "" {
+		desc = sql.NullString{String: r.Description, Valid: true}
+	}
+	_, err := d.Exec(
+		`INSERT INTO debug_reports (id, user_id, client_id, created_at, trigger, app_version, platform, device, state, description, breadcrumbs)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11::jsonb)`,
+		r.ID, r.UserID, r.ClientID, r.CreatedAt, r.Trigger, r.AppVersion, r.Platform,
+		string(device), string(state), desc, string(breadcrumbs),
+	)
+	if err != nil {
+		return fmt.Errorf("insert debug report: %w", err)
+	}
+	return nil
+}
+
+func (d *PostgresDB) ListDebugReports(filter DebugReportFilter) ([]models.DebugReport, error) {
+	query := `SELECT id, user_id, client_id, created_at, trigger, app_version, platform, device, state, description, breadcrumbs FROM debug_reports WHERE 1=1`
+	var args []any
+	paramNum := 1
+	if filter.UserID != nil {
+		query += fmt.Sprintf(` AND user_id = $%d`, paramNum)
+		args = append(args, *filter.UserID)
+		paramNum++
+	}
+	if filter.Since != nil {
+		query += fmt.Sprintf(` AND created_at >= $%d`, paramNum)
+		args = append(args, *filter.Since)
+		paramNum++
+	}
+	query += ` ORDER BY created_at DESC`
+	if filter.Limit > 0 {
+		query += fmt.Sprintf(` LIMIT $%d`, paramNum)
+		args = append(args, filter.Limit)
+	}
+
+	rows, err := d.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query debug reports: %w", err)
+	}
+	defer rows.Close()
+
+	var reports []models.DebugReport
+	for rows.Next() {
+		var r models.DebugReport
+		var desc sql.NullString
+		if err := rows.Scan(&r.ID, &r.UserID, &r.ClientID, &r.CreatedAt, &r.Trigger, &r.AppVersion, &r.Platform, &r.Device, &r.State, &desc, &r.Breadcrumbs); err != nil {
+			return nil, fmt.Errorf("scan debug report: %w", err)
+		}
+		if desc.Valid {
+			r.Description = desc.String
+		}
+		reports = append(reports, r)
+	}
+	return reports, rows.Err()
+}
+
+func (d *PostgresDB) GetDebugReport(id string) (*models.DebugReport, error) {
+	var r models.DebugReport
+	var desc sql.NullString
+	err := d.QueryRow(
+		`SELECT id, user_id, client_id, created_at, trigger, app_version, platform, device, state, description, breadcrumbs FROM debug_reports WHERE id = $1`,
+		id,
+	).Scan(&r.ID, &r.UserID, &r.ClientID, &r.CreatedAt, &r.Trigger, &r.AppVersion, &r.Platform, &r.Device, &r.State, &desc, &r.Breadcrumbs)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query debug report: %w", err)
+	}
+	if desc.Valid {
+		r.Description = desc.String
+	}
+	return &r, nil
+}
+
+func (d *PostgresDB) DeleteOldDebugReports(olderThan time.Time) (int64, error) {
+	res, err := d.Exec(`DELETE FROM debug_reports WHERE created_at < $1`, olderThan)
+	if err != nil {
+		return 0, fmt.Errorf("delete old debug reports: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("rows affected: %w", err)
+	}
+	return n, nil
+}
+
 func (d *PostgresDB) DeleteAccount(userID string) error {
 	tx, err := d.Begin()
 	if err != nil {
@@ -1175,6 +1285,10 @@ func (d *PostgresDB) DeleteAccount(userID string) error {
 	// Delete sessions
 	if _, err := tx.Exec(`DELETE FROM sessions WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("delete sessions: %w", err)
+	}
+	// Delete debug reports
+	if _, err := tx.Exec(`DELETE FROM debug_reports WHERE user_id = $1`, userID); err != nil {
+		return fmt.Errorf("delete debug reports: %w", err)
 	}
 	// Delete user
 	if _, err := tx.Exec(`DELETE FROM users WHERE id = $1`, userID); err != nil {

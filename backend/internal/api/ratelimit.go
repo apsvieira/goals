@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/apsv/goal-tracker/backend/internal/auth"
 )
 
 // RateLimiter provides simple in-memory rate limiting per IP address
@@ -87,6 +89,37 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 				w.WriteHeader(http.StatusTooManyRequests)
 				w.Write([]byte(`{"error":"rate limit exceeded, please try again later"}`))
 				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// UserRateLimitMiddleware returns HTTP middleware that rate-limits by
+// authenticated user ID instead of IP. Must be mounted inside an auth-required
+// group so that auth.GetUserFromContext returns a non-nil user. If no user is
+// present (which should not happen under RequireAuth) the middleware returns 401.
+//
+// Multiple limiters may be supplied; the request is rejected if ANY of them
+// rejects it. This lets callers combine hourly + daily caps on a single route.
+func UserRateLimitMiddleware(limiters ...*RateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := auth.GetUserFromContext(r.Context())
+			if user == nil {
+				http.Error(w, "authentication required", http.StatusUnauthorized)
+				return
+			}
+
+			for _, rl := range limiters {
+				if !rl.Allow(user.ID) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Retry-After", "60")
+					w.WriteHeader(http.StatusTooManyRequests)
+					w.Write([]byte(`{"error":"rate limit exceeded, please try again later"}`))
+					return
+				}
 			}
 
 			next.ServeHTTP(w, r)

@@ -83,6 +83,8 @@ func main() {
 	// Start background session cleanup (runs every hour)
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	handler.StartSessionCleanup(cleanupCtx, time.Hour)
+	// Debug reports retention: delete rows older than 90 days, check once a day
+	handler.StartDebugReportsCleanup(cleanupCtx, 24*time.Hour)
 
 	// Start server in a goroutine
 	go func() {

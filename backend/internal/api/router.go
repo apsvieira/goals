@@ -52,17 +52,19 @@ func initLogger() {
 }
 
 type Server struct {
-	db              db.Database
-	router          chi.Router
-	staticFS        fs.FS
-	authManager     *auth.Manager
-	oauthHandler    *auth.OAuthHandler
-	authRateLimiter *RateLimiter
-	apiRateLimiter  *RateLimiter
-	syncRateLimiter *RateLimiter
-	frontendURL     string
-	authCodeStore   *auth.AuthCodeStore
-	syncService     *sync.Service
+	db                     db.Database
+	router                 chi.Router
+	staticFS               fs.FS
+	authManager            *auth.Manager
+	oauthHandler           *auth.OAuthHandler
+	authRateLimiter        *RateLimiter
+	apiRateLimiter         *RateLimiter
+	syncRateLimiter        *RateLimiter
+	debugReportHourly      *RateLimiter
+	debugReportDaily       *RateLimiter
+	frontendURL            string
+	authCodeStore          *auth.AuthCodeStore
+	syncService            *sync.Service
 }
 
 func NewServer(database db.Database, staticFS fs.FS) *Server {
@@ -87,18 +89,25 @@ func NewServer(database db.Database, staticFS fs.FS) *Server {
 	apiRateLimiter := NewRateLimiter(100, time.Minute)
 	// Sync endpoint: 30 requests per minute (moderate - more expensive operation)
 	syncRateLimiter := NewRateLimiter(30, time.Minute)
+	// Debug report endpoint is keyed by user ID (not IP). Hourly + daily caps
+	// prevent a pocket-shake storm from overwhelming the backend or filling
+	// the reports table with duplicates.
+	debugReportHourly := NewRateLimiter(5, time.Hour)
+	debugReportDaily := NewRateLimiter(20, 24*time.Hour)
 
 	s := &Server{
-		db:              database,
-		staticFS:        staticFS,
-		authManager:     authManager,
-		oauthHandler:    oauthHandler,
-		authRateLimiter: authRateLimiter,
-		apiRateLimiter:  apiRateLimiter,
-		syncRateLimiter: syncRateLimiter,
-		frontendURL:     frontendURL,
-		authCodeStore:   auth.NewAuthCodeStore(30 * time.Second),
-		syncService:     sync.NewService(database),
+		db:                database,
+		staticFS:          staticFS,
+		authManager:       authManager,
+		oauthHandler:      oauthHandler,
+		authRateLimiter:   authRateLimiter,
+		apiRateLimiter:    apiRateLimiter,
+		syncRateLimiter:   syncRateLimiter,
+		debugReportHourly: debugReportHourly,
+		debugReportDaily:  debugReportDaily,
+		frontendURL:       frontendURL,
+		authCodeStore:     auth.NewAuthCodeStore(30 * time.Second),
+		syncService:       sync.NewService(database),
 	}
 	s.setupRoutes()
 	return s
@@ -195,6 +204,12 @@ func (s *Server) setupRoutes() {
 				r.Post("/devices", s.registerDevice)
 				r.Delete("/devices/{id}", s.unregisterDevice)
 			})
+
+			// Debug reports: user-keyed rate limiting (hourly + daily)
+			r.Route("/debug-reports", func(r chi.Router) {
+				r.Use(UserRateLimitMiddleware(s.debugReportHourly, s.debugReportDaily))
+				r.Post("/", s.createDebugReport)
+			})
 		})
 	})
 
@@ -290,7 +305,7 @@ func securityHeaders(next http.Handler) http.Handler {
 	// - script-src 'self': Scripts only from same origin
 	// - style-src 'self' 'unsafe-inline': Styles from same origin + inline (needed for dynamic colors in Svelte)
 	// - img-src 'self' https://lh3.googleusercontent.com data:: Images from self, Google avatars, and data URIs
-	// - connect-src 'self': API/fetch calls only to same origin
+	// - connect-src 'self' https://*.sentry.io: API/fetch calls to same origin, plus Sentry ingest hosts for error reporting
 	// - font-src 'self': Fonts only from same origin
 	// - object-src 'none': Disallow plugins (Flash, etc.)
 	// - frame-ancestors 'none': Prevent embedding in iframes (aligns with X-Frame-Options)
@@ -301,7 +316,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		"script-src 'self'; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' https://lh3.googleusercontent.com data:; " +
-		"connect-src 'self'; " +
+		"connect-src 'self' https://*.sentry.io; " +
 		"font-src 'self'; " +
 		"object-src 'none'; " +
 		"frame-ancestors 'none'; " +
@@ -423,6 +438,43 @@ func (s *Server) StartSessionCleanup(ctx context.Context, cleanupInterval time.D
 				} else {
 					Logger.Info("session cleanup completed")
 				}
+			}
+		}
+	}()
+}
+
+// debugReportRetention is how long debug reports are kept before the cleanup
+// goroutine deletes them. Matches the privacy-policy disclosure.
+const debugReportRetention = 90 * 24 * time.Hour
+
+// StartDebugReportsCleanup starts a background goroutine that periodically
+// deletes debug reports older than debugReportRetention. Runs immediately on
+// start, then every cleanupInterval, and stops when the context is cancelled.
+func (s *Server) StartDebugReportsCleanup(ctx context.Context, cleanupInterval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(cleanupInterval)
+		defer ticker.Stop()
+
+		runOnce := func() {
+			cutoff := time.Now().UTC().Add(-debugReportRetention)
+			n, err := s.db.DeleteOldDebugReports(cutoff)
+			if err != nil {
+				Logger.Error("debug reports cleanup failed", slog.String("error", err.Error()))
+				return
+			}
+			Logger.Info("debug reports cleanup completed", slog.Int64("deleted", n))
+		}
+
+		// Run immediately on startup
+		runOnce()
+
+		for {
+			select {
+			case <-ctx.Done():
+				Logger.Info("debug reports cleanup stopped")
+				return
+			case <-ticker.C:
+				runOnce()
 			}
 		}
 	}()
