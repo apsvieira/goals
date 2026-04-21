@@ -3,7 +3,7 @@ name: Android Build
 on:
   push:
     branches:
-      - main
+      - '**'
     paths:
       - 'frontend/**'
       - '.github/workflows/android-build.yml'
