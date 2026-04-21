@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Goal struct {
 	ID           string     `json:"id"`
@@ -88,4 +91,38 @@ type DeviceToken struct {
 type RegisterDeviceRequest struct {
 	Token    string `json:"token"`
 	Platform string `json:"platform"` // "android" or "ios"
+}
+
+// Debug report types
+
+// DebugReport is a diagnostic report collected from a user device.
+// Trigger is either "shake" (user-initiated) or "auto" (unhandled error capture).
+// Device, State, and Breadcrumbs are stored as JSON and kept opaque at the DB layer;
+// the ring-buffer shape is defined by the frontend but we only store/forward it.
+type DebugReport struct {
+	ID          string          `json:"id"`
+	UserID      string          `json:"user_id"`
+	ClientID    string          `json:"client_id"`
+	CreatedAt   time.Time       `json:"created_at"`
+	Trigger     string          `json:"trigger"` // "shake" or "auto"
+	AppVersion  string          `json:"app_version"`
+	Platform    string          `json:"platform"`
+	Device      json.RawMessage `json:"device"`
+	State       json.RawMessage `json:"state"`
+	Description string          `json:"description,omitempty"`
+	Breadcrumbs json.RawMessage `json:"breadcrumbs"`
+}
+
+// CreateDebugReportRequest is the POST /api/v1/debug-reports body.
+// user_id is intentionally omitted — it's sourced from the authenticated session.
+type CreateDebugReportRequest struct {
+	ClientID    string          `json:"client_id"`
+	AppVersion  string          `json:"app_version"`
+	Platform    string          `json:"platform"`
+	Device      json.RawMessage `json:"device"`
+	State       json.RawMessage `json:"state"`
+	Description string          `json:"description,omitempty"`
+	Breadcrumbs json.RawMessage `json:"breadcrumbs"`
+	Trigger     string          `json:"trigger"` // "shake" or "auto"
+	ClientTS    int64           `json:"client_ts,omitempty"`
 }

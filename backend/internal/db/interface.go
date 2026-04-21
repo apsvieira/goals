@@ -63,8 +63,23 @@ type Database interface {
 	MarkEventProcessed(eventID string) error
 	PruneProcessedEvents(olderThan time.Time) error
 
+	// Debug reports (on-device diagnostic collection)
+	CreateDebugReport(report *models.DebugReport) error
+	ListDebugReports(filter DebugReportFilter) ([]models.DebugReport, error)
+	GetDebugReport(id string) (*models.DebugReport, error)
+	DeleteOldDebugReports(olderThan time.Time) (int64, error)
+
 	// Lifecycle
 	Migrate() error
 	Close() error
 	Ping() error
+}
+
+// DebugReportFilter narrows ListDebugReports results.
+// All fields are optional — nil/zero means "no filter on this field".
+// Used by the CLI viewer (list --user email --since 7d --limit N).
+type DebugReportFilter struct {
+	UserID *string    // exact user_id match
+	Since  *time.Time // created_at >= Since
+	Limit  int        // max rows to return; 0 means no limit
 }
