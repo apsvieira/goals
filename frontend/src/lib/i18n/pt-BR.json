@@ -186,5 +186,19 @@
       "notNow": "Agora não"
     },
     "pageTitle": "Configurações de Notificação"
+  },
+  "debugReport": {
+    "title": "Relatar um problema",
+    "promptLabel": "O que está dando errado?",
+    "placeholder": "Descreva o que aconteceu (opcional)",
+    "explainer": "Isto enviará os registros recentes do aplicativo e informações do seu dispositivo para que possamos investigar. Os dados dos seus objetivos não são incluídos.",
+    "cancel": "Cancelar",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "clientRateLimited": "Você acabou de enviar um relatório — aguarde alguns segundos para enviar outro.",
+    "rateLimited": "Muitos relatórios. Por favor, tente novamente mais tarde.",
+    "sentToast": "Obrigado, relatório enviado",
+    "queuedToast": "Salvo — será enviado quando você estiver online",
+    "genericError": "Não foi possível enviar o relatório. Ele será enviado quando você estiver online novamente."
   }
 }

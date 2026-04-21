@@ -21,3 +21,16 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => isOnline.set(true));
   window.addEventListener('offline', () => isOnline.set(false));
 }
+
+// Debug-report modal visibility. Phase 5 exposes only the user-initiated
+// entry point; Phase 6 (shake) and Phase 7 (Sentry) will call
+// `openDebugReport()` from their own triggers.
+export const debugReportModalOpen = writable<boolean>(false);
+
+export function openDebugReport(): void {
+  debugReportModalOpen.set(true);
+}
+
+export function closeDebugReport(): void {
+  debugReportModalOpen.set(false);
+}

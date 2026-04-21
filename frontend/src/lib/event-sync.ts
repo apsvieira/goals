@@ -8,6 +8,8 @@ import { getToken } from './token-storage';
 import { get, writable } from 'svelte/store';
 import { authStore } from './stores';
 import { getApiBase } from './config';
+import { breadcrumbSync } from './diagnostics/instrument';
+import { drainQueue as drainDebugReportQueue } from './diagnostics/debug-report';
 
 export type SyncStatus =
   | { state: 'idle' }
@@ -78,6 +80,7 @@ export async function flushPendingEvents(): Promise<void> {
     const events = await getUnsyncedEvents();
     if (events.length === 0) return;
 
+    breadcrumbSync('start', { pending_count: events.length });
     syncStatus.set({ state: 'syncing', message: 'Syncing...' });
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -109,11 +112,14 @@ export async function flushPendingEvents(): Promise<void> {
       } catch {
         // Prune failure should not affect sync status
       }
+      breadcrumbSync('end', { processed_count: data.processed?.length ?? 0 });
     } else {
+      breadcrumbSync('error', { status: res.status });
       syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });
       return;
     }
   } catch {
+    breadcrumbSync('error', { reason: 'network' });
     syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });
     return;
   } finally {
@@ -128,6 +134,11 @@ let flushIntervalId: ReturnType<typeof setInterval> | null = null;
 
 function onOnline(): void {
   flushPendingEvents().catch(console.error);
+  // Mirror the sync-flush pattern for queued debug reports so any reports
+  // that were saved offline get sent once connectivity returns.
+  drainDebugReportQueue().catch(() => {
+    // best-effort; next online flip or next send will retry
+  });
 }
 
 /**

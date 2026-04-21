@@ -18,6 +18,7 @@ import type { SyncEvent } from './events';
 import { sendEvent, flushPendingEvents } from './event-sync';
 import { getToken } from './token-storage';
 import { getApiBase } from './config';
+import { breadcrumbAction, breadcrumbAuth } from './diagnostics/instrument';
 
 const API_BASE = getApiBase();
 
@@ -174,6 +175,7 @@ export async function createGoal(
   await saveSyncEvent(event);
   sendEvent(event).catch(console.error);
 
+  breadcrumbAction('goal created', { goal_id: goal.id });
   return goal;
 }
 
@@ -210,6 +212,7 @@ export async function updateGoal(
   await saveSyncEvent(event);
   sendEvent(event).catch(console.error);
 
+  breadcrumbAction('goal edited', { goal_id: updatedGoal.id });
   return updatedGoal;
 }
 
@@ -238,6 +241,8 @@ export async function archiveGoal(id: string): Promise<void> {
   };
   await saveSyncEvent(event);
   sendEvent(event).catch(console.error);
+
+  breadcrumbAction('goal deleted', { goal_id: id });
 }
 
 export async function createCompletion(goalId: string, date: string): Promise<Completion> {
@@ -262,6 +267,7 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
   await saveSyncEvent(event);
   sendEvent(event).catch(console.error);
 
+  breadcrumbAction('completion created', { goal_id: goalId, date });
   return completion;
 }
 
@@ -284,6 +290,8 @@ export async function deleteCompletion(id: string, goalId: string, date: string)
   };
   await saveSyncEvent(event);
   sendEvent(event).catch(console.error);
+
+  breadcrumbAction('completion deleted', { goal_id: goalId, date });
 }
 
 export async function reorderGoals(goalIds: string[]): Promise<Goal[]> {
@@ -364,11 +372,15 @@ export async function logout(): Promise<void> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  await fetch(`${API_BASE}/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-    headers,
-  });
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+    });
+  } finally {
+    breadcrumbAuth('logout');
+  }
 }
 
 // Get all completions (for statistics - no date filter)

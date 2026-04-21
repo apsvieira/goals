@@ -12,6 +12,7 @@
   import PrivacyPolicy from './lib/components/PrivacyPolicy.svelte';
   import NotificationsPage from './lib/components/NotificationsPage.svelte';
   import NotificationPrompt from './lib/components/NotificationPrompt.svelte';
+  import DebugReportModal from './lib/components/DebugReportModal.svelte';
   import Spinner from './lib/components/Spinner.svelte';
   import {
     getCalendar,
@@ -40,6 +41,9 @@
   import { initLocalNotifications, requestPermission, applySettings } from './lib/local-notifications';
   import { markNotificationPromptSeen, loadNotificationSettings, updateNotificationSettings } from './lib/notification-settings';
   import { startMobileOAuth } from './lib/mobile-auth';
+  import { breadcrumbNav, breadcrumbAuth } from './lib/diagnostics/instrument';
+  import { setDebugReportRoute } from './lib/diagnostics/debug-report';
+  import { setSentryUser } from './lib/diagnostics/sentry';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
   const GOAL_PALETTE = [
@@ -105,13 +109,21 @@
   }
 
   function navigateTo(route: Route) {
+    const from = currentRoute;
     currentRoute = route;
     const path = route === 'home' ? '/' : `/${route}`;
     window.history.pushState({}, '', path);
+    breadcrumbNav(from, route);
+    setDebugReportRoute(route);
   }
 
   function handlePopState() {
+    const from = currentRoute;
     currentRoute = getRouteFromPath();
+    if (from !== currentRoute) {
+      breadcrumbNav(from, currentRoute);
+      setDebugReportRoute(currentRoute);
+    }
   }
 
   // Derived user state
@@ -434,6 +446,8 @@
       if (user) {
         initialAuthInProgress = true;
         authStore.set({ type: 'authenticated', user });
+        setSentryUser(user.id);
+        breadcrumbAuth('session_restored');
 
         // Start event sync
         startEventSync();
@@ -459,6 +473,7 @@
 
     // Not authenticated
     authStore.set({ type: 'unauthenticated' });
+    setSentryUser(null);
   }
 
   async function handleLogout() {
@@ -474,6 +489,7 @@
     try { await clearToken(); } catch (e) { console.error('Failed to clear token:', e); }
 
     authStore.set({ type: 'unauthenticated' });
+    setSentryUser(null);
     goals = [];
     completions = [];
     allCompletions = [];
@@ -656,6 +672,7 @@
   onMount(() => {
     // Initialize route from URL
     currentRoute = getRouteFromPath();
+    breadcrumbNav('(init)', currentRoute);
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
 
@@ -859,6 +876,8 @@
         onDismiss={handleNotificationPromptDismiss}
       />
     {/if}
+
+    <DebugReportModal />
   </div>
 {/if}
 

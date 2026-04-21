@@ -186,5 +186,19 @@
       "notNow": "Not now"
     },
     "pageTitle": "Notification Settings"
+  },
+  "debugReport": {
+    "title": "Report a problem",
+    "promptLabel": "What's going wrong?",
+    "placeholder": "Describe what happened (optional)",
+    "explainer": "This will send recent app logs and your device info so we can investigate. Your goal data is not included.",
+    "cancel": "Cancel",
+    "send": "Send",
+    "sending": "Sending…",
+    "clientRateLimited": "You just sent a report a moment ago — you can send another in a few seconds.",
+    "rateLimited": "Too many reports. Please try again later.",
+    "sentToast": "Thanks, report sent",
+    "queuedToast": "Saved — will send when online",
+    "genericError": "Could not send report. It will be sent when you're back online."
   }
 }
