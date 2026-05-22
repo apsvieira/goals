@@ -38,3 +38,4 @@ infra/terraform.tfstate.backup
 node_modules/
 .playwright-mcp/
 .claude
+.implementation-loop/
