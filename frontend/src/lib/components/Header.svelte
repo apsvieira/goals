@@ -1,13 +1,14 @@
 <script lang="ts">
-  import MonthNav from './MonthNav.svelte';
+  import PeriodNav from './PeriodNav.svelte';
+  import ViewToggle from './ViewToggle.svelte';
   import UserDropdown from './UserDropdown.svelte';
   import type { User } from '../stores';
   import { _ } from 'svelte-i18n';
 
-  export let month: string;
+  export let label: string;
   export let onPrev: () => void;
   export let onNext: () => void;
-  export let disableNextMonth: boolean = false;
+  export let disableNext: boolean = false;
   export let showAddForm: boolean;
   export let onToggleAddForm: () => void;
   export let user: User | null = null;
@@ -79,7 +80,8 @@
       </svg>
       <span class="btn-text">{showAddForm ? $_('header.cancel') : $_('header.newGoal')}</span>
     </button>
-    <MonthNav {month} {onPrev} {onNext} disableNext={disableNextMonth} />
+    <PeriodNav {label} {onPrev} {onNext} {disableNext} />
+    <ViewToggle />
     {#if syncing}
       <span class="sync-cloud" title={$_('tooltip.syncing')}>
         <svg viewBox="0 0 24 20" width="18" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
@@ -211,8 +213,8 @@
   }
 
   .sync-cloud {
-    position: absolute;
-    right: 7rem;
+    display: inline-flex;
+    align-items: center;
     opacity: 0.45;
     animation: fade-in 0.3s ease;
   }

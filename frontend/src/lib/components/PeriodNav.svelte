@@ -1,33 +1,20 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
 
-  export let month: string; // YYYY-MM format
+  export let label: string;
   export let onPrev: () => void;
   export let onNext: () => void;
   export let disableNext: boolean = false;
-
-  const monthKeys = [
-    'month.jan', 'month.feb', 'month.mar', 'month.apr',
-    'month.may', 'month.jun', 'month.jul', 'month.aug',
-    'month.sep', 'month.oct', 'month.nov', 'month.dec'
-  ];
-
-  $: {
-    const [year, monthNum] = month.split('-').map(Number);
-    displayMonth = $_(monthKeys[monthNum - 1]);
-  }
-
-  let displayMonth: string;
 </script>
 
-<div class="month-nav">
-  <button class="nav-btn" on:click={onPrev} aria-label={$_('aria.previousMonth')}>
+<div class="period-nav">
+  <button class="nav-btn" on:click={onPrev} aria-label={$_('aria.previousPeriod')}>
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
       <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
     </svg>
   </button>
-  <span class="month-display">{displayMonth}</span>
-  <button class="nav-btn" on:click={onNext} aria-label={$_('aria.nextMonth')} disabled={disableNext}>
+  <span class="period-display">{label}</span>
+  <button class="nav-btn" on:click={onNext} aria-label={$_('aria.nextPeriod')} disabled={disableNext}>
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
       <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
     </svg>
@@ -35,7 +22,7 @@
 </div>
 
 <style>
-  .month-nav {
+  .period-nav {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -64,7 +51,7 @@
     pointer-events: none;
   }
 
-  .month-display {
+  .period-display {
     font-size: 1rem;
     font-weight: 500;
     color: var(--text-primary);

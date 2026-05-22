@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { App as CapApp } from '@capacitor/app';
   import { Capacitor } from '@capacitor/core';
-  import { _ } from 'svelte-i18n';
+  import { _, locale } from 'svelte-i18n';
   import Header from './lib/components/Header.svelte';
   import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
@@ -30,7 +30,7 @@
     type Goal,
     type Completion,
   } from './lib/api';
-  import { buildMonthGrid, type CalendarCell } from './lib/calendar';
+  import { buildMonthGrid, buildWeekGrid, formatPeriodLabel, monthsForCells, type CalendarCell } from './lib/calendar';
   import WeekdayHeader from './lib/components/WeekdayHeader.svelte';
   import { getUserFriendlyMessage } from './lib/errors';
   import { authStore, isOnline, type AuthState } from './lib/stores';
@@ -40,6 +40,7 @@
   import { initPushNotifications, unregisterPushNotifications } from './lib/push-notifications';
   import { initLocalNotifications, requestPermission, applySettings } from './lib/local-notifications';
   import { markNotificationPromptSeen, loadNotificationSettings, updateNotificationSettings } from './lib/notification-settings';
+  import { viewSettings } from './lib/view-settings';
   import { startMobileOAuth } from './lib/mobile-auth';
   import { breadcrumbNav, breadcrumbAuth } from './lib/diagnostics/instrument';
   import { setDebugReportRoute } from './lib/diagnostics/debug-report';
@@ -63,18 +64,43 @@
   let online = true;
   isOnline.subscribe(value => online = value);
 
-  // Current month in YYYY-MM format
-  let currentMonth = (() => {
+  // Focal date for navigation. In month mode, only year/month are used.
+  // In week mode, the full date picks the visible week.
+  let focalDate: Date = (() => {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    now.setHours(0, 0, 0, 0);
+    return now;
   })();
 
-  // Whether we're viewing the current calendar month
-  $: isCurrentMonth = (() => {
+  // Current month in YYYY-MM format derived from focalDate (for API calls)
+  $: currentMonth = `${focalDate.getFullYear()}-${String(focalDate.getMonth() + 1).padStart(2, '0')}`;
+
+  // Active view is read from the viewSettings store via auto-subscription.
+  $: currentView = $viewSettings.calendarView;
+
+  // Whether we're viewing the current calendar period
+  $: isCurrentPeriod = (() => {
     const now = new Date();
-    const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return currentMonth === todayMonth;
+    if (currentView === 'month') {
+      const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      return currentMonth === todayMonth;
+    } else {
+      // Week mode: is focalDate in the same Sun-starting week as today?
+      const todayDow = now.getDay();
+      const focalDow = focalDate.getDay();
+      const todaySunday = new Date(now);
+      todaySunday.setDate(now.getDate() - todayDow);
+      todaySunday.setHours(0, 0, 0, 0);
+      const focalSunday = new Date(focalDate);
+      focalSunday.setDate(focalDate.getDate() - focalDow);
+      focalSunday.setHours(0, 0, 0, 0);
+      return todaySunday.getTime() === focalSunday.getTime();
+    }
   })();
+
+  // Compute the header period label using the app locale (svelte-i18n).
+  // Fall back to a sensible default if $locale is null during early init.
+  $: periodLabel = formatPeriodLabel(focalDate, currentView, $locale ?? 'en');
 
   let goals: Goal[] = [];
   let completions: Completion[] = [];
@@ -140,15 +166,18 @@
   }
   let daysInMonth: number;
 
-  // Compute the weekday-aligned grid for the currently visible month (35 or 42 cells)
+  // Compute the weekday-aligned grid for the currently visible period
   $: cells = (() => {
+    if (currentView === 'week') {
+      return buildWeekGrid(focalDate);
+    }
     const [year, month] = currentMonth.split('-').map(Number);
     return buildMonthGrid(year, month);
   })();
 
   // Compute currentDay for disabling future dates
-  // If viewing current month: currentDay = today's day number
-  // If viewing past month: currentDay = 0 (no restriction, 7-day limit handled by DayGrid)
+  // If viewing current period: currentDay = today's day number
+  // If viewing past period: currentDay = 0 (no restriction, 7-day limit handled by DayGrid)
   $: {
     const now = new Date();
     const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -231,34 +260,63 @@
     loading = true;
     error = '';
     try {
-      // Fetch calendar data for the visible month, period completions for
-      // the progress bars, and the last 7 days of the previous month (to
-      // populate leading adjacent-month cells) in parallel.
-      const { from: prevFrom, to: prevTo } = prevMonthTailRange(currentMonth);
-      const [data, periodData, prevTailCompletions] = await Promise.all([
-        getCalendar(currentMonth),
-        getCurrentPeriodCompletions(),
-        getCompletionsInRange(prevFrom, prevTo).catch((err) => {
-          console.warn('[loadData] failed to load prev-month tail completions:', err);
-          return [] as Completion[];
-        }),
-      ]);
+      if (currentView === 'week') {
+        // In week mode, the focal week may straddle two months.
+        // Build the week grid to find which months are needed.
+        const weekCells = buildWeekGrid(focalDate);
+        const months = monthsForCells(weekCells);
 
-      // Set periodCompletions FIRST so the reactive has data when goals triggers it
-      periodCompletions = periodData;
-      goals = data.goals ?? [];
-      // Merge current-month completions with the prev-month tail. Dedupe by id
-      // so overlapping ranges (shouldn't happen here, but cheap insurance) don't
-      // produce duplicate map entries downstream.
-      const merged: Completion[] = [...(data.completions ?? [])];
-      const seen = new Set(merged.map(c => c.id));
-      for (const c of prevTailCompletions) {
-        if (!seen.has(c.id)) {
-          merged.push(c);
-          seen.add(c.id);
+        const [periodData, ...calendarResults] = await Promise.all([
+          getCurrentPeriodCompletions(),
+          ...months.map(m => getCalendar(m)),
+        ]);
+
+        periodCompletions = periodData;
+        // Goals are the same regardless of month — take from first result
+        goals = calendarResults[0]?.goals ?? [];
+
+        // Merge all completions from both months (dedupe by id)
+        const merged: Completion[] = [];
+        const seen = new Set<string>();
+        for (const data of calendarResults) {
+          for (const c of (data.completions ?? [])) {
+            if (!seen.has(c.id)) {
+              merged.push(c);
+              seen.add(c.id);
+            }
+          }
         }
+        completions = merged;
+      } else {
+        // Month mode: fetch calendar data for the visible month, period
+        // completions for the progress bars, and the last 7 days of the
+        // previous month (to populate leading adjacent-month cells) in parallel.
+        const { from: prevFrom, to: prevTo } = prevMonthTailRange(currentMonth);
+        const [data, periodData, prevTailCompletions] = await Promise.all([
+          getCalendar(currentMonth),
+          getCurrentPeriodCompletions(),
+          getCompletionsInRange(prevFrom, prevTo).catch((err) => {
+            console.warn('[loadData] failed to load prev-month tail completions:', err);
+            return [] as Completion[];
+          }),
+        ]);
+
+        // Set periodCompletions FIRST so the reactive has data when goals triggers it
+        periodCompletions = periodData;
+        goals = data.goals ?? [];
+        // Merge current-month completions with the prev-month tail. Dedupe by id
+        // so overlapping ranges (shouldn't happen here, but cheap insurance) don't
+        // produce duplicate map entries downstream.
+        const merged: Completion[] = [...(data.completions ?? [])];
+        const seen = new Set(merged.map(c => c.id));
+        for (const c of prevTailCompletions) {
+          if (!seen.has(c.id)) {
+            merged.push(c);
+            seen.add(c.id);
+          }
+        }
+        completions = merged;
       }
-      completions = merged;
     } catch (e) {
       console.error('[loadData] error:', e);
       error = getUserFriendlyMessage(e);
@@ -267,18 +325,31 @@
     }
   }
 
-  function prevMonth() {
-    const [year, month] = currentMonth.split('-').map(Number);
-    const d = new Date(year, month - 2, 1);
-    currentMonth = d.toISOString().slice(0, 7);
+  function prevPeriod() {
+    if (currentView === 'week') {
+      const d = new Date(focalDate);
+      d.setDate(focalDate.getDate() - 7);
+      focalDate = d;
+    } else {
+      const [year, month] = currentMonth.split('-').map(Number);
+      const d = new Date(year, month - 2, 1);
+      focalDate = d;
+    }
   }
 
-  function nextMonth() {
-    if (isCurrentMonth) return;
-    const [year, month] = currentMonth.split('-').map(Number);
-    const d = new Date(year, month, 1);
-    currentMonth = d.toISOString().slice(0, 7);
+  function nextPeriod() {
+    if (isCurrentPeriod) return;
+    if (currentView === 'week') {
+      const d = new Date(focalDate);
+      d.setDate(focalDate.getDate() + 7);
+      focalDate = d;
+    } else {
+      const [year, month] = currentMonth.split('-').map(Number);
+      const d = new Date(year, month, 1);
+      focalDate = d;
+    }
   }
+
 
   // Touch swipe handling for month navigation
   let touchStartX = 0;
@@ -300,9 +371,9 @@
     // Check if horizontal swipe is significant and dominant
     if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * SWIPE_RATIO) {
       if (deltaX > 0) {
-        prevMonth(); // Swipe right = previous month
-      } else if (!isCurrentMonth) {
-        nextMonth(); // Swipe left = next month
+        prevPeriod(); // Swipe right = previous period
+      } else if (!isCurrentPeriod) {
+        nextPeriod(); // Swipe left = next period
       }
     }
   }
@@ -585,15 +656,15 @@
       return;
     }
 
-    // Arrow keys for month navigation
+    // Arrow keys for period navigation
     if (e.key === 'ArrowLeft') {
-      prevMonth();
+      prevPeriod();
       e.preventDefault();
       return;
     }
     if (e.key === 'ArrowRight') {
-      if (!isCurrentMonth) {
-        nextMonth();
+      if (!isCurrentPeriod) {
+        nextPeriod();
       }
       e.preventDefault();
       return;
@@ -662,8 +733,12 @@
         if (currentDay === 0 || (currentDay > 0 && day <= currentDay)) {
           const [year, monthStr] = currentMonth.split('-');
           const date = `${year}-${monthStr}-${day.toString().padStart(2, '0')}`;
-          handleToggle(goals[focusedGoalIndex].id, date);
-          e.preventDefault();
+          // In week mode (and at week edges in month mode), only allow
+          // toggling dates that are actually visible in the grid.
+          if (cells.some(c => c.dateString === date)) {
+            handleToggle(goals[focusedGoalIndex].id, date);
+            e.preventDefault();
+          }
         }
       }
     }
@@ -754,10 +829,11 @@
     };
   });
 
-  // Reload data when month changes, but only if authenticated
-  // Skip during initial auth to avoid race condition with sync
+  // Reload data when the focal period changes (month or week), but only if authenticated.
+  // Skip during initial auth to avoid race condition with sync.
   $: if (authState.type === 'authenticated' && !initialAuthInProgress) {
-    currentMonth, loadData();
+    // Touch focalDate and currentView so Svelte tracks both as reactive dependencies.
+    focalDate, currentView, loadData();
   }
 </script>
 
@@ -793,10 +869,10 @@
       />
     {:else}
       <Header
-        month={currentMonth}
-        onPrev={prevMonth}
-        onNext={nextMonth}
-        disableNextMonth={isCurrentMonth}
+        label={periodLabel}
+        onPrev={prevPeriod}
+        onNext={nextPeriod}
+        disableNext={isCurrentPeriod}
         showAddForm={false}
         onToggleAddForm={() => editorState = { mode: 'add' }}
         {user}

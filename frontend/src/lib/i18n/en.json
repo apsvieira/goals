@@ -118,8 +118,8 @@
   "aria": {
     "closeForm": "Close form",
     "addGoal": "Add goal",
-    "previousMonth": "Previous month",
-    "nextMonth": "Next month",
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
     "goal": "Goal: {name}",
     "goalSelected": "Goal: {name} (selected for keyboard navigation)",
     "editGoal": "Edit {name}. Drag to reorder.",
@@ -186,6 +186,12 @@
       "notNow": "Not now"
     },
     "pageTitle": "Notification Settings"
+  },
+  "viewToggle": {
+    "month": "Month",
+    "week": "Week",
+    "monthShort": "M",
+    "weekShort": "W"
   },
   "debugReport": {
     "title": "Report a problem",

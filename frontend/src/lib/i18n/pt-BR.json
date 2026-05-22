@@ -118,8 +118,8 @@
   "aria": {
     "closeForm": "Fechar formulário",
     "addGoal": "Adicionar objetivo",
-    "previousMonth": "Mês anterior",
-    "nextMonth": "Próximo mês",
+    "previousPeriod": "Período anterior",
+    "nextPeriod": "Próximo período",
     "goal": "Objetivo: {name}",
     "goalSelected": "Objetivo: {name} (selecionado para navegação por teclado)",
     "editGoal": "Editar {name}. Arraste para reordenar.",
@@ -186,6 +186,12 @@
       "notNow": "Agora não"
     },
     "pageTitle": "Configurações de Notificação"
+  },
+  "viewToggle": {
+    "month": "Mês",
+    "week": "Semana",
+    "monthShort": "M",
+    "weekShort": "S"
   },
   "debugReport": {
     "title": "Relatar um problema",
