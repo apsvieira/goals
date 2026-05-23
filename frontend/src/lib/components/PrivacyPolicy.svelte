@@ -1,5 +1,19 @@
 <script lang="ts">
+  // Single source of truth: frontend/public/privacy.html. Imported as a raw string
+  // at build time so any update to that file flows into the in-app view without
+  // a second copy of the content here. The standalone privacy.html (linked from
+  // the Play Store listing) and this in-app view always stay in sync.
+  import privacyHtmlSource from '../../../public/privacy.html?raw';
+
   export let onBack: () => void;
+
+  // Strip everything outside <body>...</body> and drop the standalone <style>
+  // block — in-app styling is driven by the surrounding card below.
+  const bodyMatch = privacyHtmlSource.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const bodyHtml = (bodyMatch?.[1] ?? privacyHtmlSource).replace(
+    /<style[\s\S]*?<\/style>/gi,
+    '',
+  );
 </script>
 
 <div class="legal-container">
@@ -11,129 +25,9 @@
       Back
     </button>
 
-    <h1>Privacy Policy</h1>
-    <p class="last-updated">Last updated: April 14, 2026</p>
-
-    <section>
-      <h2>Introduction</h2>
-      <p>
-        tiny tracker ("we", "our", or "us") is committed to protecting your privacy.
-        This Privacy Policy explains how we collect, use, and safeguard your information
-        when you use our goal tracking application.
-      </p>
-    </section>
-
-    <section>
-      <h2>Information We Collect</h2>
-      <h3>Account Information</h3>
-      <p>
-        When you sign in with Google, we receive and store:
-      </p>
-      <ul>
-        <li>Your Google account email address</li>
-        <li>Your display name</li>
-        <li>Your profile picture URL</li>
-      </ul>
-
-      <h3>Goal and Completion Data</h3>
-      <p>
-        We store the goals you create and your daily completion records to provide
-        the core functionality of the application.
-      </p>
-
-      <h3>Guest Mode (Local Storage)</h3>
-      <p>
-        If you use the application without signing in, your data is stored locally
-        in your browser and is not transmitted to our servers.
-      </p>
-
-      <h3>Debug Reports (optional)</h3>
-      <p>
-        If you shake your device to report a problem, the application sends us
-        your user ID, app version, device model, recent technical logs (with
-        goal names replaced by internal identifiers), and your description of
-        the problem. Debug reports are kept for 90 days and then automatically
-        deleted.
-      </p>
-    </section>
-
-    <section>
-      <h2>How We Use Your Information</h2>
-      <p>We use your information to:</p>
-      <ul>
-        <li>Provide and maintain the goal tracking service</li>
-        <li>Sync your data across devices when you sign in</li>
-        <li>Improve and optimize the application</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Data Storage and Security</h2>
-      <p>
-        Your data is stored on secure servers using PostgreSQL databases.
-        We implement appropriate technical and organizational measures to
-        protect your personal information against unauthorized access,
-        alteration, disclosure, or destruction.
-      </p>
-    </section>
-
-    <section>
-      <h2>Data Sharing</h2>
-      <p>
-        We do not sell, trade, or share your personal information with third parties,
-        except as required by law or to protect our rights.
-      </p>
-    </section>
-
-    <section>
-      <h2>Third-Party Services</h2>
-      <h3>Sentry (sentry.io)</h3>
-      <p>
-        For automated error reporting. When the application encounters an
-        unexpected error, a technical report is sent to Sentry containing your
-        user ID (a random identifier, not your email), your app version,
-        device model, operating system, and a stack trace of the error. Your
-        goal names, completions, and any personal content are not sent to
-        Sentry. Subject to
-        <a href="https://sentry.io/privacy/" target="_blank" rel="noopener noreferrer">Sentry's Privacy Policy</a>.
-      </p>
-    </section>
-
-    <section>
-      <h2>Your Rights</h2>
-      <p>You have the right to:</p>
-      <ul>
-        <li>Access the personal data we hold about you</li>
-        <li>Request deletion of your data</li>
-        <li>Export your data</li>
-        <li>Withdraw consent at any time by deleting your account</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Cookies and Local Storage</h2>
-      <p>
-        We use essential cookies for authentication purposes.
-        Local storage is used to maintain guest mode data and application preferences.
-      </p>
-    </section>
-
-    <section>
-      <h2>Changes to This Policy</h2>
-      <p>
-        We may update this Privacy Policy from time to time.
-        We will notify you of any changes by posting the new Privacy Policy on this page
-        and updating the "Last updated" date.
-      </p>
-    </section>
-
-    <section>
-      <h2>Contact Us</h2>
-      <p>
-        If you have any questions about this Privacy Policy, please contact us through
-        the application's support channels.
-      </p>
-    </section>
+    <div class="policy-content">
+      {@html bodyHtml}
+    </div>
   </div>
 </div>
 
@@ -174,52 +68,52 @@
     color: var(--text-primary);
   }
 
-  h1 {
+  .policy-content :global(h1) {
     margin: 0 0 8px;
     font-size: 28px;
     font-weight: 600;
     color: var(--text-primary);
   }
 
-  .last-updated {
+  .policy-content :global(.updated) {
     margin: 0 0 32px;
     color: var(--text-muted);
     font-size: 14px;
   }
 
-  section {
-    margin-bottom: 24px;
-  }
-
-  h2 {
+  .policy-content :global(h2) {
     font-size: 20px;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 12px;
+    margin: 24px 0 12px;
   }
 
-  h3 {
+  .policy-content :global(h3) {
     font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
     margin: 16px 0 8px;
   }
 
-  p {
+  .policy-content :global(p) {
     color: var(--text-secondary);
     line-height: 1.6;
     margin: 0 0 12px;
   }
 
-  ul {
+  .policy-content :global(ul) {
     color: var(--text-secondary);
     line-height: 1.6;
     margin: 0 0 12px;
     padding-left: 24px;
   }
 
-  li {
+  .policy-content :global(li) {
     margin-bottom: 4px;
+  }
+
+  .policy-content :global(a) {
+    color: var(--accent, #4CAF50);
   }
 
   @media (max-width: 768px) {
@@ -227,11 +121,11 @@
       padding: 24px;
     }
 
-    h1 {
+    .policy-content :global(h1) {
       font-size: 24px;
     }
 
-    h2 {
+    .policy-content :global(h2) {
       font-size: 18px;
     }
   }
