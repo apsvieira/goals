@@ -21,7 +21,7 @@ Each follow-up item was verified against the current tree. Result:
 | J | `disable_external_dependency_loading: true` | VALID | `frontend/src/lib/analytics/posthog.ts:106` |
 | K | `TestOTelBridge_NotInstalledWithoutToken` only asserts `/health` 200 | VALID | `backend/internal/api/otel_test.go:13-28` |
 | L | No `logtest` test for the bridge-on fan-out path | VALID | (no occurrences in tests) |
-| M | Play Store data-safety form not updated for analytics | (external, user action) | — |
+| M | Play Store data-safety form not updated for analytics | DONE — form updated in Play Console | — |
 | N | Region hardcoded in CSP (`VITE_POSTHOG_HOST` and Fly OTLP endpoint are already env-driven) | VALID — only the CSP host is hardcoded | `backend/internal/api/router.go:383` |
 
 ## Triage
@@ -43,7 +43,7 @@ Items that fix a real gap, are cheap, and don't change product behavior beyond t
 
 - **B** (`goal_deleted` from `archiveGoal`) — semantically defensible today (soft-delete is the user-visible "delete"). Revisit only when/if a hard-delete path is introduced. Captured as a TODO in the event taxonomy doc instead of code.
 - **J** (`disable_external_dependency_loading`) — purely forward-looking. The app has no CSP today, so flipping this is a one-line change when (if) Toolbar/Surveys/Web-Vitals is wanted. No action now.
-- **M** (Play Store data-safety form) — out of code scope. Calling out here so it isn't forgotten when the next Play Store update goes out.
+- **M** (Play Store data-safety form) — Submitted in Play Console (user-side action, completed 2026-05-23). Code changes that support it (privacy disclosure refresh; making `frontend/public/privacy.html` the single source of truth for both the Play listing URL and the in-app view) are bundled into Step 6 below.
 
 ## Implementation plan
 
@@ -95,8 +95,17 @@ Touches `frontend/src/lib/event-sync.ts`, `frontend/src/lib/components/Notificat
 
 ### Step 5 — Documentation touch-ups *(commit: `docs(plans): log posthog follow-ups; flag deferred items`)*
 
-1. In `docs/plans/2026-05-23-posthog-analytics-and-logs.md`, append a short "Follow-ups" section linking to this plan and to the four deferred items (B, J, M, N) with one-line context each.
+1. In `docs/plans/2026-05-23-posthog-analytics-and-logs.md`, append a short "Follow-ups" section linking to this plan and to the deferred items (B, J) plus the user-side Play Console task (M) with one-line context each.
 2. Mark this plan as `Shipped` once Steps 1–4 land and the deploy goes out.
+
+### Step 6 — Privacy disclosure refresh *(commit: `docs(privacy): disclose PostHog logs, GeoIP, and IP retention; unify in-app view`)* — DONE in this session
+
+Three surfaces had drifted. Brought back into sync and made `frontend/public/privacy.html` the single source of truth.
+
+1. **`docs/privacy-policy.md`** — added new sub-sections for *Server-Side Request Logs*, *Product Analytics Events*, and *IP Address and Approximate Location*. Expanded the Sentry bullet to mention IP retention. Expanded the PostHog bullet to cover backend log lines and GeoIP-derived approximate location.
+2. **`frontend/public/privacy.html`** — mirrored the markdown updates one-for-one.
+3. **`frontend/src/lib/components/PrivacyPolicy.svelte`** — refactored to import `privacy.html` via Vite's `?raw` query, strip the standalone `<style>`/`<body>` wrappers, and render the inner HTML through the in-app theme. The component is now ~120 lines (down from 240) and contains zero policy text — future privacy updates touch only the markdown + HTML, never the Svelte component. Verified by `vite build` (inlined into the bundle, no runtime fetch).
+4. **Play Console** — separate from the code change. User-side action: log into Play Console → Data safety, add entries for User IDs, App interactions, Diagnostics, Crash logs (if not already), Approximate location, and Device or other IDs (FCM token). Form text drafted in conversation. **DONE** — submitted 2026-05-23, awaiting Google review (24–48h typical).
 
 ## Test plan
 
@@ -109,6 +118,10 @@ Touches `frontend/src/lib/event-sync.ts`, `frontend/src/lib/components/Notificat
 - Manual frontend verification of C:
   - Fresh install → deny notifications → background app → flip OS permission to grant → resume app.
   - PostHog Events should show one `notification_permission_changed` with `granted: true, source: 'resume'`.
+- Step 6 verification:
+  - `npx vite build` succeeds (confirms the `?raw` privacy import resolves).
+  - In-app: navigate to `/privacy` and confirm the rendered policy matches `frontend/public/privacy.html` and includes the new sections.
+  - Standalone: open `https://<host>/privacy.html` and confirm the same content renders with its own minimal styling.
 
 ## Risks / open questions
 
