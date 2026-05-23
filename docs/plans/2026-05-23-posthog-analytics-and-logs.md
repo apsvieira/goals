@@ -108,9 +108,9 @@ Define a small initial taxonomy (event name + property keys, no free-text):
 - `goal_completed` — `{ goal_id }`
 - `goal_deleted` — `{ goal_id }`
 - `view_switched` — `{ goal_id, view: 'month' | 'week' }`
-- `sync_completed` — `{ ok, duration_ms, items_pushed, items_pulled }`
+- `sync_completed` — `{ ok, duration_ms, items_pushed, items_acked }` (`items_acked` = server-acknowledged IDs; renamed from `items_pulled` — see follow-ups plan)
 - `sync_failed` — `{ reason_code }` (codes, not messages)
-- `notification_permission_changed` — `{ state }`
+- `notification_permission_changed` — `{ state, source? }` (`source`: `'prompt'` | `'resume'`)
 - `debug_report_submitted` — `{ size_bytes }`
 - `shake_to_report_triggered` — `{}` (validates the gesture is being discovered)
 
@@ -279,3 +279,12 @@ Non-blocking items surfaced during implementation/review or in-flight testing. N
 - **Want product analytics too?** Add Phase 2 + 3.
 - **Want full client-side request telemetry?** Phase 4.
 - **Decide PostHog isn't the right fit?** Unset envs to revert; no schema changes to undo.
+
+## Follow-ups
+
+Addressed in `docs/plans/2026-05-23-posthog-followups.md` (shipped). Deferred items not in that batch:
+
+- **B — `goal_deleted` fires from `archiveGoal` (soft delete).** Semantically defensible — soft delete is the user-visible delete action. Revisit only if a hard-delete path is introduced.
+- **J — `disable_external_dependency_loading: true`.** The flag is already set. If PostHog Toolbar/Surveys/Web-Vitals is wanted in future, flip this and update the CSP to allow `https://eu-assets.i.posthog.com`.
+- **M — Play Store data-safety form.** Update the form to disclose analytics (event names, user ID) and PostHog as destination when the next Play Store update goes out.
+- **N — CSP PostHog ingest host.** Now parametrized via `POSTHOG_INGEST_HOST` env/secret (shipped in follow-ups). A region move is a pure secrets rotation.
