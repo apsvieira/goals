@@ -46,6 +46,7 @@
   "menu": {
     "profile": "Perfil",
     "notifications": "Notificações",
+    "privacy": "Privacidade",
     "language": "Idioma",
     "logOut": "Sair"
   },
@@ -107,9 +108,6 @@
     "dataExport": "Exportar Dados",
     "exportDescription": "Baixe uma cópia de todos os seus objetivos e conclusões.",
     "exportButton": "Exportar Dados (JSON)"
-  },
-  "footer": {
-    "privacy": "Privacidade"
   },
   "language": {
     "en": "English",

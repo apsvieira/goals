@@ -46,6 +46,7 @@
   "menu": {
     "profile": "Profile",
     "notifications": "Notifications",
+    "privacy": "Privacy",
     "language": "Language",
     "logOut": "Log Out"
   },
@@ -107,9 +108,6 @@
     "dataExport": "Data Export",
     "exportDescription": "Download a copy of all your goals and completions.",
     "exportButton": "Export Data (JSON)"
-  },
-  "footer": {
-    "privacy": "Privacy"
   },
   "language": {
     "en": "English",

@@ -16,6 +16,7 @@
   export let onLogout: () => void = () => {};
   export let onProfileClick: () => void = () => {};
   export let onNotificationsClick: () => void = () => {};
+  export let onPrivacyClick: () => void = () => {};
   export let onSignIn: () => void = () => {};
 
   let dropdownOpen = false;
@@ -53,6 +54,11 @@
   function handleNotificationsClick() {
     closeDropdown();
     onNotificationsClick();
+  }
+
+  function handlePrivacyClick() {
+    closeDropdown();
+    onPrivacyClick();
   }
 
   function handleLogout() {
@@ -115,6 +121,7 @@
           onLogout={handleLogout}
           onProfileClick={handleProfileClick}
           onNotificationsClick={handleNotificationsClick}
+          onPrivacyClick={handlePrivacyClick}
           onSignIn={handleSignIn}
         />
       {/if}

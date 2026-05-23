@@ -9,6 +9,7 @@
   export let onLogout: () => void;
   export let onProfileClick: () => void;
   export let onNotificationsClick: () => void = () => {};
+  export let onPrivacyClick: () => void = () => {};
   export let onSignIn: () => void = () => {};
 
   $: displayName = user?.name || $_('fallback.user');
@@ -68,6 +69,15 @@
       {/each}
     </div>
   </div>
+
+  <div class="divider"></div>
+
+  <button class="menu-item" on:click={onPrivacyClick} role="menuitem">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    </svg>
+    <span>{$_('menu.privacy')}</span>
+  </button>
 
   <div class="divider"></div>
 

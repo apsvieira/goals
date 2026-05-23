@@ -4,7 +4,6 @@
   import { Capacitor } from '@capacitor/core';
   import { _, locale } from 'svelte-i18n';
   import Header from './lib/components/Header.svelte';
-  import Footer from './lib/components/Footer.svelte';
   import GoalRow from './lib/components/GoalRow.svelte';
   import GoalEditor from './lib/components/GoalEditor.svelte';
   import AuthPage from './lib/components/AuthPage.svelte';
@@ -619,6 +618,10 @@
     navigateTo('notifications');
   }
 
+  function handlePrivacyClick() {
+    navigateTo('privacy');
+  }
+
   // Keyboard navigation state
   let focusedGoalIndex = -1;
 
@@ -884,6 +887,7 @@
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
         onNotificationsClick={handleNotificationsClick}
+        onPrivacyClick={handlePrivacyClick}
         onSignIn={handleSignIn}
       />
 
@@ -946,8 +950,6 @@
         </div>
       {/if}
       </main>
-
-      <Footer />
     {/if}
 
     {#if showNotificationPrompt}
@@ -1008,7 +1010,7 @@
 
   .app-container {
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto 1fr;
     height: 100dvh;
     overflow: hidden;
     padding-top: env(safe-area-inset-top);
