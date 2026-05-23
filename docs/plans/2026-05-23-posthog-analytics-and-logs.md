@@ -1,15 +1,16 @@
 # PostHog analytics + OTLP logs — design
 
 **Date:** 2026-05-23
-**Status:** design approved; setup done (Phase 1 backend code not yet started)
+**Status:** Phases 1–3 implemented and verified live on device (2026-05-23). Phases 4–5 deferred per plan.
 
 ## Setup status (2026-05-23)
 
 - ✅ PostHog EU project `tiny-tracker` created; project token captured.
 - ✅ Fly secrets set (`POSTHOG_PROJECT_TOKEN`, `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=https://eu.i.posthog.com/i/v1/logs`, `OTEL_EXPORTER_OTLP_LOGS_HEADERS`, `OTEL_SERVICE_NAME=goal-tracker-backend`, `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=prod`).
 - ✅ EU OTLP endpoint smoke-tested via `curl` → HTTP 200.
-- ⬜ Phase 1 (backend OTel slog bridge + `X-Request-Id` header) — code not started.
-- ⬜ Phase 2 GitHub Actions secrets (`VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`) — not yet set; wait until ready to ship the frontend phase.
+- ✅ Phase 1 (backend OTel slog bridge + `X-Request-Id` header) — shipped in `9c3e8a4`.
+- ✅ Phase 2 GitHub Actions secrets (`VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`) set; frontend integration shipped in `13c08f4`.
+- ✅ End-to-end verified: backend OTLP logs visible in PostHog Logs with `request_id`; frontend identify + curated events visible in PostHog Events with `request_id` super-property.
 
 
 ## Goal
@@ -61,7 +62,7 @@ Sentry stays as-is for unhandled-error capture, breadcrumbs, and source-mapped s
 
 Each phase is independently shippable and reversible.
 
-### Phase 1 — Backend OTLP logs → PostHog
+### Phase 1 — Backend OTLP logs → PostHog ✅ SHIPPED (`9c3e8a4`)
 
 **Goal:** every existing slog line — including the per-request `Logger.Info("request", …)` in `backend/internal/api/router.go:290` — flows to PostHog Logs.
 
@@ -84,7 +85,7 @@ Concretely:
 
 **What you'll see in PostHog Logs after Phase 1**: one log record per request with attributes `method`, `path`, `status`, `duration`, `request_id`, `user_id`, plus error-level lines from session/cleanup workers. Filter by `user_id` to get any user's server-side session timeline.
 
-### Phase 2 — Frontend PostHog SDK + identify
+### Phase 2 — Frontend PostHog SDK + identify ✅ SHIPPED (`13c08f4`)
 
 **Goal:** users are identified, page views recorded, no custom events yet. Smallest possible footprint to validate wiring end-to-end.
 
@@ -97,7 +98,7 @@ Concretely:
 5. **CSP update** in `backend/internal/api/router.go:308` — add the PostHog EU ingest host to `connect-src`. The current rule is `connect-src 'self' https://*.sentry.io`; extend to include `https://eu.i.posthog.com` (and `https://eu-assets.i.posthog.com` if `posthog-js` lazy-loads any assets from there at runtime — verify during implementation).
 6. **Privacy policy update** — add PostHog as a sub-processor with what we send (user id, event names, basic device fields) and what we don't (no email, no goal content).
 
-### Phase 3 — Curated product events
+### Phase 3 — Curated product events ✅ SHIPPED (`13c08f4`)
 
 **Goal:** answer questions like "do users finish onboarding," "how often does sync fail," "are debug reports actually submitted."
 
@@ -120,7 +121,7 @@ Define a small initial taxonomy (event name + property keys, no free-text):
 
 Emit from the existing stores/actions in `frontend/src/lib/stores.ts` and the sync layer.
 
-### Phase 4 — Frontend OTLP logs (optional)
+### Phase 4 — Frontend OTLP logs (optional) — DEFERRED
 
 **Goal:** ship the existing `net` breadcrumbs (already produced by `wrapFetch` in `frontend/src/lib/diagnostics/net.ts:96`) to PostHog Logs as OTLP records, so we have client-side request timelines next to server-side ones.
 
@@ -238,6 +239,39 @@ If PostHog becomes a problem (cost, outage, privacy concern), unsetting the two 
 - **User identification**: PostHog is initialized with `person_profiles: 'identified_only'`. `posthog.identify(userId)` fires from the same App.svelte sites that already call `setSentryUser` (lines 520, 547, 563); `posthog.reset()` on sign-out. ID only — no email, no name.
 - **Property whitelist enforcement**: both TypeScript typing *and* a runtime allowlist in the `capture()` wrapper. The runtime check is authoritative — TS catches mistakes at edit time but cannot cover spread-of-domain-object footguns.
 - **Backend log sampling**: none initially. The 50 GB/month free tier covers current traffic with room to spare; revisit only if usage approaches the limit.
+
+## Follow-ups (post-ship, 2026-05-23)
+
+Non-blocking items surfaced during implementation/review or in-flight testing. None of these block the rollout; group them into a follow-up PR (or several) when the time comes.
+
+### Schema / event taxonomy
+
+- **`sync_completed.items_pulled` is misnamed.** The sync layer is push-only; the field actually holds the count of events the server accepted from our push. Either rename to `items_accepted` in `Events`/`EVENT_ALLOWLIST` and the call site, or document the meaning on the PostHog event description so dashboards aren't misread.
+- **`goal_deleted` event fires from `archiveGoal`** (soft delete). If a true hard-delete is ever added, the taxonomy will need split or rename. Acceptable for now since archive is the only user-facing delete.
+- **`notification_permission_changed` coverage gap.** Fires only from `requestPermission()`. The resume-listener path in `frontend/src/lib/components/NotificationSettings.svelte` (around lines 97-106) detects the deny → OS settings → grant → return-to-app transition, but does not emit the event. If this transition matters for analytics, wire it.
+
+### Backend hygiene
+
+- **Per-request slog message body is the literal `"request"`.** Low-signal in PostHog Logs at a glance. Make it `method path status` (e.g. `"GET /api/goals 200"`) — keep all existing attrs unchanged. Located at `backend/internal/api/router.go:353`.
+- **Dedicated shutdown context for OTel flush.** `loggerProvider.Shutdown` currently shares the 10s `server.Shutdown` budget. If HTTP drain takes most of it, log flush starves. Use `context.WithTimeout(context.Background(), 5*time.Second)` for the OTel flush.
+- **`multiHandler.Handle` swallows OTel handler errors silently.** Return the first non-nil error so failures surface in tests / future debugging.
+- **No build-time `service.version`.** Wire an `ldflags -X main.version=…` set from `git describe` (or the version computed in `android-build.yml`) and pass it as a resource attribute on the OTel `LoggerProvider`.
+- **Startup/shutdown `log.Printf(...)` calls in `backend/cmd/server/main.go` don't flow through slog**, so they won't appear in PostHog Logs. Consider migrating to `slog.Info` if you want them in the same feed.
+
+### Frontend hygiene
+
+- **Unused import in `frontend/src/lib/api.ts`**: `loadNotificationSettings` was used by the previous `goal_created` async path; the simplified call site no longer references it. Remove on next touch.
+- **`disable_external_dependency_loading: true`** is set in `posthog.init`. If you ever want to use PostHog Toolbar, Surveys, or Web Vitals, this will need to flip and CSP will need `https://eu-assets.i.posthog.com`. Document in onboarding.
+
+### Tests
+
+- **Backend `TestOTelBridge_NotInstalledWithoutToken` is weak** — currently asserts /health 200, which would pass even if the bridge were installed. Strengthen by inspecting `api.Logger`'s handler type, or expose a small `isOTelInstalled() bool` accessor.
+- **No "bridge-on" path test** for the multiHandler fan-out. `go.opentelemetry.io/otel/sdk/log/logtest` is already in `go.sum` and would make this a small addition.
+
+### Privacy / operational
+
+- **Play Store data-safety form** — if a form is on file, update it to disclose analytics (event names, user id) and PostHog destination. (Plan called this out; doing it post-ship once analytics is verified in production.)
+- **CSP / VITE_POSTHOG_HOST / Fly OTLP endpoint region must stay in sync.** All three are hardcoded EU. A US move would need lockstep changes — comment is in place at `router.go:382`.
 
 ## Exit points
 
