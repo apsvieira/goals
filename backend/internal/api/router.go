@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	otellog "go.opentelemetry.io/otel/log"
+
 	"github.com/apsv/goal-tracker/backend/internal/auth"
 	"github.com/apsv/goal-tracker/backend/internal/db"
 	"github.com/apsv/goal-tracker/backend/internal/sync"
@@ -20,6 +23,52 @@ import (
 
 // Logger is the structured logger for the application
 var Logger *slog.Logger
+
+var otelLoggerProvider otellog.LoggerProvider
+
+// SetOTelLoggerProvider installs the OTel LoggerProvider and re-initializes the
+// logger so subsequent log lines are fanned out to both stdout and OTel.
+func SetOTelLoggerProvider(lp otellog.LoggerProvider) {
+	otelLoggerProvider = lp
+	initLogger()
+}
+
+// multiHandler fans out to multiple slog.Handler implementations.
+type multiHandler []slog.Handler
+
+func (m multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	for _, h := range m {
+		if h.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m multiHandler) Handle(ctx context.Context, r slog.Record) error {
+	for _, h := range m {
+		if h.Enabled(ctx, r.Level) {
+			_ = h.Handle(ctx, r)
+		}
+	}
+	return nil
+}
+
+func (m multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	out := make(multiHandler, len(m))
+	for i, h := range m {
+		out[i] = h.WithAttrs(attrs)
+	}
+	return out
+}
+
+func (m multiHandler) WithGroup(name string) slog.Handler {
+	out := make(multiHandler, len(m))
+	for i, h := range m {
+		out[i] = h.WithGroup(name)
+	}
+	return out
+}
 
 // serverError logs the real error and sends a generic message to the client.
 func serverError(w http.ResponseWriter, err error) {
@@ -31,20 +80,29 @@ func init() {
 	initLogger()
 }
 
-// initLogger initializes the structured logger based on LOG_FORMAT env var
+// initLogger initializes the structured logger based on LOG_FORMAT env var.
+// If an OTel LoggerProvider has been installed via SetOTelLoggerProvider, logs
+// are fanned out to both stdout and the OTel exporter.
 func initLogger() {
 	logFormat := os.Getenv("LOG_FORMAT")
-	var handler slog.Handler
+	var stdoutHandler slog.Handler
 
 	if logFormat == "text" {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		stdoutHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		})
 	} else {
 		// Default to JSON format for production
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		stdoutHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		})
+	}
+
+	var handler slog.Handler = stdoutHandler
+	if otelLoggerProvider != nil {
+		otelHandler := otelslog.NewHandler("goal-tracker-backend",
+			otelslog.WithLoggerProvider(otelLoggerProvider))
+		handler = multiHandler{stdoutHandler, otelHandler}
 	}
 
 	Logger = slog.New(handler)
@@ -275,10 +333,15 @@ func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-		next.ServeHTTP(ww, r)
 
-		// Get request ID from context
+		// Get request ID from context and expose it on the response so the
+		// frontend can correlate client-side events with server log lines.
 		requestID := middleware.GetReqID(r.Context())
+		if requestID != "" {
+			w.Header().Set("X-Request-Id", requestID)
+		}
+
+		next.ServeHTTP(ww, r)
 
 		// Get user ID if authenticated
 		var userID string
@@ -305,7 +368,7 @@ func securityHeaders(next http.Handler) http.Handler {
 	// - script-src 'self': Scripts only from same origin
 	// - style-src 'self' 'unsafe-inline': Styles from same origin + inline (needed for dynamic colors in Svelte)
 	// - img-src 'self' https://lh3.googleusercontent.com data:: Images from self, Google avatars, and data URIs
-	// - connect-src 'self' https://*.sentry.io: API/fetch calls to same origin, plus Sentry ingest hosts for error reporting
+	// - connect-src 'self' https://*.sentry.io https://eu.i.posthog.com: API/fetch calls to same origin, plus Sentry ingest hosts for error reporting and PostHog EU ingest for analytics
 	// - font-src 'self': Fonts only from same origin
 	// - object-src 'none': Disallow plugins (Flash, etc.)
 	// - frame-ancestors 'none': Prevent embedding in iframes (aligns with X-Frame-Options)
@@ -316,7 +379,8 @@ func securityHeaders(next http.Handler) http.Handler {
 		"script-src 'self'; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' https://lh3.googleusercontent.com data:; " +
-		"connect-src 'self' https://*.sentry.io; " +
+		// EU region — must stay in sync with `VITE_POSTHOG_HOST` and the Fly `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` if region changes.
+		"connect-src 'self' https://*.sentry.io https://eu.i.posthog.com; " +
 		"font-src 'self'; " +
 		"object-src 'none'; " +
 		"frame-ancestors 'none'; " +

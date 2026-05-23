@@ -10,9 +10,31 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
+	"go.opentelemetry.io/otel/sdk/resource"
+
 	"github.com/apsv/goal-tracker/backend/internal/api"
 	"github.com/apsv/goal-tracker/backend/internal/db"
 )
+
+func buildLoggerProvider(ctx context.Context) (*sdklog.LoggerProvider, error) {
+	exp, err := otlploghttp.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := resource.New(ctx, resource.WithFromEnv())
+	if err != nil {
+		return nil, err
+	}
+
+	lp := sdklog.NewLoggerProvider(
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(exp)),
+		sdklog.WithResource(res),
+	)
+	return lp, nil
+}
 
 func main() {
 	addr := flag.String("addr", "", "HTTP server address (defaults to :8080 or PORT env var)")
@@ -27,6 +49,22 @@ func main() {
 			serverAddr = ":" + port
 		} else {
 			serverAddr = ":8080"
+		}
+	}
+
+	var loggerProvider *sdklog.LoggerProvider
+	if os.Getenv("POSTHOG_PROJECT_TOKEN") != "" {
+		if os.Getenv("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT") == "" {
+			log.Printf("posthog token set but OTEL_EXPORTER_OTLP_LOGS_ENDPOINT missing; OTel bridge disabled")
+		} else {
+			ctx := context.Background()
+			lp, err := buildLoggerProvider(ctx)
+			if err != nil {
+				log.Printf("OTel logger provider init failed: %v", err)
+			} else {
+				loggerProvider = lp
+				api.SetOTelLoggerProvider(lp)
+			}
 		}
 	}
 
@@ -113,6 +151,13 @@ func main() {
 	// Attempt graceful shutdown
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	// Flush buffered OTel logs before exit
+	if loggerProvider != nil {
+		if err := loggerProvider.Shutdown(ctx); err != nil {
+			log.Printf("OTel logger provider shutdown error: %v", err)
+		}
 	}
 
 	// Close database connection
