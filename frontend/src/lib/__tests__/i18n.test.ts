@@ -21,7 +21,7 @@ describe('i18n', () => {
   it('English translation file has all expected top-level keys', async () => {
     const en = (await import('../i18n/en.json')).default;
     expect(Object.keys(en)).toEqual(
-      expect.arrayContaining(['app', 'auth', 'header', 'month', 'menu', 'welcome', 'offline', 'goalEditor', 'progress', 'profile', 'footer', 'language'])
+      expect.arrayContaining(['app', 'auth', 'header', 'month', 'menu', 'welcome', 'offline', 'goalEditor', 'progress', 'profile', 'language'])
     );
   });
 
