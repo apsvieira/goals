@@ -20,7 +20,6 @@ import { getToken } from './token-storage';
 import { getApiBase } from './config';
 import { breadcrumbAction, breadcrumbAuth } from './diagnostics/instrument';
 import { capture } from './analytics/posthog';
-import { loadNotificationSettings } from './notification-settings';
 
 const API_BASE = getApiBase();
 

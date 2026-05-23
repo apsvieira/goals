@@ -14,6 +14,7 @@
         applySettings,
         checkPermissionGranted,
     } from "../local-notifications";
+    import { capture } from "../analytics/posthog";
 
     let settings: NotificationSettings = { ...DEFAULT_NOTIFICATION_SETTINGS };
     const unsubscribe = notificationSettings.subscribe((s) => {
@@ -103,6 +104,10 @@
                     permissionDeniedAt: undefined,
                 });
                 await trySchedule(updated);
+                capture('notification_permission_changed', {
+                    state: 'granted',
+                    source: 'resume',
+                });
             });
         } catch (err) {
             console.error(

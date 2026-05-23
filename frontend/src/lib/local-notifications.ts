@@ -44,7 +44,7 @@ async function registerReminderActionTypes(): Promise<void> {
 export async function requestPermission(): Promise<boolean> {
   const result = await LocalNotifications.requestPermissions();
   const granted = result.display === 'granted';
-  capture('notification_permission_changed', { state: result.display });
+  capture('notification_permission_changed', { state: result.display, source: 'prompt' });
   return granted;
 }
 

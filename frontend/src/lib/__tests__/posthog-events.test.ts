@@ -148,10 +148,10 @@ describe('capture() — correct posthog.capture arguments', () => {
       ok: true,
       duration_ms: 120,
       items_pushed: 5,
-      items_pulled: 3,
+      items_acked: 3,
     });
     const [, props] = mocks.captureSpy.mock.calls[0];
-    expect(props).toEqual({ ok: true, duration_ms: 120, items_pushed: 5, items_pulled: 3 });
+    expect(props).toEqual({ ok: true, duration_ms: 120, items_pushed: 5, items_acked: 3 });
   });
 });
 
@@ -187,8 +187,8 @@ describe('capture() — per-event allowed keys', () => {
     },
     {
       event: 'sync_completed',
-      validProps: { ok: true, duration_ms: 50, items_pushed: 2, items_pulled: 1 },
-      expectedKeys: ['ok', 'duration_ms', 'items_pushed', 'items_pulled'],
+      validProps: { ok: true, duration_ms: 50, items_pushed: 2, items_acked: 1 },
+      expectedKeys: ['ok', 'duration_ms', 'items_pushed', 'items_acked'],
     },
     {
       event: 'sync_failed',
@@ -197,8 +197,8 @@ describe('capture() — per-event allowed keys', () => {
     },
     {
       event: 'notification_permission_changed',
-      validProps: { state: 'granted' },
-      expectedKeys: ['state'],
+      validProps: { state: 'granted', source: 'prompt' as const },
+      expectedKeys: ['state', 'source'],
     },
     {
       event: 'debug_report_submitted',
@@ -243,9 +243,10 @@ function _typeOnlyChecks() {
   capture('goal_completed', { goal_id: 'g' });
   capture('goal_deleted', { goal_id: 'g' });
   capture('view_switched', { view: 'month' });
-  capture('sync_completed', { ok: false, duration_ms: 0, items_pushed: 0, items_pulled: 0 });
+  capture('sync_completed', { ok: false, duration_ms: 0, items_pushed: 0, items_acked: 0 });
   capture('sync_failed', { reason_code: 'network' });
   capture('notification_permission_changed', { state: 'denied' });
+  capture('notification_permission_changed', { state: 'granted', source: 'resume' });
   capture('debug_report_submitted', { size_bytes: 512 });
   capture('shake_to_report_triggered', {} as Record<string, never>);
 }

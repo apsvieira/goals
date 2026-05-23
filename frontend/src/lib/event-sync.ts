@@ -119,7 +119,7 @@ export async function flushPendingEvents(): Promise<void> {
         ok: true,
         duration_ms: Date.now() - startMs,
         items_pushed: events.length,
-        items_pulled: data.processed?.length ?? 0,
+        items_acked: data.processed?.length ?? 0,
       });
     } else {
       breadcrumbSync('error', { status: res.status });

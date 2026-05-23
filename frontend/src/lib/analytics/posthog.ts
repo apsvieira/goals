@@ -154,9 +154,13 @@ export type Events = {
   // view_switched: goal_id dropped — the toggle is app-wide, no per-goal
   // context is available at the call site. Emitting goal_id: '' pollutes dashboards.
   view_switched: { view: 'month' | 'week' };
-  sync_completed: { ok: boolean; duration_ms: number; items_pushed: number; items_pulled: number };
+  // items_acked = server-acknowledged event IDs from the batch; renamed from
+  // items_pulled (misleading — this is a push-ack path, not a server→client pull).
+  sync_completed: { ok: boolean; duration_ms: number; items_pushed: number; items_acked: number };
   sync_failed: { reason_code: 'network' | 'auth' | 'server' | 'unknown' };
-  notification_permission_changed: { state: string };
+  // source distinguishes how permission was obtained: 'prompt' (in-app request)
+  // vs 'resume' (user granted in OS settings then returned to the app).
+  notification_permission_changed: { state: string; source?: 'prompt' | 'resume' };
   debug_report_submitted: { size_bytes: number };
   shake_to_report_triggered: Record<string, never>;
 };
@@ -172,9 +176,9 @@ const EVENT_ALLOWLIST: { [K in keyof Events]: ReadonlyArray<keyof Events[K]> } =
   goal_completed: ['goal_id'],
   goal_deleted: ['goal_id'],
   view_switched: ['view'],
-  sync_completed: ['ok', 'duration_ms', 'items_pushed', 'items_pulled'],
+  sync_completed: ['ok', 'duration_ms', 'items_pushed', 'items_acked'],
   sync_failed: ['reason_code'],
-  notification_permission_changed: ['state'],
+  notification_permission_changed: ['state', 'source'],
   debug_report_submitted: ['size_bytes'],
   shake_to_report_triggered: [],
 };
