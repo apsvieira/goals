@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -73,6 +74,7 @@ func main() {
 	var loggerProvider *sdklog.LoggerProvider
 	if os.Getenv("POSTHOG_PROJECT_TOKEN") != "" {
 		if os.Getenv("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT") == "" {
+			// Keep on stdlib log — this message is *about* the bridge being absent.
 			log.Printf("posthog token set but OTEL_EXPORTER_OTLP_LOGS_ENDPOINT missing; OTel bridge disabled")
 		} else {
 			ctx := context.Background()
@@ -95,7 +97,7 @@ func main() {
 		if dbPath == "" {
 			dbPath = db.DefaultDBPath()
 		}
-		log.Printf("Opening SQLite database at %s", dbPath)
+		api.Logger.Info("opening database", slog.String("driver", "sqlite"), slog.String("path", dbPath))
 		database, err = db.NewSQLite(dbPath)
 	case "postgres":
 		connStr := *dbConn
@@ -103,20 +105,24 @@ func main() {
 			connStr = os.Getenv("DATABASE_URL")
 		}
 		if connStr == "" {
+			// Fatal before the database is open — stdlib log is fine here.
 			log.Fatal("PostgreSQL connection string required (use -db flag or set DATABASE_URL env var)")
 		}
-		log.Printf("Connecting to PostgreSQL database")
+		api.Logger.Info("opening database", slog.String("driver", "postgres"))
 		database, err = db.NewPostgres(connStr)
 	default:
+		// Fatal before the database is open — stdlib log is fine here.
 		log.Fatalf("Unknown database type: %s (use 'sqlite' or 'postgres')", *dbType)
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
+		api.Logger.Error("failed to open database", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
-	log.Println("Running migrations...")
+	api.Logger.Info("running migrations")
 	if err := database.Migrate(); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		api.Logger.Error("failed to run migrations", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 
 	staticFS := getStaticFS()
@@ -144,45 +150,49 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting server on %s", serverAddr)
+		api.Logger.Info("server starting", slog.String("addr", serverAddr))
 		if staticFS != nil {
-			log.Printf("Open http://localhost%s in your browser", serverAddr)
+			api.Logger.Info("frontend embedded", slog.String("url", "http://localhost"+serverAddr))
 		} else {
-			log.Printf("Running in dev mode (no embedded frontend)")
+			api.Logger.Info("running in dev mode (no embedded frontend)")
 		}
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			api.Logger.Error("server failed", slog.String("error", err.Error()))
+			os.Exit(1)
 		}
 	}()
 
 	// Wait for shutdown signal
 	<-shutdown
-	log.Println("Shutdown signal received, initiating graceful shutdown...")
+	api.Logger.Info("shutdown signal received, initiating graceful shutdown")
 
 	// Stop background session cleanup
 	cleanupCancel()
 
-	// Create context with timeout for graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	// Create context with timeout for graceful HTTP shutdown
+	httpCtx, httpCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer httpCancel()
 
 	// Attempt graceful shutdown
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+	if err := server.Shutdown(httpCtx); err != nil {
+		api.Logger.Error("server forced to shutdown", slog.String("error", err.Error()))
 	}
 
-	// Flush buffered OTel logs before exit
+	// Flush buffered OTel logs before exit using a dedicated context so that a
+	// slow HTTP drain cannot consume the flush budget.
 	if loggerProvider != nil {
-		if err := loggerProvider.Shutdown(ctx); err != nil {
-			log.Printf("OTel logger provider shutdown error: %v", err)
+		flushCtx, flushCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer flushCancel()
+		if err := loggerProvider.Shutdown(flushCtx); err != nil {
+			api.Logger.Error("OTel logger provider shutdown error", slog.String("error", err.Error()))
 		}
 	}
 
 	// Close database connection
-	log.Println("Closing database connection...")
+	api.Logger.Info("closing database connection")
 	if err := database.Close(); err != nil {
-		log.Printf("Error closing database: %v", err)
+		api.Logger.Error("error closing database", slog.String("error", err.Error()))
 	}
 
-	log.Println("Server shutdown complete")
+	api.Logger.Info("server shutdown complete")
 }

@@ -3,11 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,6 +37,12 @@ func SetOTelLoggerProvider(lp otellog.LoggerProvider) {
 	initLogger()
 }
 
+// LoggerProviderInstalled reports whether an OTel LoggerProvider has been
+// installed via SetOTelLoggerProvider. Used by tests to verify bridge state.
+func LoggerProviderInstalled() bool {
+	return otelLoggerProvider != nil
+}
+
 // multiHandler fans out to multiple slog.Handler implementations.
 type multiHandler []slog.Handler
 
@@ -46,12 +56,15 @@ func (m multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (m multiHandler) Handle(ctx context.Context, r slog.Record) error {
+	var errs []error
 	for _, h := range m {
 		if h.Enabled(ctx, r.Level) {
-			_ = h.Handle(ctx, r)
+			if err := h.Handle(ctx, r); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (m multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
@@ -349,8 +362,9 @@ func requestLogger(next http.Handler) http.Handler {
 			userID = user.ID
 		}
 
-		// Log with structured fields
-		Logger.Info("request",
+		// Log with structured fields; body is a human-readable summary of
+		// the request so PostHog Logs can be scanned without expanding attrs.
+		Logger.Info(fmt.Sprintf("%s %s %d", r.Method, r.URL.Path, ww.Status()),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
 			slog.Int("status", ww.Status()),
@@ -361,14 +375,34 @@ func requestLogger(next http.Handler) http.Handler {
 	})
 }
 
-// securityHeaders adds security-related HTTP headers to all responses
+// posthogIngestHostRe validates that POSTHOG_INGEST_HOST contains only safe
+// hostname characters. A malformed value would silently break CSP for every
+// request, so we fail loudly at startup instead.
+var posthogIngestHostRe = regexp.MustCompile(`^[a-z0-9.-]+$`)
+
+// securityHeaders adds security-related HTTP headers to all responses.
+// The PostHog ingest host is read from POSTHOG_INGEST_HOST at middleware-
+// construction time (server boot); change it via Fly secret + redeploy —
+// no code change needed. Defaults to eu.i.posthog.com if unset.
 func securityHeaders(next http.Handler) http.Handler {
+	// Resolve PostHog ingest host once at startup so it can be injected into
+	// the CSP connect-src without a per-request env lookup.
+	posthogHost := os.Getenv("POSTHOG_INGEST_HOST")
+	if posthogHost == "" {
+		posthogHost = "eu.i.posthog.com"
+	}
+	if !posthogIngestHostRe.MatchString(posthogHost) {
+		log.Fatalf("invalid POSTHOG_INGEST_HOST %q: must match ^[a-z0-9.-]+$", posthogHost)
+	}
+
 	// Content Security Policy
 	// - default-src 'self': Only load resources from same origin by default
 	// - script-src 'self': Scripts only from same origin
 	// - style-src 'self' 'unsafe-inline': Styles from same origin + inline (needed for dynamic colors in Svelte)
 	// - img-src 'self' https://lh3.googleusercontent.com data:: Images from self, Google avatars, and data URIs
-	// - connect-src 'self' https://*.sentry.io https://eu.i.posthog.com: API/fetch calls to same origin, plus Sentry ingest hosts for error reporting and PostHog EU ingest for analytics
+	// - connect-src 'self' https://*.sentry.io https://<POSTHOG_INGEST_HOST>: API/fetch calls to same origin,
+	//   plus Sentry ingest hosts for error reporting and PostHog ingest for analytics. The PostHog host
+	//   defaults to eu.i.posthog.com and can be overridden via the POSTHOG_INGEST_HOST env/secret.
 	// - font-src 'self': Fonts only from same origin
 	// - object-src 'none': Disallow plugins (Flash, etc.)
 	// - frame-ancestors 'none': Prevent embedding in iframes (aligns with X-Frame-Options)
@@ -379,8 +413,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		"script-src 'self'; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' https://lh3.googleusercontent.com data:; " +
-		// EU region — must stay in sync with `VITE_POSTHOG_HOST` and the Fly `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` if region changes.
-		"connect-src 'self' https://*.sentry.io https://eu.i.posthog.com; " +
+		"connect-src 'self' https://*.sentry.io https://" + posthogHost + "; " +
 		"font-src 'self'; " +
 		"object-src 'none'; " +
 		"frame-ancestors 'none'; " +
