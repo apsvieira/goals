@@ -14,7 +14,8 @@ RUN go mod download
 COPY backend/ ./
 # Copy frontend dist to where embed expects it
 COPY --from=frontend /app/dist ./cmd/server/dist
-RUN CGO_ENABLED=0 go build -tags prod -o server ./cmd/server
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -tags prod -ldflags "-X main.version=${VERSION}" -o server ./cmd/server
 
 # Final image
 FROM alpine:3.20

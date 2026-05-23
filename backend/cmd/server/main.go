@@ -13,10 +13,15 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 	"github.com/apsv/goal-tracker/backend/internal/api"
 	"github.com/apsv/goal-tracker/backend/internal/db"
 )
+
+// version is set at build time via -ldflags "-X main.version=<tag>".
+// Defaults to "dev" for local builds without the flag.
+var version = "dev"
 
 func buildLoggerProvider(ctx context.Context) (*sdklog.LoggerProvider, error) {
 	exp, err := otlploghttp.New(ctx)
@@ -25,6 +30,19 @@ func buildLoggerProvider(ctx context.Context) (*sdklog.LoggerProvider, error) {
 	}
 
 	res, err := resource.New(ctx, resource.WithFromEnv())
+	if err != nil {
+		return nil, err
+	}
+
+	// Merge in the build-time service version so every log record carries
+	// service.version in PostHog Logs and other OTel backends.
+	versionRes, err := resource.New(ctx,
+		resource.WithAttributes(semconv.ServiceVersion(version)),
+	)
+	if err != nil {
+		return nil, err
+	}
+	res, err = resource.Merge(res, versionRes)
 	if err != nil {
 		return nil, err
 	}

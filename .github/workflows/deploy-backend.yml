@@ -36,6 +36,8 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
       - name: Deploy to Fly.io
-        run: flyctl deploy --remote-only
+        run: |
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+          flyctl deploy --remote-only --build-arg VERSION="$VERSION"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

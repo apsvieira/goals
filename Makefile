@@ -15,6 +15,9 @@ dev-frontend:
 	cd frontend && npm run dev
 
 # Build production binary with embedded frontend
+# VERSION defaults to git describe for local builds; CI passes its own value.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
 build: build-frontend embed-frontend build-backend
 
 build-frontend:
@@ -25,7 +28,7 @@ embed-frontend:
 	cp -r frontend/dist backend/cmd/server/dist
 
 build-backend:
-	cd backend && go build -tags prod -o ../bin/goal-tracker ./cmd/server
+	cd backend && go build -tags prod -ldflags "-X main.version=$(VERSION)" -o ../bin/goal-tracker ./cmd/server
 
 # Run production binary
 run: build
