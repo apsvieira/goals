@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { Preferences } from '@capacitor/preferences';
+import { capture } from './analytics/posthog';
 
 export type CalendarView = 'month' | 'week';
 
@@ -64,5 +65,8 @@ export async function updateViewSettings(
   const next: ViewSettings = { ...current, ...patch };
   await saveViewSettings(next);
   viewSettings.set(next);
+  if (patch.calendarView !== undefined && patch.calendarView !== current.calendarView) {
+    capture('view_switched', { view: patch.calendarView });
+  }
   return next;
 }

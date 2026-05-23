@@ -48,6 +48,7 @@
     "@sentry/capacitor": "^3.2.1",
     "@sentry/svelte": "10.43.0",
     "idb": "^8.0.3",
+    "posthog-js": "^1.376.0",
     "svelte-i18n": "^4.0.1"
   }
 }

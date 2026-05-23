@@ -9,6 +9,7 @@ import {
   type NotificationSettings,
 } from './notification-settings';
 import { saveReminderEvent } from './storage';
+import { capture } from './analytics/posthog';
 
 export const REMINDER_NOTIFICATION_ID = 1001;
 export const ACTION_TYPE_ID = 'REMINDER_ACTIONS';
@@ -42,7 +43,9 @@ async function registerReminderActionTypes(): Promise<void> {
 
 export async function requestPermission(): Promise<boolean> {
   const result = await LocalNotifications.requestPermissions();
-  return result.display === 'granted';
+  const granted = result.display === 'granted';
+  capture('notification_permission_changed', { state: result.display });
+  return granted;
 }
 
 export async function checkPermissionGranted(): Promise<boolean> {

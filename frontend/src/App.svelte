@@ -45,6 +45,7 @@
   import { breadcrumbNav, breadcrumbAuth } from './lib/diagnostics/instrument';
   import { setDebugReportRoute } from './lib/diagnostics/debug-report';
   import { setSentryUser } from './lib/diagnostics/sentry';
+  import { setPostHogUser } from './lib/analytics/posthog';
 
   // Color palette for auto-assigned goal colors (alternating green and slate gray)
   const GOAL_PALETTE = [
@@ -518,6 +519,7 @@
         initialAuthInProgress = true;
         authStore.set({ type: 'authenticated', user });
         setSentryUser(user.id);
+        setPostHogUser(user.id);
         breadcrumbAuth('session_restored');
 
         // Start event sync
@@ -545,6 +547,7 @@
     // Not authenticated
     authStore.set({ type: 'unauthenticated' });
     setSentryUser(null);
+    setPostHogUser(null);
   }
 
   async function handleLogout() {
@@ -561,6 +564,7 @@
 
     authStore.set({ type: 'unauthenticated' });
     setSentryUser(null);
+    setPostHogUser(null);
     goals = [];
     completions = [];
     allCompletions = [];

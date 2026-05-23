@@ -5,6 +5,7 @@
 // to reconstruct an app session without leaking auth material.
 
 import { emit } from './breadcrumbs';
+import posthog from 'posthog-js';
 
 let wrapped = false;
 let originalFetch: typeof fetch | undefined;
@@ -108,6 +109,17 @@ export function wrapFetch(): void {
         });
       } catch {
         // breadcrumb emission must never break the request
+      }
+      // X-Request-Id cross-side correlation: register as a PostHog super-property
+      // so every subsequent capture includes request_id, enabling pivot from a
+      // client event to the matching server log line.
+      try {
+        const requestId = response.headers.get('X-Request-Id');
+        if (requestId) {
+          posthog.register({ request_id: requestId });
+        }
+      } catch {
+        // PostHog registration must never break the request
       }
       return response;
     } catch (err) {

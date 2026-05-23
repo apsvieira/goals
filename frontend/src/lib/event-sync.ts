@@ -10,6 +10,7 @@ import { authStore } from './stores';
 import { getApiBase } from './config';
 import { breadcrumbSync } from './diagnostics/instrument';
 import { drainQueue as drainDebugReportQueue } from './diagnostics/debug-report';
+import { capture } from './analytics/posthog';
 
 export type SyncStatus =
   | { state: 'idle' }
@@ -76,6 +77,7 @@ export async function flushPendingEvents(): Promise<void> {
   if (auth.type !== 'authenticated') return;
 
   isFlushing = true;
+  const startMs = Date.now();
   try {
     const events = await getUnsyncedEvents();
     if (events.length === 0) return;
@@ -113,14 +115,22 @@ export async function flushPendingEvents(): Promise<void> {
         // Prune failure should not affect sync status
       }
       breadcrumbSync('end', { processed_count: data.processed?.length ?? 0 });
+      capture('sync_completed', {
+        ok: true,
+        duration_ms: Date.now() - startMs,
+        items_pushed: events.length,
+        items_pulled: data.processed?.length ?? 0,
+      });
     } else {
       breadcrumbSync('error', { status: res.status });
       syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });
+      capture('sync_failed', { reason_code: res.status === 401 ? 'auth' : 'server' });
       return;
     }
   } catch {
     breadcrumbSync('error', { reason: 'network' });
     syncStatus.set({ state: 'error', message: 'Sync failed', canRetry: true });
+    capture('sync_failed', { reason_code: 'network' });
     return;
   } finally {
     isFlushing = false;

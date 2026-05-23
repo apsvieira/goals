@@ -16,6 +16,7 @@ import { getApiBase } from '../config';
 import { getToken } from '../token-storage';
 import { snapshot, clear } from './breadcrumbs';
 import { getUnsyncedEvents } from '../storage';
+import { capture } from '../analytics/posthog';
 
 // ---------- Types ----------
 
@@ -393,6 +394,8 @@ export async function sendDebugReport(
 
   if (res.ok) {
     recordSendTimestamp(now);
+    const bodyStr = JSON.stringify(payload);
+    capture('debug_report_submitted', { size_bytes: new TextEncoder().encode(bodyStr).length });
     try {
       clear();
     } catch {

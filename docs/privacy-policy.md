@@ -1,6 +1,6 @@
 # Privacy Policy for tiny tracker
 
-**Last updated:** 2026-04-14
+**Last updated:** 2026-05-23
 
 ## Overview
 
@@ -44,6 +44,7 @@ We do not sell, share, or use your data for advertising.
 - **Firebase Cloud Messaging:** For push notifications. Subject to [Google's Privacy Policy](https://policies.google.com/privacy).
 - **Fly.io:** Server hosting. Subject to [Fly.io's Privacy Policy](https://fly.io/legal/privacy-policy/).
 - **Sentry (sentry.io):** For automated error reporting. When the App encounters an unexpected error, a technical report is sent to Sentry containing: your user ID (a random identifier, not your email), your app version, device model, operating system, and a stack trace of the error. Your goal names, completions, and any personal content are not sent to Sentry. Subject to [Sentry's Privacy Policy](https://sentry.io/privacy/).
+- **PostHog (posthog.com, EU region):** For product analytics. We send your user ID (a random identifier, not your email), event names (e.g. "page viewed"), and basic device fields (device type, OS version, app version). Your goal names, goal content, and completion data are never sent to PostHog. Data is processed in the EU. Subject to [PostHog's Privacy Policy](https://posthog.com/privacy).
 
 ## Data Deletion
 

@@ -22,6 +22,7 @@ import {
 import { wrapFetch } from './net';
 import { startShakeDetector } from './shake';
 import { initSentry } from './sentry';
+import { initPostHog } from '../analytics/posthog';
 import { openDebugReport } from '../stores';
 
 let initialized = false;
@@ -203,6 +204,12 @@ export async function initDiagnostics(): Promise<void> {
     initSentry();
   } catch {
     // Sentry init must never block app bootstrap.
+  }
+
+  try {
+    initPostHog();
+  } catch {
+    // PostHog init must never block app bootstrap.
   }
 
   patchConsole();

@@ -25,6 +25,7 @@ import { Motion } from '@capacitor/motion';
 import type { AccelListenerEvent } from '@capacitor/motion';
 import { get } from 'svelte/store';
 import { debugReportModalOpen } from '../stores';
+import { capture } from '../analytics/posthog';
 
 // ---------- Tunable thresholds ----------
 
@@ -177,6 +178,7 @@ export function startShakeDetector(onShake: () => void): () => void {
     const mag = computeMagnitude(x, y, z);
     const fired = pushSample(state, { ts: Date.now(), mag });
     if (fired) {
+      capture('shake_to_report_triggered', {} as Record<string, never>);
       try {
         onShake();
       } catch (err) {

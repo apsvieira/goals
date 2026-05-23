@@ -76,15 +76,18 @@ jobs:
         # VITE_SENTRY_DSN is baked into the bundle at build time so the app
         # can initialize Sentry on device. SENTRY_AUTH_TOKEN/ORG/PROJECT are
         # used by @sentry/vite-plugin to upload source maps after bundling.
-        # All four secrets are OPTIONAL — if any are missing, the build
-        # succeeds unchanged (Sentry init no-ops; source-map upload is
-        # silently skipped). Add them via the GitHub Actions secrets UI.
+        # VITE_POSTHOG_KEY/HOST enable PostHog analytics; absent → no-op.
+        # All secrets are OPTIONAL — if any are missing, the build succeeds
+        # unchanged. Add them via the GitHub Actions secrets UI.
         env:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_APP_VERSION: ${{ steps.version.outputs.version_name }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          VITE_APP_ENV: ci-build
         run: npm run build
 
       - name: Sync Capacitor
@@ -202,15 +205,18 @@ jobs:
         # VITE_SENTRY_DSN is baked into the bundle at build time so the app
         # can initialize Sentry on device. SENTRY_AUTH_TOKEN/ORG/PROJECT are
         # used by @sentry/vite-plugin to upload source maps after bundling.
-        # All four secrets are OPTIONAL — if any are missing, the build
-        # succeeds unchanged (Sentry init no-ops; source-map upload is
-        # silently skipped). Add them via the GitHub Actions secrets UI.
+        # VITE_POSTHOG_KEY/HOST enable PostHog analytics; absent → no-op.
+        # All secrets are OPTIONAL — if any are missing, the build succeeds
+        # unchanged. Add them via the GitHub Actions secrets UI.
         env:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_APP_VERSION: ${{ steps.version.outputs.version_name }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          VITE_APP_ENV: prod
         run: npm run build
 
       - name: Sync Capacitor

@@ -19,6 +19,8 @@ import { sendEvent, flushPendingEvents } from './event-sync';
 import { getToken } from './token-storage';
 import { getApiBase } from './config';
 import { breadcrumbAction, breadcrumbAuth } from './diagnostics/instrument';
+import { capture } from './analytics/posthog';
+import { loadNotificationSettings } from './notification-settings';
 
 const API_BASE = getApiBase();
 
@@ -176,6 +178,9 @@ export async function createGoal(
   sendEvent(event).catch(console.error);
 
   breadcrumbAction('goal created', { goal_id: goal.id });
+
+  capture('goal_created', { goal_id: goal.id });
+
   return goal;
 }
 
@@ -243,6 +248,7 @@ export async function archiveGoal(id: string): Promise<void> {
   sendEvent(event).catch(console.error);
 
   breadcrumbAction('goal deleted', { goal_id: id });
+  capture('goal_deleted', { goal_id: id });
 }
 
 export async function createCompletion(goalId: string, date: string): Promise<Completion> {
@@ -268,6 +274,7 @@ export async function createCompletion(goalId: string, date: string): Promise<Co
   sendEvent(event).catch(console.error);
 
   breadcrumbAction('completion created', { goal_id: goalId, date });
+  capture('goal_completed', { goal_id: goalId });
   return completion;
 }
 
