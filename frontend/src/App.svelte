@@ -100,7 +100,7 @@
 
   // Compute the header period label using the app locale (svelte-i18n).
   // Fall back to a sensible default if $locale is null during early init.
-  $: periodLabel = formatPeriodLabel(focalDate, currentView, $locale ?? 'en');
+  $: periodLabel = formatPeriodLabel(focalDate, $locale ?? 'en');
 
   let goals: Goal[] = [];
   let completions: Completion[] = [];

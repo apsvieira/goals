@@ -32,34 +32,8 @@ export function monthsForCells(cells: CalendarCell[]): string[] {
  * Pure helper for unit testing. `locale` should be the app locale string
  * (e.g. "en", "pt-BR") so the label matches the rest of the UI.
  */
-export function formatPeriodLabel(
-  focalDate: Date,
-  view: 'month' | 'week',
-  locale: string,
-): string {
-  if (view === 'month') {
-    return new Intl.DateTimeFormat(locale, { month: 'long' }).format(focalDate);
-  }
-  // Week mode: "Apr 27 – May 3" (or locale equivalent)
-  const dow = focalDate.getDay();
-  const sunday = new Date(focalDate);
-  sunday.setDate(focalDate.getDate() - dow);
-  sunday.setHours(0, 0, 0, 0);
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
-
-  const yearCross = sunday.getFullYear() !== saturday.getFullYear();
-  const fmt = (d: Date, includeYear: boolean) =>
-    new Intl.DateTimeFormat(locale, {
-      month: 'short',
-      day: 'numeric',
-      ...(includeYear ? { year: 'numeric' } : {}),
-    }).format(d);
-
-  if (yearCross) {
-    return `${fmt(sunday, true)} – ${fmt(saturday, true)}`;
-  }
-  return `${fmt(sunday, false)} – ${fmt(saturday, false)}`;
+export function formatPeriodLabel(focalDate: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { month: 'long' }).format(focalDate);
 }
 
 /**

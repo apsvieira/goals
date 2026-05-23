@@ -311,47 +311,15 @@ describe('buildWeekGrid', () => {
 });
 
 describe('formatPeriodLabel', () => {
-  it('month + en: returns "April" for April 2026', () => {
-    const label = formatPeriodLabel(new Date(2026, 3, 15), 'month', 'en');
+  it('en: returns "April" for April 2026', () => {
+    const label = formatPeriodLabel(new Date(2026, 3, 15), 'en');
     expect(label).toBe('April');
   });
 
-  it('month + pt-BR: returns "abril" (lowercase per pt-BR locale)', () => {
-    const label = formatPeriodLabel(new Date(2026, 3, 15), 'month', 'pt-BR');
-    // Intl pt-BR uses lowercase month names: "abril", "maio", etc.
-    // Just assert it is NOT the English form.
+  it('pt-BR: returns "abril" (lowercase per pt-BR locale)', () => {
+    const label = formatPeriodLabel(new Date(2026, 3, 15), 'pt-BR');
     expect(label).not.toBe('April');
     expect(label.toLowerCase()).toContain('abril');
-  });
-
-  it('week + en: returns dash-separated month/day range', () => {
-    // Reference: Wednesday Apr 29 2026. Week: Sun Apr 26 – Sat May 2.
-    const label = formatPeriodLabel(new Date(2026, 3, 29), 'week', 'en');
-    // Should contain both month names since week straddles April and May
-    expect(label).toContain('Apr');
-    expect(label).toContain('May');
-    expect(label).toContain('–');
-  });
-
-  it('week + pt-BR: returns a localized range (NOT the English form)', () => {
-    const enLabel = formatPeriodLabel(new Date(2026, 3, 29), 'week', 'en');
-    const ptLabel = formatPeriodLabel(new Date(2026, 3, 29), 'week', 'pt-BR');
-    expect(ptLabel).not.toBe(enLabel);
-    // pt-BR short month for April is "abr."
-    expect(ptLabel.toLowerCase()).toContain('abr');
-  });
-
-  it('week crossing year boundary includes year on both sides', () => {
-    // Dec 28 2025 – Jan 3 2026 is a year-crossing week
-    const label = formatPeriodLabel(new Date(2025, 11, 28), 'week', 'en');
-    expect(label).toContain('2025');
-    expect(label).toContain('2026');
-  });
-
-  it('week within a single month does not include year', () => {
-    // May 10 – May 16, 2026 (Wednesday in middle of week)
-    const label = formatPeriodLabel(new Date(2026, 4, 13), 'week', 'en');
-    expect(label).not.toContain('2026');
   });
 });
 
