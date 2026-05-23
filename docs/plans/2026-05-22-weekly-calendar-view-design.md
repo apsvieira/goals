@@ -1,6 +1,6 @@
 # Weekly Calendar View Toggle — Design Plan
 
-> **Status:** Proposed — 2026-05-22. Not yet implemented.
+> **Status:** Implemented — shipped in v1.3.0 (2026-05-23). Week-mode header label was simplified post-review to show just the month name (the original "Apr 27 – May 3" range crowded the header on narrow phones); see commit `e024406`.
 
 **Goal:** Let users toggle the per-goal calendar between the current full-month grid and a current-week-only grid, with the toggle living in the header (Google-Calendar-style) and persisted as a device-local preference.
 
